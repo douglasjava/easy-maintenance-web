@@ -3,11 +3,36 @@
 import { useState } from "react";
 import { api } from "@/lib/apiClient";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 
 export default function NewItemPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [category, setCategory] = useState<"REGULATORIA" | "OPERACIONAL">("REGULATORIA");
+  const [category, setCategory] = useState<"REGULATORY" | "OPERATIONAL">("REGULATORY");
+
+  type Norm = {
+    id: string;
+    itemType: string;
+    periodUnit: string;
+    periodQty: number;
+    toleranceDays?: number;
+    authority?: string;
+    docUrl?: string;
+    notes?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+
+  const { data: norms, isLoading: normsLoading, error: normsError, refetch: refetchNorms } = useQuery<Norm[]>({
+    queryKey: ["norms"],
+    queryFn: async () => {
+      const res = await api.get("/norms");
+      const d = res.data;
+      if (Array.isArray(d)) return d as Norm[];
+      if (d && Array.isArray(d.content)) return d.content as Norm[];
+      return d ? [d as Norm] : [];
+    },
+  });
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -25,7 +50,7 @@ export default function NewItemPage() {
       lastPerformedAt: form.get("lastPerformedAt") || null,
     };
 
-    if (payload.itemCategory === "REGULATORIA") {
+    if (payload.itemCategory === "REGULATORY") {
       payload.normId = form.get("normId");
     } else {
       payload.customPeriodUnit = form.get("customPeriodUnit");
@@ -34,10 +59,10 @@ export default function NewItemPage() {
 
     try {
       setLoading(true);
-      const { data } = await api.post("/api/items", payload);
+      const { data } = await api.post("/items", payload);
       setMsg(`✔️ Item criado: ${data.id}`);
       e.currentTarget.reset();
-      setCategory("REGULATORIA");
+      setCategory("REGULATORY");
     } catch (err: any) {
       setMsg("❌ Erro ao criar item. Verifique os campos.");
     } finally {
@@ -69,8 +94,8 @@ export default function NewItemPage() {
                   value={category}
                   onChange={(e) => setCategory(e.target.value as any)}
                 >
-                  <option value="REGULATORIA">Regulatória</option>
-                  <option value="OPERACIONAL">Operacional</option>
+                  <option value="REGULATORY">Regulatória</option>
+                  <option value="OPERATIONAL">Operacional</option>
                 </select>
               </div>
               <div className="col-12 col-md-6">
@@ -94,17 +119,30 @@ export default function NewItemPage() {
               </div>
             </div>
 
-            {category === "REGULATORIA" && (
+            {category === "REGULATORY" && (
               <div className="mt-3">
                 <label className="form-label">Norma (normId)</label>
-                <input name="normId" className="form-control" placeholder="UUID da norma" required />
+                {normsLoading ? (
+                  <p className="form-text m-0">Carregando normas…</p>
+                ) : normsError ? (
+                  <p className="text-danger m-0">Erro ao carregar normas. <button type="button" className="btn btn-link p-0 align-baseline" onClick={() => refetchNorms()}>Tentar novamente</button></p>
+                ) : (
+                  <select name="normId" className="form-select" required defaultValue="">
+                    <option value="" disabled>Selecione uma norma</option>
+                    {(norms ?? []).map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.itemType} • {n.authority || ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <div className="form-text">
-                  Use um ID da tabela <code>norms</code>. Em breve faremos auto-completar por <code>itemType</code>.
+                  As normas são carregadas de <code>/norms</code> e o ID selecionado será enviado no cadastro.
                 </div>
               </div>
             )}
 
-            {category === "OPERACIONAL" && (
+            {category === "OPERATIONAL" && (
               <div className="row g-3 mt-1">
                 <div className="col-12 col-md-6">
                   <label className="form-label">Unidade</label>

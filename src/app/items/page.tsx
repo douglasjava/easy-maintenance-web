@@ -10,7 +10,7 @@ import Pagination from "@/components/Pagination";
 type Item = {
   id: string;
   itemType: string;
-  itemCategory: "REGULATORIA" | "OPERACIONAL";
+  itemCategory: "REGULATORY" | "OPERATIONAL";
   status: "OK" | "NEAR_DUE" | "OVERDUE";
   nextDueAt: string;
 };
@@ -35,7 +35,7 @@ export default function ItemsPage() {
       const params: Record<string, any> = { page, size };
       if (status) params.status = status;
       if (itemType) params.itemType = itemType;
-      const res = await api.get("/api/items", { params });
+      const res = await api.get("/items", { params });
       // pode vir lista ou page — normalizar:
       if (Array.isArray(res.data)) {
         return {

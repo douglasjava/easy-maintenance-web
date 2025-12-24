@@ -10,7 +10,7 @@ export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, error } = useQuery({
     queryKey: ["item", id],
-    queryFn: async () => (await api.get(`/api/items/${id}`)).data,
+    queryFn: async () => (await api.get(`/items/${id}`)).data,
   });
 
   function formatDate(dt?: string) {
@@ -76,7 +76,7 @@ export default function ItemDetailPage() {
               )}
 
               <div className="row g-3 mb-2">
-                {data.itemCategory === "REGULATORIA" ? (
+                {data.itemCategory === "REGULATORY" ? (
                   <>
                     <div className="col-12 col-md-4">
                       <div className="text-muted small">Norma</div>

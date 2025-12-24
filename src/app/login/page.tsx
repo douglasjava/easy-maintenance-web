@@ -29,15 +29,24 @@ export default function LoginPage() {
         try {
             setLoading(true);
             const { data } = await api.post("/auth/login", payload);
-            // opcional: guarda organizationCode para uso futuro
-            if (data?.organizationCode && typeof window !== "undefined") {
+            // Guarda dados de sessão para próximas requisições
+            if (typeof window !== "undefined") {
                 try {
-                    localStorage.setItem("organizationCode", String(data.organizationCode));
+                    if (data?.organizationCode) {
+                        localStorage.setItem("organizationCode", String(data.organizationCode));
+                    }
+                    if (data?.accessToken) {
+                        localStorage.setItem("accessToken", String(data.accessToken));
+                    }
+                    if (data?.tokenType) {
+                        localStorage.setItem("tokenType", String(data.tokenType));
+                    }
                 } catch {}
             }
             setMsg("✔️ Login realizado com sucesso. Redirecionando...");
-            // redireciona para o dashboard
-            router.replace("/");
+            // após login, envia para a área principal (itens), mantendo 
+            // a página inicial como login conforme solicitado
+            router.replace("/items");
         } catch {
             setMsg("❌ Falha no login. Verifique suas credenciais.");
         } finally {

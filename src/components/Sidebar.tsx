@@ -42,6 +42,7 @@ export default function Sidebar() {
           <Link href="/items" className="nav-link" onClick={(e) => handleNavigate(e, "/items")} data-bs-dismiss="offcanvas">Itens</Link>
           <Link href="/items/new" className="nav-link" onClick={(e) => handleNavigate(e, "/items/new")} data-bs-dismiss="offcanvas">Novo Item</Link>
           <Link href="/maintenances/new" className="nav-link" onClick={(e) => handleNavigate(e, "/maintenances/new")} data-bs-dismiss="offcanvas">Registrar Manutenção</Link>
+          <Link href="/maintenances" className="nav-link" onClick={(e) => handleNavigate(e, "/maintenances")} data-bs-dismiss="offcanvas">Manutenções</Link>
           <div className="mt-2 border-top" />
           <Link href="/organizations/new" className="nav-link" onClick={(e) => handleNavigate(e, "/organizations/new")} data-bs-dismiss="offcanvas">Nova Organização</Link>
           <Link href="/users/new" className="nav-link" onClick={(e) => handleNavigate(e, "/users/new")} data-bs-dismiss="offcanvas">Cadastro de Usuário</Link>
