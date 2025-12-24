@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <section>
@@ -38,9 +40,11 @@ export default function Home() {
         <div className="card-body">
           <h2 className="h6">Atalhos</h2>
           <div className="d-flex flex-wrap gap-2">
-            <a className="btn btn-outline-secondary" href="/items">Ver Itens</a>
-            <a className="btn btn-primary" href="/items/new">Novo Item</a>
-            <a className="btn btn-outline-secondary" href="/maintenances/new">Registrar Manutenção</a>
+            <Link className="btn btn-outline-secondary" href="/items">Ver Itens</Link>
+            <Link className="btn btn-primary" href="/items/new">Novo Item</Link>
+            <Link className="btn btn-outline-secondary" href="/maintenances/new">Registrar Manutenção</Link>
+            <Link className="btn btn-outline-secondary" href="/organizations/new">Nova Organização</Link>
+            <Link className="btn btn-outline-secondary" href="/users/new">Cadastro de Usuário</Link>
           </div>
         </div>
       </div>
