@@ -3,6 +3,9 @@
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const ChatWidget = dynamic(() => import("@/ia/ChatWidget"), { ssr: false });
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -19,6 +22,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <TopBar />
       <Sidebar />
       <main className="container my-3">{children}</main>
+      <ChatWidget />
     </div>
   );
 }

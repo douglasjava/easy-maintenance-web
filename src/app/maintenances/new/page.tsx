@@ -20,7 +20,33 @@ interface PageResp<T> {
   size: number;
 }
 
+// Tipos para prestadores próximos
+interface NearbySupplier {
+  placeId: string;
+  name: string;
+  address?: string;
+  rating?: number;
+  userRatingsTotal?: number;
+  phone?: string;
+  website?: string;
+  mapsUrl?: string;
+  lat?: number;
+  lng?: number;
+}
+
+interface NearbyResponse {
+  serviceKey: string;
+  radiusKm: number;
+  center: { lat: number; lng: number };
+  suppliers: NearbySupplier[];
+}
+
 export default function NewMaintenancePage() {
+  // Estado para sugestão de prestadores
+  const [suppliers, setSuppliers] = useState<NearbySupplier[]>([]);
+  const [suppliersOpen, setSuppliersOpen] = useState(false);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+  const [suppliersError, setSuppliersError] = useState<string | null>(null);
   const [itemId, setItemId] = useState("");
   const [performedAt, setPerformedAt] = useState("");
   const [msg, setMsg] = useState("");
@@ -82,6 +108,48 @@ export default function NewMaintenancePage() {
     }
   }
 
+  // Busca prestadores próximos baseado no itemType (serviceKey) e geolocalização do navegador
+  async function fetchSuppliersNearby() {
+    setSuppliersError(null);
+    setSuppliersLoading(true);
+    try {
+      const serviceKey = (itemType || "").trim().toUpperCase();
+      if (!serviceKey) {
+        throw new Error("Informe o Tipo do serviço para buscar prestadores.");
+      }
+
+      // Obter geolocalização do navegador
+      const coords = await new Promise<GeolocationCoordinates>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocalização não suportada pelo navegador."));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(pos.coords),
+          (err) => reject(err),
+          { enableHighAccuracy: false, timeout: 8000 }
+        );
+      }).catch(() => {
+        // Fallback: Centro de BH para não bloquear totalmente a experiência
+        return { latitude: -19.9245, longitude: -43.9352 } as any;
+      });
+
+      const lat = (coords as any).latitude;
+      const lng = (coords as any).longitude;
+
+      const payload = { serviceKey, lat, lng, radiusKm: 20, limit: 5 };
+      const res = await api.post<NearbyResponse>("/suppliers/nearby", payload);
+      setSuppliers(res.data?.suppliers ?? []);
+      setSuppliersOpen(true);
+    } catch (e: any) {
+      setSuppliersError(e?.message || "Falha ao buscar prestadores próximos.");
+      setSuppliers([]);
+      setSuppliersOpen(true);
+    } finally {
+      setSuppliersLoading(false);
+    }
+  }
+
   return (
     <section>
       <h1 className="h1">Registrar Manutenção</h1>
@@ -133,11 +201,23 @@ export default function NewMaintenancePage() {
                       value={itemType}
                       onChange={(e) => setItemType(e.target.value.toUpperCase())}
                     />
+                    <div className="form-text mt-1">
+                      Informe o tipo do serviço para sugerirmos prestadores próximos.
+                    </div>
                   </div>
 
-                  <div className="col-12 col-md-2">
+                  <div className="col-12 col-md-2 d-flex flex-column gap-2">
                     <button className="btn btn-outline-secondary w-100" type="submit">
                       {isFetching ? "Buscando..." : "Buscar"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary w-100"
+                      onClick={fetchSuppliersNearby}
+                      disabled={!itemType || suppliersLoading}
+                      title="Ver prestadores próximos ao seu local"
+                    >
+                      {suppliersLoading ? "Buscando prestadores..." : "Ver prestadores próximos"}
                     </button>
                   </div>
                 </div>
@@ -229,6 +309,72 @@ export default function NewMaintenancePage() {
               required
             />
           </div>
+
+          {/* Sugestões de prestadores */}
+          {suppliersOpen && (
+            <div className="card mt-3">
+              <div className="card-body">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h2 className="h6 m-0">Sugestões de prestadores próximos</h2>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => setSuppliersOpen(false)}
+                  >
+                    Fechar
+                  </button>
+                </div>
+
+                <p className="text-muted mb-3">
+                  As opções abaixo são sugestões baseadas na sua localização e no serviço informado. O Easy Maintenance
+                  não se responsabiliza pela contratação, execução e qualidade dos serviços prestados pelos fornecedores listados.
+                </p>
+
+                {suppliersError && <p className="text-danger">{suppliersError}</p>}
+                {!suppliersError && suppliers.length === 0 && !suppliersLoading && (
+                  <p className="text-muted">Nenhum prestador encontrado para o tipo informado nesta região.</p>
+                )}
+
+                {suppliersLoading && <p className="m-0">Buscando prestadores…</p>}
+
+                {!suppliersLoading && !suppliersError && suppliers.length > 0 && (
+                  <div className="list-group">
+                    {suppliers.map((s) => (
+                      <div key={s.placeId} className="list-group-item">
+                        <div className="d-flex justify-content-between">
+                          <div>
+                            <div className="fw-semibold">{s.name}</div>
+                            {s.address && <div className="text-muted small">{s.address}</div>}
+                            <div className="small mt-1">
+                              {typeof s.rating === "number" && (
+                                <span className="me-2">Avaliação: {s.rating?.toFixed(1)} ⭐</span>
+                              )}
+                              {typeof s.userRatingsTotal === "number" && (
+                                <span className="text-muted">({s.userRatingsTotal} avaliações)</span>
+                              )}
+                            </div>
+                            <div className="small mt-1">
+                              {s.phone && <span className="me-2">📞 {s.phone}</span>}
+                              {s.website && (
+                                <a href={s.website} target="_blank" rel="noreferrer" className="me-2">
+                                  Site
+                                </a>
+                              )}
+                              {s.mapsUrl && (
+                                <a href={s.mapsUrl} target="_blank" rel="noreferrer">
+                                  Ver no mapa
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="form-actions">
             <button className="btn primary">Registrar</button>
