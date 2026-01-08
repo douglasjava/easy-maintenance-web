@@ -224,3 +224,15 @@ a{ color:inherit; text-decoration:none }
     .login-card{ padding: 1.6rem 1.1rem; border-radius: 1.2rem }
     .login-title{ font-size: 1.15rem }
 }
+
+.login-brand {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.login-brand img {
+    height: auto;
+    max-width: 100%;
+}
+

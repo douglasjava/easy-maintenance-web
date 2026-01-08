@@ -29,14 +29,19 @@ api.interceptors.request.use((config) => {
   let tokenType: string | undefined;
   if (typeof window !== "undefined") {
     try {
-      const storedOrg = window.localStorage.getItem("organizationCode");
+      const ls = window.localStorage;
+      const ss = window.sessionStorage;
+
+      const storedOrg = ls.getItem("organizationCode") || ss.getItem("organizationCode");
       if (storedOrg) orgFromLogin = storedOrg;
-      const storedToken = window.localStorage.getItem("accessToken");
+
+      const storedToken = ls.getItem("accessToken") || ss.getItem("accessToken");
       if (storedToken) accessToken = storedToken;
-      const storedType = window.localStorage.getItem("tokenType");
+
+      const storedType = ls.getItem("tokenType") || ss.getItem("tokenType");
       if (storedType) tokenType = storedType;
     } catch {
-      // ignore erros de acesso ao localStorage
+      // ignore erros de acesso ao storage
     }
   }
 
@@ -61,9 +66,14 @@ api.interceptors.response.use(
     if (status === 401) {
       if (typeof window !== "undefined") {
         try {
+          // limpa Local Storage
           window.localStorage.removeItem("organizationCode");
           window.localStorage.removeItem("accessToken");
           window.localStorage.removeItem("tokenType");
+          // limpa Session Storage
+          window.sessionStorage.removeItem("organizationCode");
+          window.sessionStorage.removeItem("accessToken");
+          window.sessionStorage.removeItem("tokenType");
         } catch {}
         // Redireciona para login
         const currentPath = window.location.pathname || "";
