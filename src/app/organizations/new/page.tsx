@@ -37,7 +37,7 @@ export default function NewOrganizationPage() {
 
         try {
             setLoading(true);
-            await api.post("/api/v1/organizations", payload);
+            await api.post("/organizations", payload);
             setMsg("✔️ Organização criada com sucesso.");
             e.currentTarget.reset();
         } catch (err: any) {

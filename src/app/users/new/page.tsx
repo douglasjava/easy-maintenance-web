@@ -39,7 +39,7 @@ export default function NewUserPage() {
 
         try {
             setLoading(true);
-            const path = `/api/v1/organizations/${ENV.ORG_ID}/users`;
+            const path = `/organizations/${ENV.ORG_ID}/users`;
             await api.post(path, payload);
             setMsg("✔️ Usuário cadastrado com sucesso.");
             e.currentTarget.reset();
