@@ -50,6 +50,14 @@ api.interceptors.request.use((config) => {
     config.headers["X-Org-Id"] = orgId;
   }
 
+  // Admin token para área privativa
+  if (typeof window !== "undefined") {
+    const adminToken = window.localStorage.getItem("adminToken");
+    if (adminToken) {
+      config.headers["X-Admin-Token"] = adminToken;
+    }
+  }
+
   if (accessToken) {
     const type = tokenType || "Bearer";
     (config.headers as any)["Authorization"] = `${type} ${accessToken}`;

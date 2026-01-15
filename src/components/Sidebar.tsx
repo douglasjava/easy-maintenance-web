@@ -47,10 +47,15 @@ export default function Sidebar() {
 
         {href: "/items/new", label: "Novo Item", section: "actions"},
         {href: "/maintenances/new", label: "Registrar Manutenção", section: "actions"},
-
-        {href: "/organizations/new", label: "Nova Organização", section: "admin"},
-        {href: "/users/new", label: "Cadastro de Usuário", section: "admin"},
     ];
+
+    const adminItems: NavItem[] = [
+        {href: "/private/users", label: "Usuários", section: "admin"},
+        {href: "/private/organizations", label: "Organizações", section: "admin"},
+    ];
+
+    const isPrivate = pathname?.startsWith("/private");
+    const currentItems = isPrivate ? adminItems : items;
 
     function isActive(href: string) {
         if (href === "/") return pathname === "/";
@@ -130,31 +135,35 @@ export default function Sidebar() {
             <div className="offcanvas-body d-flex flex-column p-0">
                 {/* Fundo leve na área de navegação */}
                 <div className="px-2 py-2" style={{backgroundColor: COLORS.bg}}>
-                    <SectionTitle>Principal</SectionTitle>
+                    {!isPrivate && (
+                        <>
+                            <SectionTitle>Principal</SectionTitle>
+                            <nav className="nav flex-column gap-1">
+                                {currentItems
+                                    .filter((i) => i.section === "main")
+                                    .map((i) => (
+                                        <NavLink key={i.href} href={i.href} label={i.label}/>
+                                    ))}
+                            </nav>
+
+                            <div className="mt-2"/>
+
+                            <SectionTitle>Ações</SectionTitle>
+                            <nav className="nav flex-column gap-1">
+                                {currentItems
+                                    .filter((i) => i.section === "actions")
+                                    .map((i) => (
+                                        <NavLink key={i.href} href={i.href} label={i.label}/>
+                                    ))}
+                            </nav>
+
+                            <div className="mt-2"/>
+                        </>
+                    )}
+
+                    <SectionTitle>{isPrivate ? "Administração" : "Admin"}</SectionTitle>
                     <nav className="nav flex-column gap-1">
-                        {items
-                            .filter((i) => i.section === "main")
-                            .map((i) => (
-                                <NavLink key={i.href} href={i.href} label={i.label}/>
-                            ))}
-                    </nav>
-
-                    <div className="mt-2"/>
-
-                    <SectionTitle>Ações</SectionTitle>
-                    <nav className="nav flex-column gap-1">
-                        {items
-                            .filter((i) => i.section === "actions")
-                            .map((i) => (
-                                <NavLink key={i.href} href={i.href} label={i.label}/>
-                            ))}
-                    </nav>
-
-                    <div className="mt-2"/>
-
-                    <SectionTitle>Admin</SectionTitle>
-                    <nav className="nav flex-column gap-1">
-                        {items
+                        {currentItems
                             .filter((i) => i.section === "admin")
                             .map((i) => (
                                 <NavLink key={i.href} href={i.href} label={i.label}/>

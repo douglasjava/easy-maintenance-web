@@ -32,6 +32,15 @@ export default function LoginPage() {
 
             const {data} = await api.post("/auth/login", {email, password});
 
+            if (data?.firstAccess === true) {
+                if (typeof window !== "undefined") {
+                    window.sessionStorage.setItem("tempIdUser", String(data.id));
+                }
+                setMsg("✔️ Primeiro acesso detectado. Redirecionando para alteração de senha...");
+                router.replace("/auth/change-password");
+                return;
+            }
+
             if (typeof window !== "undefined") {
                 const storage = remember ? window.localStorage : window.sessionStorage;
 

@@ -176,7 +176,7 @@ export default function MaintenancesListPage() {
                                 </div>
                             </div>
 
-                            <div className="col-12 col-md-3">
+                            <div className="col-12 col-md-3 mb-4">
                                 <label className="form-label">Filtrar por tipo</label>
                                 <input
                                     className="form-control"
@@ -188,7 +188,7 @@ export default function MaintenancesListPage() {
                                 />
                             </div>
 
-                            <div className="col-12 col-md-1">
+                            <div className="col-12 col-md-1 mb-4">
                                 <button
                                     className="btn btn-outline-primary w-100"
                                     type="submit"
