@@ -4,10 +4,12 @@ import Link from "next/link";
 import {useEffect, useMemo, useState} from "react";
 import {useRouter} from "next/navigation";
 import {api} from "@/lib/apiClient";
+import {categoryLabelMap, riskLevelLabelMap, statusLabelMap} from "@/lib/enums/labels";
 
 /* =========================
    Tipos
-========================= */
+ ========================= */
+
 interface DashboardKpis {
     itemsTotal: number;
     overdueCount: number;
@@ -19,11 +21,13 @@ interface DashboardKpis {
 }
 
 interface AttentionItem {
-    id?: string | number;
-    title?: string;
-    description?: string;
-    dueAt?: string;
-    status?: string;
+    itemId: number;
+    itemType: string;
+    itemCategory: string;
+    status: string;
+    nextDueAt: string;
+    daysLate: number;
+    riskLevel: string;
 }
 
 interface BreakdownByItemType {
@@ -192,16 +196,14 @@ export default function DashboardPage() {
                                         >
                                             <div>
                                                 <div className="fw-semibold">
-                                                    {it.title || it.status || "Item"}
+                                                    {it.itemType}
                                                 </div>
-                                                {it.description && (
-                                                    <div className="small text-muted">
-                                                        {it.description}
-                                                    </div>
-                                                )}
+                                                <div className="small text-muted">
+                                                    Risco: {riskLevelLabelMap[it.riskLevel] || it.riskLevel}
+                                                </div>
                                             </div>
                                             <div className="small text-muted text-nowrap">
-                                                {formatDate(it.dueAt)}
+                                                {formatDate(it.nextDueAt)}
                                             </div>
                                         </li>
                                     ))}
@@ -223,10 +225,12 @@ export default function DashboardPage() {
                                 <DistributionBlock
                                     title="Por Status"
                                     data={data?.breakdowns?.byStatus}
+                                    labels={statusLabelMap}
                                 />
                                 <DistributionBlock
                                     title="Por Categoria"
                                     data={data?.breakdowns?.byCategory}
+                                    labels={categoryLabelMap}
                                 />
                                 <div className="col-12">
                                     <div className="border rounded p-3 bg-white">
@@ -305,9 +309,11 @@ function Kpi({
 function DistributionBlock({
                                title,
                                data,
+                               labels,
                            }: {
     title: string;
     data?: Record<string, number>;
+    labels?: Record<string, string>;
 }) {
     return (
         <div className="col-12 col-md-6">
@@ -317,7 +323,7 @@ function DistributionBlock({
                     <ul className="m-0 ps-3">
                         {Object.entries(data).map(([k, v]) => (
                             <li key={k}>
-                                {k}: {v}
+                                {labels?.[k] || k}: {v}
                             </li>
                         ))}
                     </ul>

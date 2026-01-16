@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
+import {categoryLabelMap} from "@/lib/enums/labels";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -89,7 +90,7 @@ export default function ItemDetailPage() {
                             <div className="row g-3 mb-3">
                                 <div className="col-12 col-md-4">
                                     <div className="text-muted small">Categoria</div>
-                                    <div className="fw-medium">{data.itemCategory}</div>
+                                    <div className="fw-medium">{categoryLabelMap[data.itemCategory]}</div>
                                 </div>
 
                                 <div className="col-12 col-md-4">

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
 import Pagination from "@/components/Pagination";
+import {categoryLabelMap, riskLevelLabelMap} from "@/lib/enums/labels";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -161,7 +162,7 @@ export default function ItemsPage() {
                                     {(data?.content ?? []).map((it) => (
                                         <tr key={it.id}>
                                             <td className="fw-semibold">{it.itemType}</td>
-                                            <td className="text-muted">{it.itemCategory}</td>
+                                            <td className="text-muted">{categoryLabelMap[it.itemCategory]}</td>
                                             <td>{formatDate(it.nextDueAt)}</td>
                                             <td>
                                                 <StatusPill status={it.status} />
