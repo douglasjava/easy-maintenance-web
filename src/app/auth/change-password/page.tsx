@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import toast from "react-hot-toast";
 
 export default function ChangePasswordPage() {
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
     const [idUser, setIdUser] = useState<number | null>(null);
     const router = useRouter();
 
@@ -25,24 +25,23 @@ export default function ChangePasswordPage() {
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setMsg(null);
 
         const form = new FormData(e.currentTarget);
         const newPassword = String(form.get("newPassword") ?? "");
         const confirmPassword = String(form.get("confirmPassword") ?? "");
 
         if (!newPassword || !confirmPassword) {
-            setMsg("❌ Preencha todos os campos.");
+            toast.error("Preencha todos os campos.");
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            setMsg("❌ As senhas não coincidem.");
+            toast.error("As senhas não coincidem.");
             return;
         }
 
         if (!idUser) {
-            setMsg("❌ Erro de identificação do usuário. Tente fazer login novamente.");
+            toast.error("Erro de identificação do usuário. Tente fazer login novamente.");
             return;
         }
 
@@ -57,13 +56,13 @@ export default function ChangePasswordPage() {
             // Limpa o ID temporário
             window.sessionStorage.removeItem("tempIdUser");
 
-            setMsg("✔️ Senha alterada com sucesso! Redirecionando para o login...");
+            toast.success("Senha alterada com sucesso! Redirecionando para o login...");
             
             setTimeout(() => {
                 router.replace("/login");
             }, 2000);
         } catch (err: any) {
-            setMsg("❌ Erro ao alterar a senha. Tente novamente.");
+            toast.error("Erro ao alterar a senha. Tente novamente.");
         } finally {
             setLoading(false);
         }
@@ -121,12 +120,6 @@ export default function ChangePasswordPage() {
                     <button className="login-btn" disabled={loading}>
                         {loading ? "Alterando..." : "Alterar Senha"}
                     </button>
-
-                    {msg && (
-                        <p className="login-msg" role="status" aria-live="polite">
-                            {msg}
-                        </p>
-                    )}
                 </form>
             </div>
         </section>

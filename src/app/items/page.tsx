@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
 import Pagination from "@/components/Pagination";
@@ -33,6 +34,10 @@ type PageResp<T> = {
 };
 
 export default function ItemsPage() {
+    const searchParams = useSearchParams();
+    const origin = searchParams.get("origin");
+    const backHref = origin === "dashboard" ? "/" : "/"; // Por enquanto listagem sempre volta pro dashboard ou root
+
     const [status, setStatus] = useState<string>("");
     const [itemType, setItemType] = useState<string>("");
     const [page, setPage] = useState(0);
@@ -72,8 +77,14 @@ export default function ItemsPage() {
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
             {/* TOPO */}
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div>
+            <div className="row align-items-center mb-4">
+                <div className="col-4">
+                    <Link className="btn btn-outline-secondary btn-sm" href={backHref}>
+                        ← Voltar
+                    </Link>
+                </div>
+
+                <div className="col-4 text-center">
                     <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
                         Itens
                     </h1>
@@ -82,9 +93,11 @@ export default function ItemsPage() {
                     </p>
                 </div>
 
-                <Link className="btn btn-primary" href="/items/new">
-                    + Novo Item
-                </Link>
+                <div className="col-4 text-end">
+                    <Link className="btn btn-primary" href="/items/new?origin=items">
+                        + Novo Item
+                    </Link>
+                </div>
             </div>
 
             {/* FILTROS */}
@@ -170,7 +183,7 @@ export default function ItemsPage() {
                                             <td className="text-end">
                                                 <Link
                                                     className="btn btn-sm btn-outline-secondary"
-                                                    href={`/items/${it.id}`}
+                                                    href={`/items/${it.id}?origin=items`}
                                                 >
                                                     Abrir
                                                 </Link>

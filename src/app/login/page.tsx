@@ -5,16 +5,14 @@ import Link from "next/link";
 import {api} from "@/lib/apiClient";
 import {useRouter} from "next/navigation";
 import Image from "next/image";
-
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
     const router = useRouter();
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setMsg(null);
 
         const form = new FormData(e.currentTarget);
 
@@ -23,7 +21,7 @@ export default function LoginPage() {
         const remember = Boolean(form.get("remember"));
 
         if (!email || !password) {
-            setMsg("❌ Informe e-mail e senha.");
+            toast.error("Informe e-mail e senha.");
             return;
         }
 
@@ -36,7 +34,7 @@ export default function LoginPage() {
                 if (typeof window !== "undefined") {
                     window.sessionStorage.setItem("tempIdUser", String(data.id));
                 }
-                setMsg("✔️ Primeiro acesso detectado. Redirecionando para alteração de senha...");
+                toast.success("Primeiro acesso detectado. Redirecionando para alteração de senha...");
                 router.replace("/auth/change-password");
                 return;
             }
@@ -59,7 +57,7 @@ export default function LoginPage() {
                 }
             }
 
-            setMsg("✔️ Login realizado com sucesso. Redirecionando...");
+            toast.success("Login realizado com sucesso. Redirecionando...");
 
             // UX: após login, enviar para o dashboard (visão geral).
             router.replace("/");
@@ -67,9 +65,9 @@ export default function LoginPage() {
             const status = err?.response?.status;
 
             if (status === 401) {
-                setMsg("❌ E-mail ou senha inválidos.");
+                toast.error("E-mail ou senha inválidos.");
             } else {
-                setMsg("❌ Não foi possível acessar o sistema. Tente novamente.");
+                toast.error("Não foi possível acessar o sistema. Tente novamente.");
             }
         } finally {
             setLoading(false);
@@ -159,12 +157,6 @@ export default function LoginPage() {
                     <button className="login-btn" disabled={loading}>
                         {loading ? "Entrando..." : "Entrar"}
                     </button>
-
-                    {msg && (
-                        <p className="login-msg" role="status" aria-live="polite">
-                            {msg}
-                        </p>
-                    )}
 
                     <div className="login-foot">
                         <span>Ainda não tem conta?</span>

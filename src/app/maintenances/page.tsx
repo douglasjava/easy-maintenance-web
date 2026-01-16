@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import Pagination from "@/components/Pagination";
 import Link from "next/link";
@@ -35,6 +36,10 @@ interface PageResp<T> {
 }
 
 export default function MaintenancesListPage() {
+    const searchParams = useSearchParams();
+    const origin = searchParams.get("origin");
+    const backHref = origin === "dashboard" ? "/" : "/";
+
     // filtros do combo de itens
     const [itemsPage, setItemsPage] = useState(0);
     const [itemsItemType, setItemsItemType] = useState("");
@@ -119,8 +124,14 @@ export default function MaintenancesListPage() {
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
             {/* TOPO */}
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div>
+            <div className="row align-items-center mb-4">
+                <div className="col-4">
+                    <Link className="btn btn-outline-secondary btn-sm" href={backHref}>
+                        ← Voltar
+                    </Link>
+                </div>
+
+                <div className="col-4 text-center">
                     <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
                         Manutenções
                     </h1>
@@ -129,16 +140,18 @@ export default function MaintenancesListPage() {
                     </p>
                 </div>
 
-                <Link
-                    className="btn btn-primary"
-                    href={
-                        selectedItemId
-                            ? `/maintenances/new?itemId=${selectedItemId}`
-                            : "/maintenances/new"
-                    }
-                >
-                    + Registrar
-                </Link>
+                <div className="col-4 text-end">
+                    <Link
+                        className="btn btn-primary"
+                        href={
+                            selectedItemId
+                                ? `/maintenances/new?itemId=${selectedItemId}&origin=maintenances`
+                                : "/maintenances/new?origin=maintenances"
+                        }
+                    >
+                        + Registrar
+                    </Link>
+                </div>
             </div>
 
             {/* SELEÇÃO DE ITEM */}

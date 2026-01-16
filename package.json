@@ -15,7 +15,9 @@
     "bootstrap": "^5.3.3",
     "next": "^16.0.10",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.6.0",
+    "react-select": "^5.10.2"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -66,12 +66,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor de resposta para lidar com sessão expirada (401)
+// Interceptor de resposta para lidar com sessão expirada ou falta de permissão (401/403)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
-    if (status === 401) {
+    if (status === 401 || status === 403) {
       if (typeof window !== "undefined") {
         try {
           // limpa Local Storage

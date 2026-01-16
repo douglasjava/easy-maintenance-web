@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { api } from "@/lib/apiClient";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
+import AsyncCreatableSelect from "react-select/async-creatable";
+import { AxiosError } from "axios";
+import toast from "react-hot-toast";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -34,9 +38,8 @@ const EMPTY_FORM = {
     lastPerformedAt: "",
 
     // location
-    bloco: "",
-    andar: "",
-    ponto: "",
+    address: "",
+    complement: "",
 
     // regulatory
     normId: "",
@@ -47,9 +50,45 @@ const EMPTY_FORM = {
 };
 
 export default function NewItemPage() {
+    const searchParams = useSearchParams();
+    const origin = searchParams.get("origin");
+    const backHref = origin === "dashboard" ? "/" : "/items";
+
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
     const [formData, setFormData] = useState(EMPTY_FORM);
+    const [isCreatingType, setIsCreatingType] = useState(false);
+
+    const loadOptions = useCallback(async (inputValue: string) => {
+        if (!inputValue) return [];
+        try {
+            const res = await api.get(`/item-types?name=${inputValue}`);
+            const data = res.data;
+            const items = Array.isArray(data) ? data : (data.content || []);
+            return items.map((it: any) => ({
+                label: it.name,
+                value: it.name
+            }));
+        } catch (error) {
+            console.error("Erro ao buscar tipos de itens", error);
+            return [];
+        }
+    }, []);
+
+    const handleCreateType = async (inputValue: string) => {
+        setIsCreatingType(true);
+        try {
+            const res = await api.post("/item-types", { name: inputValue.toUpperCase() });
+            const newType = res.data.name;
+            setFormData((p) => ({ ...p, itemType: newType }));
+            toast.success(`Tipo "${newType}" criado com sucesso!`);
+        } catch (error) {
+            console.error("Erro ao criar tipo de item", error);
+            const axiosError = error as AxiosError<{ message?: string }>;
+            toast.error(`Erro ao criar tipo: ${axiosError.response?.data?.message || "Erro desconhecido"}`);
+        } finally {
+            setIsCreatingType(false);
+        }
+    };
 
     const category = formData.itemCategory;
 
@@ -70,13 +109,11 @@ export default function NewItemPage() {
     });
 
     function onReset() {
-        setMsg(null);
         setFormData(EMPTY_FORM);
     }
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setMsg(null);
 
         const itemType = formData.itemType.toUpperCase().trim();
 
@@ -84,22 +121,21 @@ export default function NewItemPage() {
             itemType,
             itemCategory: formData.itemCategory,
             location: {
-                bloco: formData.bloco?.trim() || undefined,
-                andar: formData.andar?.trim() || undefined,
-                ponto: formData.ponto?.trim() || undefined,
+                address: formData.address?.trim() || undefined,
+                complement: formData.complement?.trim() || undefined,
             },
             lastPerformedAt: formData.lastPerformedAt || null,
         };
 
         if (!payload.itemType) {
-            setMsg("❌ Informe o tipo do item.");
+            toast.error("Informe o tipo do item.");
             return;
         }
 
         if (payload.itemCategory === "REGULATORY") {
             payload.normId = formData.normId;
             if (!payload.normId) {
-                setMsg("❌ Selecione uma norma.");
+                toast.error("Selecione uma norma.");
                 return;
             }
         } else {
@@ -107,7 +143,7 @@ export default function NewItemPage() {
             payload.customPeriodQty = Number(formData.customPeriodQty);
 
             if (!payload.customPeriodQty || payload.customPeriodQty < 1) {
-                setMsg("❌ Informe uma quantidade válida.");
+                toast.error("Informe uma quantidade válida.");
                 return;
             }
         }
@@ -115,14 +151,14 @@ export default function NewItemPage() {
         try {
             setLoading(true);
             const { data } = await api.post("/items", payload);
-            setMsg(`✔️ Item criado com sucesso (ID: ${data?.id}).`);
+            toast.success("Item criado com sucesso");
             setFormData(EMPTY_FORM); // ✅ limpa de forma correta
         } catch (err: any) {
             const status = err?.response?.status;
             if (status === 400) {
-                setMsg("❌ Verifique os campos e tente novamente.");
+                toast.error("Verifique os campos e tente novamente.");
             } else {
-                setMsg("❌ Não foi possível criar o item. Tente novamente.");
+                toast.error("Não foi possível criar o item. Tente novamente.");
             }
         } finally {
             setLoading(false);
@@ -132,8 +168,14 @@ export default function NewItemPage() {
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
             {/* TOPO */}
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div>
+            <div className="row align-items-center mb-4">
+                <div className="col-4">
+                    <Link className="btn btn-outline-secondary" href={backHref}>
+                        ← Voltar
+                    </Link>
+                </div>
+
+                <div className="col-4 text-center">
                     <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
                         Novo Item
                     </h1>
@@ -142,9 +184,9 @@ export default function NewItemPage() {
                     </p>
                 </div>
 
-                <Link className="btn btn-outline-secondary" href="/items">
-                    ← Voltar
-                </Link>
+                <div className="col-4">
+                    {/* Espaçador para manter o título centralizado */}
+                </div>
             </div>
 
             {/* CARD */}
@@ -169,16 +211,27 @@ export default function NewItemPage() {
                         {/* Tipo */}
                         <div className="mb-3">
                             <label className="form-label">Tipo do item</label>
-                            <input
-                                name="itemType"
-                                className="form-control"
-                                placeholder="EXTINTOR / SPDA / CAIXA_DAGUA ..."
-                                value={formData.itemType}
-                                onChange={(e) =>
-                                    setFormData((p) => ({ ...p, itemType: e.target.value }))
+                            <AsyncCreatableSelect
+                                cacheOptions
+                                defaultOptions
+                                loadOptions={loadOptions}
+                                onCreateOption={handleCreateType}
+                                onChange={(opt: any) =>
+                                    setFormData((p) => ({ ...p, itemType: opt?.value || "" }))
                                 }
-                                required
-                                disabled={loading}
+                                value={formData.itemType ? { label: formData.itemType, value: formData.itemType } : null}
+                                placeholder="Selecione ou digite para criar (EXTINTOR, SPDA...)"
+                                loadingMessage={() => "Buscando..."}
+                                noOptionsMessage={() => "Nenhum tipo encontrado"}
+                                formatCreateLabel={(inputValue) => `Criar "${inputValue.toUpperCase()}"`}
+                                isDisabled={loading || isCreatingType}
+                                styles={{
+                                    control: (base) => ({
+                                        ...base,
+                                        borderColor: "#dee2e6",
+                                        "&:hover": { borderColor: COLORS.primary }
+                                    })
+                                }}
                             />
                             <div className="form-text">
                                 Dica: escreva em poucas palavras e de forma padronizada.
@@ -230,38 +283,28 @@ export default function NewItemPage() {
                             </div>
 
                             <div className="row g-3">
-                                <div className="col-12 col-md-4">
-                                    <label className="form-label">Bloco</label>
+                                <div className="col-12 col-md-8">
+                                    <label className="form-label">Endereço</label>
                                     <input
-                                        name="bloco"
+                                        name="address"
                                         className="form-control"
-                                        value={formData.bloco}
+                                        placeholder="Ex: Bloco A, Corredor 2"
+                                        value={formData.address}
                                         onChange={(e) =>
-                                            setFormData((p) => ({ ...p, bloco: e.target.value }))
+                                            setFormData((p) => ({ ...p, address: e.target.value }))
                                         }
                                         disabled={loading}
                                     />
                                 </div>
                                 <div className="col-12 col-md-4">
-                                    <label className="form-label">Andar</label>
+                                    <label className="form-label">Complemento</label>
                                     <input
-                                        name="andar"
+                                        name="complement"
                                         className="form-control"
-                                        value={formData.andar}
+                                        placeholder="Ex: Próximo à recepção"
+                                        value={formData.complement}
                                         onChange={(e) =>
-                                            setFormData((p) => ({ ...p, andar: e.target.value }))
-                                        }
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-4">
-                                    <label className="form-label">Ponto / Referência</label>
-                                    <input
-                                        name="ponto"
-                                        className="form-control"
-                                        value={formData.ponto}
-                                        onChange={(e) =>
-                                            setFormData((p) => ({ ...p, ponto: e.target.value }))
+                                            setFormData((p) => ({ ...p, complement: e.target.value }))
                                         }
                                         disabled={loading}
                                     />
@@ -316,10 +359,6 @@ export default function NewItemPage() {
                                             ))}
                                         </select>
 
-                                        <div className="form-text">
-                                            As normas vêm de <code>/norms</code>. O ID selecionado será
-                                            enviado como <code>normId</code>.
-                                        </div>
                                     </>
                                 )}
                             </div>
@@ -388,21 +427,6 @@ export default function NewItemPage() {
                                 Limpar
                             </button>
                         </div>
-
-                        {/* MENSAGEM */}
-                        {msg && (
-                            <p
-                                className="small mt-3 mb-0"
-                                style={{
-                                    color: msg.startsWith("✔️") ? COLORS.primaryDark : COLORS.accent,
-                                    fontWeight: 600,
-                                }}
-                                role="status"
-                                aria-live="polite"
-                            >
-                                {msg}
-                            </p>
-                        )}
                     </form>
                 </div>
             </div>

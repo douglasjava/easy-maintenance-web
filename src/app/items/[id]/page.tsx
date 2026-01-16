@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
@@ -17,6 +17,9 @@ const COLORS = {
 
 export default function ItemDetailPage() {
     const { id } = useParams<{ id: string }>();
+    const searchParams = useSearchParams();
+    const origin = searchParams.get("origin");
+    const backHref = origin === "dashboard" ? "/" : "/items";
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["item", id],
@@ -36,8 +39,14 @@ export default function ItemDetailPage() {
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
             {/* TOPO */}
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div>
+            <div className="row align-items-center mb-4">
+                <div className="col-4">
+                    <Link className="btn btn-outline-secondary" href={backHref}>
+                        ← Voltar
+                    </Link>
+                </div>
+
+                <div className="col-4 text-center">
                     <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
                         Detalhe do Item
                     </h1>
@@ -46,13 +55,10 @@ export default function ItemDetailPage() {
                     </p>
                 </div>
 
-                <div className="d-flex gap-2">
-                    <Link className="btn btn-outline-secondary" href="/items">
-                        ← Voltar
-                    </Link>
+                <div className="col-4 text-end">
                     <Link
                         className="btn btn-primary"
-                        href={`/maintenances/new?itemId=${id}`}
+                        href={`/maintenances/new?itemId=${id}&origin=item-detail`}
                     >
                         Registrar Manutenção
                     </Link>
@@ -120,15 +126,10 @@ export default function ItemDetailPage() {
                             {data.location && (
                                 <div className="mb-4">
                                     <div className="text-muted small mb-1">Localização</div>
-                                    <pre
-                                        className="small p-3 rounded mb-0"
-                                        style={{
-                                            backgroundColor: COLORS.white,
-                                            border: "1px solid rgba(0,0,0,0.05)",
-                                        }}
-                                    >
-                    {JSON.stringify(data.location, null, 2)}
-                  </pre>
+                                    <div className="fw-medium">
+                                        {data.location.address || "-"}
+                                        {data.location.complement ? ` • ${data.location.complement}` : ""}
+                                    </div>
                                 </div>
                             )}
 

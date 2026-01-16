@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
+import toast from "react-hot-toast";
 
 type Plan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE";
 
@@ -15,11 +16,9 @@ const COLORS = {
 
 export default function NewOrganizationPage() {
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setMsg(null);
         const form = new FormData(e.currentTarget);
 
         const payload = {
@@ -31,17 +30,17 @@ export default function NewOrganizationPage() {
         };
 
         if (!payload.code || !payload.name || !payload.plan) {
-            setMsg("❌ Preencha os campos obrigatórios.");
+            toast.error("Preencha os campos obrigatórios.");
             return;
         }
 
         try {
             setLoading(true);
             await api.post("/organizations", payload);
-            setMsg("✔️ Organização criada com sucesso.");
+            toast.success("Organização criada com sucesso.");
             e.currentTarget.reset();
         } catch (err: any) {
-            setMsg("❌ Erro ao criar organização. Verifique os dados e tente novamente.");
+            toast.error("Erro ao criar organização. Verifique os dados e tente novamente.");
         } finally {
             setLoading(false);
         }
@@ -155,28 +154,10 @@ export default function NewOrganizationPage() {
                             <button
                                 className="btn btn-outline-secondary"
                                 type="reset"
-                                onClick={() => setMsg(null)}
                             >
                                 Limpar
                             </button>
                         </div>
-
-                        {/* MENSAGEM */}
-                        {msg && (
-                            <p
-                                className="small mt-3 mb-0"
-                                style={{
-                                    color: msg.startsWith("✔️")
-                                        ? COLORS.primaryDark
-                                        : COLORS.accent,
-                                    fontWeight: 600,
-                                }}
-                                role="status"
-                                aria-live="polite"
-                            >
-                                {msg}
-                            </p>
-                        )}
                     </form>
                 </div>
             </div>

@@ -4,21 +4,20 @@ import { useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import toast from "react-hot-toast";
 
 export default function PrivateLoginPage() {
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
     const router = useRouter();
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setMsg(null);
 
         const form = new FormData(e.currentTarget);
         const token = String(form.get("token") ?? "").trim();
 
         if (!token) {
-            setMsg("❌ Informe o token de acesso.");
+            toast.error("Informe o token de acesso.");
             return;
         }
 
@@ -36,10 +35,10 @@ export default function PrivateLoginPage() {
                 window.localStorage.setItem("adminToken", token);
             }
 
-            setMsg("✔️ Token validado com sucesso. Redirecionando...");
+            toast.success("Token validado com sucesso. Redirecionando...");
             router.replace("/private/dashboard");
         } catch (err: any) {
-            setMsg("❌ Token inválido ou erro na requisição.");
+            toast.error("Token inválido ou erro na requisição.");
         } finally {
             setLoading(false);
         }
@@ -82,12 +81,6 @@ export default function PrivateLoginPage() {
                     <button className="login-btn" disabled={loading}>
                         {loading ? "Validando..." : "Entrar"}
                     </button>
-
-                    {msg && (
-                        <p className="login-msg" role="status" aria-live="polite">
-                            {msg}
-                        </p>
-                    )}
                 </form>
             </div>
         </section>

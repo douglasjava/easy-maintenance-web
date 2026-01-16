@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import { ENV } from "@/lib/env";
+import toast from "react-hot-toast";
 
 type Status = "ACTIVE" | "INACTIVE";
 
@@ -16,12 +17,10 @@ const COLORS = {
 
 export default function NewUserPage() {
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
     const [status, setStatus] = useState<Status>("ACTIVE");
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setMsg(null);
         const form = new FormData(e.currentTarget);
 
         const payload = {
@@ -33,7 +32,7 @@ export default function NewUserPage() {
         };
 
         if (!payload.email || !payload.name || !payload.role || !payload.passwordHash) {
-            setMsg("❌ Preencha todos os campos obrigatórios.");
+            toast.error("Preencha todos os campos obrigatórios.");
             return;
         }
 
@@ -41,11 +40,11 @@ export default function NewUserPage() {
             setLoading(true);
             const path = `/organizations/${ENV.ORG_ID}/users`;
             await api.post(path, payload);
-            setMsg("✔️ Usuário cadastrado com sucesso.");
+            toast.success("Usuário cadastrado com sucesso.");
             e.currentTarget.reset();
             setStatus("ACTIVE");
         } catch {
-            setMsg("❌ Erro ao cadastrar usuário. Verifique os dados e tente novamente.");
+            toast.error("Erro ao cadastrar usuário. Verifique os dados e tente novamente.");
         } finally {
             setLoading(false);
         }
@@ -162,28 +161,10 @@ export default function NewUserPage() {
                             <button
                                 className="btn btn-outline-secondary"
                                 type="reset"
-                                onClick={() => setMsg(null)}
                             >
                                 Limpar
                             </button>
                         </div>
-
-                        {/* FEEDBACK */}
-                        {msg && (
-                            <p
-                                className="small mt-3 mb-0"
-                                style={{
-                                    color: msg.startsWith("✔️")
-                                        ? COLORS.primaryDark
-                                        : COLORS.accent,
-                                    fontWeight: 600,
-                                }}
-                                role="status"
-                                aria-live="polite"
-                            >
-                                {msg}
-                            </p>
-                        )}
                     </form>
                 </div>
             </div>

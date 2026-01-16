@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "react-hot-toast";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   // Create the QueryClient once per app load
@@ -12,5 +13,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     import("bootstrap/dist/js/bootstrap.bundle.min.js");
   }, []);
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <Toaster position="top-right" />
+    </QueryClientProvider>
+  );
 }

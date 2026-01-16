@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
+import toast from "react-hot-toast";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -48,8 +50,14 @@ interface NearbyResponse {
 }
 
 export default function NewMaintenancePage() {
+    const searchParams = useSearchParams();
+    const origin = searchParams.get("origin");
+    let backHref = "/maintenances";
+    if (origin === "dashboard") backHref = "/";
+    if (origin === "item-detail") backHref = `/items/${searchParams.get("itemId")}`;
+
     // seleção do item
-    const [itemId, setItemId] = useState("");
+    const [itemId, setItemId] = useState(searchParams.get("itemId") || "");
 
     // formulário de manutenção
     const [performedAt, setPerformedAt] = useState("");
@@ -59,7 +67,6 @@ export default function NewMaintenancePage() {
     const [receiptUrl, setReceiptUrl] = useState("");
 
     const [saving, setSaving] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
 
     // busca de itens (para ajudar a selecionar)
     const [searchOpen, setSearchOpen] = useState(false);
@@ -171,14 +178,13 @@ export default function NewMaintenancePage() {
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setMsg(null);
 
         if (!itemId) {
-            setMsg("❌ Selecione um item.");
+            toast.error("Selecione um item.");
             return;
         }
         if (!performedAt) {
-            setMsg("❌ Informe a data da manutenção.");
+            toast.error("Informe a data da manutenção.");
             return;
         }
 
@@ -193,11 +199,11 @@ export default function NewMaintenancePage() {
         try {
             setSaving(true);
             const { data } = await api.post(`/items/${itemId}/maintenances`, body);
-            setMsg(`✔️ Manutenção registrada (ID: ${data?.id}).`);
+            toast.success(`Manutenção registrada (ID: ${data?.id}).`);
         } catch (err: any) {
             const status = err?.response?.status;
-            if (status === 400) setMsg("❌ Verifique os campos e tente novamente.");
-            else setMsg("❌ Não foi possível registrar. Tente novamente.");
+            if (status === 400) toast.error("Verifique os campos e tente novamente.");
+            else toast.error("Não foi possível registrar. Tente novamente.");
         } finally {
             setSaving(false);
         }
@@ -206,8 +212,14 @@ export default function NewMaintenancePage() {
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
             {/* TOPO */}
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div>
+            <div className="row align-items-center mb-4">
+                <div className="col-4">
+                    <Link className="btn btn-outline-secondary" href={backHref}>
+                        ← Voltar
+                    </Link>
+                </div>
+
+                <div className="col-4 text-center">
                     <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
                         Registrar Manutenção
                     </h1>
@@ -216,9 +228,9 @@ export default function NewMaintenancePage() {
                     </p>
                 </div>
 
-                <Link className="btn btn-outline-secondary" href="/maintenances">
-                    ← Voltar
-                </Link>
+                <div className="col-4">
+                    {/* Espaçador */}
+                </div>
             </div>
 
             {/* PASSO 1: SELEÇÃO DO ITEM */}
@@ -500,20 +512,6 @@ export default function NewMaintenancePage() {
                                 Cancelar
                             </Link>
                         </div>
-
-                        {msg && (
-                            <p
-                                className="small mt-3 mb-0"
-                                style={{
-                                    color: msg.startsWith("✔️") ? COLORS.primaryDark : COLORS.accent,
-                                    fontWeight: 600,
-                                }}
-                                role="status"
-                                aria-live="polite"
-                            >
-                                {msg}
-                            </p>
-                        )}
                     </form>
                 </div>
             </div>

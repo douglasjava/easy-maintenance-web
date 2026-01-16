@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
+import toast from "react-hot-toast";
 
 type Status = "ACTIVE" | "INACTIVE";
 
@@ -30,7 +31,6 @@ const EMPTY_FORM = {
 
 export default function PrivateUsersPage() {
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [formData, setFormData] = useState(EMPTY_FORM);
 
@@ -59,11 +59,10 @@ export default function PrivateUsersPage() {
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setMsg(null);
 
         const adminToken = window.localStorage.getItem("adminToken");
         if (!adminToken) {
-            setMsg("❌ Token de administrador não encontrado. Faça login na área admin.");
+            toast.error("Token de administrador não encontrado. Faça login na área admin.");
             return;
         }
 
@@ -78,7 +77,7 @@ export default function PrivateUsersPage() {
         const orgCode = formData.orgCode.trim();
 
         if (!payload.email || !payload.name || !payload.role || !payload.password || !orgCode) {
-            setMsg("❌ Preencha todos os campos obrigatórios.");
+            toast.error("Preencha todos os campos obrigatórios.");
             return;
         }
 
@@ -91,18 +90,17 @@ export default function PrivateUsersPage() {
 
             console.log("POST OK:", res.status, res.data);
 
-            setMsg("✔️ Usuário processado com sucesso via Área Privativa.");
+            toast.success("Usuário processado com sucesso via Área Privativa.");
             setFormData(EMPTY_FORM); // ✅ limpa tudo
         } catch (err: any) {
             console.error("Erro ao processar usuário:", err?.response ?? err);
-            setMsg("❌ Erro ao processar usuário na Área Privativa.");
+            toast.error("Erro ao processar usuário na Área Privativa.");
         } finally {
             setLoading(false);
         }
     }
 
     function onReset() {
-        setMsg(null);
         setFormData(EMPTY_FORM);
     }
 
@@ -264,20 +262,6 @@ export default function PrivateUsersPage() {
                                 Limpar
                             </button>
                         </div>
-
-                        {msg && (
-                            <p
-                                className="small mt-3 mb-0"
-                                style={{
-                                    color: msg.startsWith("✔️") ? COLORS.primaryDark : COLORS.accent,
-                                    fontWeight: 600,
-                                }}
-                                role="status"
-                                aria-live="polite"
-                            >
-                                {msg}
-                            </p>
-                        )}
                     </form>
                 </div>
             </div>

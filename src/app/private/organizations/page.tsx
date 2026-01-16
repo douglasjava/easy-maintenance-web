@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
+import toast from "react-hot-toast";
 
 type Plan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE";
 
@@ -22,12 +23,10 @@ const EMPTY_FORM = {
 
 export default function PrivateOrganizationsPage() {
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
     const [formData, setFormData] = useState(EMPTY_FORM);
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setMsg(null);
 
         const payload = {
             code: crypto.randomUUID(),
@@ -38,7 +37,7 @@ export default function PrivateOrganizationsPage() {
         };
 
         if (!payload.name || !payload.plan) {
-            setMsg("❌ Preencha os campos obrigatórios.");
+            toast.error("Preencha os campos obrigatórios.");
             return;
         }
 
@@ -47,7 +46,7 @@ export default function PrivateOrganizationsPage() {
 
             const adminToken = window.localStorage.getItem("adminToken");
             if (!adminToken) {
-                setMsg("❌ Token de administrador não encontrado. Faça login na área admin.");
+                toast.error("Token de administrador não encontrado. Faça login na área admin.");
                 return;
             }
 
@@ -57,18 +56,17 @@ export default function PrivateOrganizationsPage() {
 
             console.log("POST OK:", res.status, res.data);
 
-            setMsg("✔️ Organização criada com sucesso via Área Privativa.");
+            toast.success("Organização criada com sucesso via Área Privativa.");
             setFormData(EMPTY_FORM); // ✅ limpa o formulário
         } catch (err: any) {
             console.error("Erro ao criar organização:", err?.response ?? err);
-            setMsg("❌ Erro ao criar organização. Verifique os dados e o token de admin.");
+            toast.error("Erro ao criar organização. Verifique os dados e o token de admin.");
         } finally {
             setLoading(false);
         }
     }
 
     function onReset() {
-        setMsg(null);
         setFormData(EMPTY_FORM);
     }
 

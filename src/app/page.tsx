@@ -137,7 +137,7 @@ export default function DashboardPage() {
     return (
         <section style={{backgroundColor: "#F3F4F6"}} className="p-3">
             {/* TOPO */}
-            <div className="mb-4">
+            <div className="text-center mb-4">
                 <h1 className="h4 m-0" style={{color: "#083B7A"}}>
                     Dashboard
                 </h1>
@@ -262,13 +262,13 @@ export default function DashboardPage() {
                     </h2>
 
                     <div className="d-flex flex-wrap gap-2">
-                        <Link className="btn btn-primary" href="/items/new">
+                        <Link className="btn btn-primary" href="/items/new?origin=dashboard">
                             + Cadastrar Item
                         </Link>
-                        <Link className="btn btn-outline-primary" href="/items">
+                        <Link className="btn btn-outline-primary" href="/items?origin=dashboard">
                             Ver Itens
                         </Link>
-                        <Link className="btn btn-outline-secondary" href="/maintenances">
+                        <Link className="btn btn-outline-secondary" href="/maintenances?origin=dashboard">
                             Ver Manutenções
                         </Link>
                     </div>
