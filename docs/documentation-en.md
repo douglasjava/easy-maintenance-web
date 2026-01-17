@@ -42,6 +42,7 @@ This document outlines the validation strategy, test cases, and core flows for t
 
 ---
 
+
 ## 4. Initial Setup Flow (Admin)
 
 1. **Access Admin Panel**: Navigate to the private administrative area.
