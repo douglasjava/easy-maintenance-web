@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Suspense } from "react";
 import { api } from "@/lib/apiClient";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -49,7 +49,7 @@ const EMPTY_FORM = {
     customPeriodQty: 6,
 };
 
-export default function NewItemPage() {
+function NewItemContent() {
     const searchParams = useSearchParams();
     const origin = searchParams.get("origin");
     const backHref = origin === "dashboard" ? "/" : "/items";
@@ -431,5 +431,13 @@ export default function NewItemPage() {
                 </div>
             </div>
         </section>
+    );
+}
+
+export default function NewItemPage() {
+    return (
+        <Suspense fallback={<p className="p-3 m-0">Carregando formulário...</p>}>
+            <NewItemContent />
+        </Suspense>
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -49,7 +49,7 @@ interface NearbyResponse {
     suppliers: NearbySupplier[];
 }
 
-export default function NewMaintenancePage() {
+function NewMaintenanceContent() {
     const searchParams = useSearchParams();
     const origin = searchParams.get("origin");
     let backHref = "/maintenances";
@@ -59,35 +59,19 @@ export default function NewMaintenancePage() {
     // seleção do item
     const [itemId, setItemId] = useState(searchParams.get("itemId") || "");
 
-    // formulário de manutenção
-    const [performedAt, setPerformedAt] = useState("");
-    const [issuedBy, setIssuedBy] = useState("");
-    const [certificateNumber, setCertificateNumber] = useState("");
-    const [certificateValidUntil, setCertificateValidUntil] = useState("");
-    const [receiptUrl, setReceiptUrl] = useState("");
-
-    const [saving, setSaving] = useState(false);
-
-    // busca de itens (para ajudar a selecionar)
-    const [searchOpen, setSearchOpen] = useState(false);
-    const [status, setStatus] = useState<string>("");
-    const [itemType, setItemType] = useState<string>("");
-    const [page, setPage] = useState(0);
-    const size = 10;
+    // filtros do combo de itens (novo)
+    const [itemsPage, setItemsPage] = useState(0);
+    const itemsSize = 20;
 
     const {
-        data: itemsPageData,
-        isLoading: itemsLoading,
-        error: itemsError,
-        refetch: refetchItems,
-        isFetching: itemsFetching,
+        data: itemsComboData,
+        isLoading: itemsComboLoading,
+        refetch: refetchItemsCombo,
+        isFetching: itemsComboFetching,
     } = useQuery({
-        enabled: searchOpen, // só busca quando o usuário abre a busca
-        queryKey: ["items-search", { status, itemType, page, size, searchOpen }],
+        queryKey: ["items-for-combo", { itemsPage, itemsSize }],
         queryFn: async () => {
-            const params: Record<string, any> = { page, size };
-            if (status) params.status = status;
-            if (itemType) params.itemType = itemType;
+            const params: Record<string, any> = { page: itemsPage, size: itemsSize };
             const res = await api.get("/items", { params });
 
             if (Array.isArray(res.data)) {
@@ -104,7 +88,16 @@ export default function NewMaintenancePage() {
         },
     });
 
-    const items = useMemo(() => itemsPageData?.content ?? [], [itemsPageData]);
+    const itemsCombo = useMemo(() => itemsComboData?.content ?? [], [itemsComboData]);
+
+    // formulário de manutenção
+    const [performedAt, setPerformedAt] = useState("");
+    const [issuedBy, setIssuedBy] = useState("");
+    const [certificateNumber, setCertificateNumber] = useState("");
+    const [certificateValidUntil, setCertificateValidUntil] = useState("");
+    const [receiptUrl, setReceiptUrl] = useState("");
+
+    const [saving, setSaving] = useState(false);
 
     // detalhe do item selecionado (para mostrar contexto + usar itemType nos fornecedores)
     const {
@@ -236,48 +229,69 @@ export default function NewMaintenancePage() {
             {/* PASSO 1: SELEÇÃO DO ITEM */}
             <div className="card border-0 shadow-sm mb-3">
                 <div className="card-body">
-                    <div className="d-flex align-items-start justify-content-between gap-3">
+                    <div className="d-flex align-items-start gap-3">
                         <div className="flex-grow-1">
-                            <div className="fw-semibold mb-1" style={{ color: COLORS.primaryDark }}>
+                            <div className="fw-semibold mb-2" style={{ color: COLORS.primaryDark }}>
                                 1) Selecionar item
                             </div>
 
-                            <label className="form-label">Item ID</label>
-                            <input
-                                className="form-control"
-                                value={itemId}
-                                onChange={(e) => setItemId(e.target.value)}
-                                placeholder="Ex.: 42"
-                            />
-                            <div className="form-text">
-                                Dica: você pode buscar na lista abaixo e clicar em “Selecionar”.
+                            <div className="d-flex gap-2 align-items-end">
+                                <div className="flex-grow-1">
+                                    <select
+                                        className="form-select"
+                                        value={itemId}
+                                        onChange={(e) => setItemId(e.target.value)}
+                                    >
+                                        <option value="">Selecione um item…</option>
+                                        {itemsCombo.map((it) => (
+                                            <option key={String(it.id)} value={String(it.id)}>
+                                                {it.itemType}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    {/* paginação */}
+                                    {!!itemsComboData && itemsComboData.totalPages > 1 && (
+                                        <div className="d-flex justify-content-between align-items-center mt-2">
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-link p-0 text-decoration-none"
+                                                onClick={() => setItemsPage((p) => Math.max(0, p - 1))}
+                                                disabled={(itemsComboData?.number ?? 0) <= 0}
+                                            >
+                                                « Anterior
+                                            </button>
+                                            <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                            Pág. {(itemsComboData?.number ?? 0) + 1} / {itemsComboData.totalPages}
+                        </span>
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-link p-0 text-decoration-none"
+                                                onClick={() => setItemsPage((p) => p + 1)}
+                                                disabled={
+                                                    (itemsComboData?.number ?? 0) + 1 >= itemsComboData.totalPages
+                                                }
+                                            >
+                                                Próxima »
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-warning"
+                                    onClick={fetchSuppliersNearby}
+                                    disabled={!itemId || suppliersLoading}
+                                    title="Sugestões baseadas na localização e no tipo do item selecionado"
+                                    style={{ height: "38px" }} // mesma altura do select (Bootstrap)
+                                >
+                                    {suppliersLoading ? "Buscando..." : "Ver prestadores"}
+                                </button>
                             </div>
                         </div>
-
-                        <div className="d-flex flex-column gap-2">
-                            <button
-                                type="button"
-                                className="btn btn-outline-primary"
-                                onClick={() => {
-                                    setSearchOpen((v) => !v);
-                                    setPage(0);
-                                    if (!searchOpen) refetchItems();
-                                }}
-                            >
-                                {searchOpen ? "Fechar busca" : "Buscar item"}
-                            </button>
-
-                            <button
-                                type="button"
-                                className="btn btn-outline-warning"
-                                onClick={fetchSuppliersNearby}
-                                disabled={!itemId || suppliersLoading}
-                                title="Sugestões baseadas na localização e no tipo do item selecionado"
-                            >
-                                {suppliersLoading ? "Buscando..." : "Ver prestadores"}
-                            </button>
-                        </div>
                     </div>
+
 
                     {/* resumo do item selecionado */}
                     {itemId && (
@@ -312,134 +326,6 @@ export default function NewMaintenancePage() {
                         </div>
                     )}
 
-                    {/* área de busca (colapsada) */}
-                    {searchOpen && (
-                        <div className="mt-3">
-                            <div className="row g-3 align-items-end">
-                                <div className="col-12 col-md-4">
-                                    <label className="form-label">Status</label>
-                                    <select
-                                        className="form-select"
-                                        value={status}
-                                        onChange={(e) => setStatus(e.target.value)}
-                                    >
-                                        <option value="">Todos</option>
-                                        <option value="OK">Em dia</option>
-                                        <option value="NEAR_DUE">Vencendo</option>
-                                        <option value="OVERDUE">Atrasado</option>
-                                    </select>
-                                </div>
-
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label">Tipo</label>
-                                    <input
-                                        className="form-control"
-                                        placeholder="EXTINTOR / SPDA / CAIXA_DAGUA..."
-                                        value={itemType}
-                                        onChange={(e) => setItemType(e.target.value.toUpperCase())}
-                                    />
-                                </div>
-
-                                <div className="col-12 col-md-2">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-primary w-100"
-                                        onClick={() => {
-                                            setPage(0);
-                                            refetchItems();
-                                        }}
-                                    >
-                                        {itemsFetching ? "..." : "Aplicar"}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="mt-3">
-                                {itemsLoading && <p className="m-0">Carregando itens…</p>}
-                                {itemsError && (
-                                    <p className="m-0" style={{ color: COLORS.accent }}>
-                                        Erro ao carregar itens.
-                                    </p>
-                                )}
-
-                                {!itemsLoading && !itemsError && (
-                                    <>
-                                        <div className="table-responsive">
-                                            <table className="table align-middle mb-0">
-                                                <thead style={{ backgroundColor: "#F9FAFB" }}>
-                                                <tr>
-                                                    <th>ID</th>
-                                                    <th>Item</th>
-                                                    <th>Categoria</th>
-                                                    <th>Próximo venc.</th>
-                                                    <th>Status</th>
-                                                    <th />
-                                                </tr>
-                                                </thead>
-                                                <tbody>
-                                                {(items ?? []).map((it) => (
-                                                    <tr key={String(it.id)}>
-                                                        <td className="fw-semibold">{String(it.id)}</td>
-                                                        <td>{it.itemType}</td>
-                                                        <td className="text-muted">{it.itemCategory}</td>
-                                                        <td>{formatDate(it.nextDueAt)}</td>
-                                                        <td className="text-muted">{it.status}</td>
-                                                        <td className="text-end">
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-sm btn-outline-primary"
-                                                                onClick={() => {
-                                                                    setItemId(String(it.id));
-                                                                    setSearchOpen(false);
-                                                                }}
-                                                            >
-                                                                Selecionar
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-
-                                                {items?.length === 0 && (
-                                                    <tr>
-                                                        <td colSpan={6} className="text-muted text-center py-3">
-                                                            Nenhum item encontrado.
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <div className="d-flex justify-content-between align-items-center mt-2">
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline-secondary"
-                                                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                                                disabled={(itemsPageData?.number ?? 0) <= 0}
-                                            >
-                                                « Anterior
-                                            </button>
-                                            <span className="text-muted small">
-                        Página {(itemsPageData?.number ?? 0) + 1} de{" "}
-                                                {itemsPageData?.totalPages ?? 1}
-                      </span>
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline-secondary"
-                                                onClick={() => setPage((p) => p + 1)}
-                                                disabled={
-                                                    (itemsPageData?.number ?? 0) + 1 >=
-                                                    (itemsPageData?.totalPages ?? 1)
-                                                }
-                                            >
-                                                Próxima »
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -619,5 +505,13 @@ export default function NewMaintenancePage() {
         }
       `}</style>
         </section>
+    );
+}
+
+export default function NewMaintenancePage() {
+    return (
+        <Suspense fallback={<p className="p-3 m-0">Carregando formulário...</p>}>
+            <NewMaintenanceContent />
+        </Suspense>
     );
 }

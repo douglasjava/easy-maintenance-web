@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
@@ -35,7 +35,7 @@ interface PageResp<T> {
     size: number;
 }
 
-export default function MaintenancesListPage() {
+function MaintenancesListContent() {
     const searchParams = useSearchParams();
     const origin = searchParams.get("origin");
     const backHref = origin === "dashboard" ? "/" : "/";
@@ -164,8 +164,8 @@ export default function MaintenancesListPage() {
                             refetchItems();
                         }}
                     >
-                        <div className="row g-3 align-items-end">
-                            <div className="col-12 col-md-8">
+                        <div className="row g-2 align-items-end">
+                            <div className="col-12 col-md-10">
                                 <label className="form-label">Item</label>
                                 <select
                                     className="form-select"
@@ -183,25 +183,9 @@ export default function MaintenancesListPage() {
                                     ))}
                                 </select>
 
-                                <div className="form-text">
-                                    A lista vem de <code>/items</code>. Filtre por tipo para achar
-                                    mais rápido.
-                                </div>
                             </div>
 
-                            <div className="col-12 col-md-3 mb-4">
-                                <label className="form-label">Filtrar por tipo</label>
-                                <input
-                                    className="form-control"
-                                    placeholder="EXTINTOR / SPDA ..."
-                                    value={itemsItemType}
-                                    onChange={(e) =>
-                                        setItemsItemType(e.target.value.toUpperCase())
-                                    }
-                                />
-                            </div>
-
-                            <div className="col-12 col-md-1 mb-4">
+                            <div className="col-12 col-md-2">
                                 <button
                                     className="btn btn-outline-primary w-100"
                                     type="submit"
@@ -339,5 +323,13 @@ export default function MaintenancesListPage() {
                 </div>
             </div>
         </section>
+    );
+}
+
+export default function MaintenancesListPage() {
+    return (
+        <Suspense fallback={<p className="p-3 m-0">Carregando manutenções...</p>}>
+            <MaintenancesListContent />
+        </Suspense>
     );
 }

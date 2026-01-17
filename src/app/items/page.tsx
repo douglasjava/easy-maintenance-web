@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
 import Pagination from "@/components/Pagination";
-import {categoryLabelMap, riskLevelLabelMap} from "@/lib/enums/labels";
+import {categoryLabelMap} from "@/lib/enums/labels";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -33,21 +34,23 @@ type PageResp<T> = {
     size: number;
 };
 
-export default function ItemsPage() {
+function ItemsContent() {
     const searchParams = useSearchParams();
     const origin = searchParams.get("origin");
     const backHref = origin === "dashboard" ? "/" : "/"; // Por enquanto listagem sempre volta pro dashboard ou root
 
     const [status, setStatus] = useState<string>("");
+    const [categoria, setCategoria] = useState<string>("");
     const [itemType, setItemType] = useState<string>("");
     const [page, setPage] = useState(0);
     const size = 10;
 
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ["items", { status, itemType, page, size }],
+        queryKey: ["items", { status, itemType, categoria, page, size }],
         queryFn: async () => {
             const params: Record<string, any> = { page, size };
             if (status) params.status = status;
+            if (categoria) params.categoria = categoria;
             if (itemType) params.itemType = itemType;
             const res = await api.get("/items", { params });
 
@@ -111,7 +114,8 @@ export default function ItemsPage() {
                         }}
                     >
                         <div className="row g-3 align-items-end">
-                            <div className="col-12 col-md-4">
+
+                            <div className="col-12 col-md-2">
                                 <label className="form-label">Status</label>
                                 <select
                                     className="form-select"
@@ -125,8 +129,21 @@ export default function ItemsPage() {
                                 </select>
                             </div>
 
+                            <div className="col-12 col-md-2">
+                                <label className="form-label">Categoria</label>
+                                <select
+                                    className="form-select"
+                                    value={categoria}
+                                    onChange={(e) => setCategoria(e.target.value)}
+                                >
+                                    <option value="">Todos</option>
+                                    <option value="REGULATORY">Regulatório</option>
+                                    <option value="OPERATIONAL">Operacional</option>
+                                </select>
+                            </div>
+
                             <div className="col-12 col-md-6">
-                                <label className="form-label">Tipo do item</label>
+                                <label className="form-label">Nome do item</label>
                                 <input
                                     className="form-control"
                                     placeholder="EXTINTOR / SPDA / CAIXA_DAGUA..."
@@ -219,5 +236,13 @@ export default function ItemsPage() {
                 </div>
             </div>
         </section>
+    );
+}
+
+export default function ItemsPage() {
+    return (
+        <Suspense fallback={<p className="p-3 m-0">Carregando listagem...</p>}>
+            <ItemsContent />
+        </Suspense>
     );
 }
