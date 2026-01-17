@@ -182,20 +182,6 @@ export default function PrivateOrganizationsPage() {
                                 Limpar
                             </button>
                         </div>
-
-                        {msg && (
-                            <p
-                                className="small mt-3 mb-0"
-                                style={{
-                                    color: msg.startsWith("✔️") ? COLORS.primaryDark : COLORS.accent,
-                                    fontWeight: 600,
-                                }}
-                                role="status"
-                                aria-live="polite"
-                            >
-                                {msg}
-                            </p>
-                        )}
                     </form>
                 </div>
             </div>
