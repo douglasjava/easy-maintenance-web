@@ -268,6 +268,9 @@ export default function DashboardPage() {
                         <Link className="btn btn-outline-primary" href="/items?origin=dashboard">
                             Ver Itens
                         </Link>
+                        <Link className="btn btn-outline-info" href="/ai-onboarding">
+                            ✨ Onboarding IA
+                        </Link>
                         <Link className="btn btn-outline-secondary" href="/maintenances?origin=dashboard">
                             Ver Manutenções
                         </Link>
