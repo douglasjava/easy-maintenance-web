@@ -1,11 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
-import {categoryLabelMap} from "@/lib/enums/labels";
+import { categoryLabelMap } from "@/lib/enums/labels";
+import toast from "react-hot-toast";
+import { useState } from "react";
+import ConfirmModal from "@/components/ConfirmModal";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -18,13 +21,40 @@ const COLORS = {
 export default function ItemDetailPage() {
     const { id } = useParams<{ id: string }>();
     const searchParams = useSearchParams();
+    const router = useRouter();
+
     const origin = searchParams.get("origin");
-    const backHref = origin === "dashboard" ? "/" : "/items";
+    let backHref = "/items";
+    if (origin === "dashboard") backHref = "/";
+    if (origin === "maintenance-new")
+        backHref = `/maintenances/new?itemId=${id}&origin=item-detail`;
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["item", id],
         queryFn: async () => (await api.get(`/items/${id}`)).data,
     });
+
+    function handleDelete() {
+        setShowDeleteModal(true);
+    }
+
+    async function confirmDelete() {
+        try {
+            setDeleting(true);
+            await api.delete(`/items/${id}`);
+            toast.success("Item removido com sucesso.");
+            router.push("/items");
+        } catch (err) {
+            console.error(err);
+            toast.error("Erro ao remover item.");
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+        }
+    }
 
     function formatDate(dt?: string) {
         if (!dt) return "-";
@@ -38,11 +68,31 @@ export default function ItemDetailPage() {
 
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            {/* TOPO */}
+            <ConfirmModal
+                show={showDeleteModal}
+                title="Confirmar exclusão"
+                message={
+                    <p className="mb-0">
+                        Deseja realmente remover o item{" "}
+                        <strong>{data?.itemType}</strong>?<br />
+                        Esta ação não pode ser desfeita.
+                    </p>
+                }
+                confirmLabel="Remover"
+                loading={deleting}
+                onConfirm={confirmDelete}
+                onCancel={() => setShowDeleteModal(false)}
+            />
+            {/*
+                PATTERN: Top navigation only
+                WHY: This is a read-only detail page. According to UX Rule 4, we should not duplicate
+                actions on read-only pages. Structural navigation (Back) and the main action
+                (Register Maintenance, which leads to another flow) belong in the header.
+            */}
             <div className="row align-items-center mb-4">
                 <div className="col-4">
                     <Link className="btn btn-outline-secondary" href={backHref}>
-                        ← Voltar
+                        ← Voltar para listagem
                     </Link>
                 </div>
 
@@ -56,6 +106,13 @@ export default function ItemDetailPage() {
                 </div>
 
                 <div className="col-4 text-end">
+                    <button
+                        className="btn btn-outline-danger me-2"
+                        onClick={handleDelete}
+                    >
+                        Remover
+                    </button>
+
                     <Link
                         className="btn btn-primary"
                         href={`/maintenances/new?itemId=${id}&origin=item-detail`}
@@ -69,6 +126,7 @@ export default function ItemDetailPage() {
             <div className="card border-0 shadow-sm">
                 <div className="card-body">
                     {isLoading && <p className="m-0">Carregando…</p>}
+
                     {error && (
                         <p className="m-0 text-danger">
                             Erro ao carregar informações do item.
@@ -80,12 +138,18 @@ export default function ItemDetailPage() {
                             {/* CABEÇALHO DO ITEM */}
                             <div className="row g-3 align-items-center mb-3">
                                 <div className="col">
-                                    <div className="text-muted small">Tipo do item</div>
-                                    <div className="fw-semibold fs-5">{data.itemType}</div>
+                                    <div className="text-muted small">
+                                        Tipo do item
+                                    </div>
+                                    <div className="fw-semibold fs-5">
+                                        {data.itemType}
+                                    </div>
                                 </div>
 
                                 <div className="col-auto text-end">
-                                    <div className="text-muted small">Status</div>
+                                    <div className="text-muted small">
+                                        Status
+                                    </div>
                                     <StatusPill status={data.status} />
                                 </div>
                             </div>
@@ -95,12 +159,22 @@ export default function ItemDetailPage() {
                             {/* DADOS PRINCIPAIS */}
                             <div className="row g-3 mb-3">
                                 <div className="col-12 col-md-4">
-                                    <div className="text-muted small">Categoria</div>
-                                    <div className="fw-medium">{categoryLabelMap[data.itemCategory]}</div>
+                                    <div className="text-muted small">
+                                        Categoria
+                                    </div>
+                                    <div className="fw-medium">
+                                        {
+                                            categoryLabelMap[
+                                                data.itemCategory
+                                                ]
+                                        }
+                                    </div>
                                 </div>
 
                                 <div className="col-12 col-md-4">
-                                    <div className="text-muted small">Próximo vencimento</div>
+                                    <div className="text-muted small">
+                                        Próximo vencimento
+                                    </div>
                                     <div
                                         className="fw-medium"
                                         style={{
@@ -115,9 +189,13 @@ export default function ItemDetailPage() {
                                 </div>
 
                                 <div className="col-12 col-md-4">
-                                    <div className="text-muted small">Última manutenção</div>
+                                    <div className="text-muted small">
+                                        Última manutenção
+                                    </div>
                                     <div className="fw-medium">
-                                        {formatDate(data.lastPerformedAt)}
+                                        {formatDate(
+                                            data.lastPerformedAt
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -125,10 +203,14 @@ export default function ItemDetailPage() {
                             {/* LOCALIZAÇÃO */}
                             {data.location && (
                                 <div className="mb-4">
-                                    <div className="text-muted small mb-1">Localização</div>
+                                    <div className="text-muted small mb-1">
+                                        Localização
+                                    </div>
                                     <div className="fw-medium">
                                         {data.location.address || "-"}
-                                        {data.location.complement ? ` • ${data.location.complement}` : ""}
+                                        {data.location.complement
+                                            ? ` • ${data.location.complement}`
+                                            : ""}
                                     </div>
                                 </div>
                             )}
@@ -138,15 +220,18 @@ export default function ItemDetailPage() {
                                 {data.itemCategory === "REGULATORY" ? (
                                     <>
                                         <div className="col-12 col-md-4">
-                                            <div className="text-muted small">Norma</div>
+                                            <div className="text-muted small">
+                                                Norma
+                                            </div>
                                             <div className="fw-medium">
-                                                {data.normId ?? "-"}
+                                                {data.normName ?? "-"}
                                             </div>
                                         </div>
 
                                         <div className="col-12 col-md-8 d-flex align-items-end">
                                             <div className="small text-muted">
-                                                Periodicidade definida conforme norma regulatória.
+                                                Periodicidade definida conforme
+                                                norma regulatória.
                                             </div>
                                         </div>
                                     </>
@@ -174,16 +259,69 @@ export default function ItemDetailPage() {
                             </div>
 
                             <hr />
-
-                            {/* RODAPÉ TÉCNICO */}
-                            <div className="text-muted small">
-                                ID: <code>{data.id}</code> • Organização:{" "}
-                                <code>{data.organizationId}</code>
-                            </div>
                         </>
                     )}
                 </div>
             </div>
+
+            {/* MODAL DE CONFIRMAÇÃO */}
+            {showDeleteModal && (
+                <>
+                    <div className="modal fade show d-block" tabIndex={-1}>
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title text-danger">
+                                        Confirmar exclusão
+                                    </h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={() =>
+                                            setShowDeleteModal(false)
+                                        }
+                                        disabled={deleting}
+                                    />
+                                </div>
+
+                                <div className="modal-body">
+                                    <p className="mb-0">
+                                        Deseja realmente remover este item?
+                                        <br />
+                                        <strong>
+                                            Esta ação não pode ser desfeita.
+                                        </strong>
+                                    </p>
+                                </div>
+
+                                <div className="modal-footer">
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() =>
+                                            setShowDeleteModal(false)
+                                        }
+                                        disabled={deleting}
+                                    >
+                                        Cancelar
+                                    </button>
+
+                                    <button
+                                        className="btn btn-danger"
+                                        onClick={confirmDelete}
+                                        disabled={deleting}
+                                    >
+                                        {deleting
+                                            ? "Removendo..."
+                                            : "Remover"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="modal-backdrop fade show" />
+                </>
+            )}
         </section>
     );
 }

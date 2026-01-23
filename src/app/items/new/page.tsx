@@ -43,6 +43,7 @@ const EMPTY_FORM = {
 
     // regulatory
     normId: "",
+    normName: "",
 
     // operational
     customPeriodUnit: "MESES",
@@ -80,7 +81,7 @@ function NewItemContent() {
             const res = await api.post("/item-types", { name: inputValue.toUpperCase() });
             const newType = res.data.name;
             setFormData((p) => ({ ...p, itemType: newType }));
-            toast.success(`Tipo "${newType}" criado com sucesso!`);
+            toast.success(`Tipo do item "${newType}" criado com sucesso!`);
         } catch (error) {
             console.error("Erro ao criar tipo de item", error);
             const axiosError = error as AxiosError<{ message?: string }>;
@@ -114,6 +115,8 @@ function NewItemContent() {
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
+
+        if (loading) return;
 
         const itemType = formData.itemType.toUpperCase().trim();
 
@@ -167,11 +170,16 @@ function NewItemContent() {
 
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            {/* TOPO */}
+            {/* 
+                PATTERN: Top + Footer
+                WHY: Although it's a single-step form, it involves significant data entry and selection 
+                (Long reading/review logic). Following Rule 3, we use Top for structural back 
+                and Footer for flow actions (Create/Clear).
+            */}
             <div className="row align-items-center mb-4">
                 <div className="col-4">
                     <Link className="btn btn-outline-secondary" href={backHref}>
-                        ← Voltar
+                        ← Voltar para listagem
                     </Link>
                 </div>
 
@@ -267,10 +275,16 @@ function NewItemContent() {
                                     name="lastPerformedAt"
                                     type="date"
                                     className="form-control"
+                                    max={new Date().toISOString().split("T")[0]}
                                     value={formData.lastPerformedAt}
-                                    onChange={(e) =>
-                                        setFormData((p) => ({ ...p, lastPerformedAt: e.target.value }))
-                                    }
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        const today = new Date().toISOString().split("T")[0];
+
+                                        if (value && value > today) return;
+
+                                        setFormData((p) => ({ ...p, lastPerformedAt: value }));
+                                    }}
                                     disabled={loading}
                                 />
                             </div>
@@ -412,10 +426,13 @@ function NewItemContent() {
                             </div>
                         )}
 
-                        {/* AÇÕES */}
+                        {/* 
+                            PATTERN: Footer actions
+                            WHY: Flow actions (Create/Clear) are placed at the end of the form.
+                        */}
                         <div className="d-flex flex-wrap gap-2 mt-4">
                             <button className="btn btn-primary" disabled={loading}>
-                                {loading ? "Criando..." : "Criar item"}
+                                {loading ? "Criando..." : "Criar novo item"}
                             </button>
 
                             <button
@@ -424,7 +441,7 @@ function NewItemContent() {
                                 onClick={onReset}
                                 disabled={loading}
                             >
-                                Limpar
+                                Limpar formulário
                             </button>
                         </div>
                     </form>

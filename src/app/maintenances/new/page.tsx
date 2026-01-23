@@ -97,6 +97,15 @@ function NewMaintenanceContent() {
     const [certificateValidUntil, setCertificateValidUntil] = useState("");
     const [receiptUrl, setReceiptUrl] = useState("");
 
+    function resetForm() {
+        setPerformedAt("");
+        setIssuedBy("");
+        setCertificateNumber("");
+        setCertificateValidUntil("");
+        setReceiptUrl("");
+        setItemId("");
+    }
+
     const [saving, setSaving] = useState(false);
 
     // detalhe do item selecionado (para mostrar contexto + usar itemType nos fornecedores)
@@ -172,12 +181,20 @@ function NewMaintenanceContent() {
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
 
+        if (saving) return;
+
         if (!itemId) {
             toast.error("Selecione um item.");
             return;
         }
         if (!performedAt) {
             toast.error("Informe a data da manutenção.");
+            return;
+        }
+
+        const today = new Date().toISOString().split("T")[0];
+        if (performedAt > today) {
+            toast.error("A data da manutenção não pode ser no futuro.");
             return;
         }
 
@@ -192,11 +209,13 @@ function NewMaintenanceContent() {
         try {
             setSaving(true);
             const { data } = await api.post(`/items/${itemId}/maintenances`, body);
-            toast.success(`Manutenção registrada (ID: ${data?.id}).`);
+            toast.success(`Manutenção registrada`);
+            resetForm();
         } catch (err: any) {
             const status = err?.response?.status;
+            const detail = err?.response?.data?.detail;
             if (status === 400) toast.error("Verifique os campos e tente novamente.");
-            else toast.error("Não foi possível registrar. Tente novamente.");
+            else toast.error(detail);
         } finally {
             setSaving(false);
         }
@@ -204,11 +223,15 @@ function NewMaintenanceContent() {
 
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            {/* TOPO */}
+            {/* 
+                PATTERN: Top + Footer
+                WHY: This is a multi-step flow (selecting item then registering maintenance). 
+                Following Rule 3, we use Top for structural back and Footer for flow actions.
+            */}
             <div className="row align-items-center mb-4">
                 <div className="col-4">
                     <Link className="btn btn-outline-secondary" href={backHref}>
-                        ← Voltar
+                        ← Voltar para listagem
                     </Link>
                 </div>
 
@@ -314,7 +337,7 @@ function NewMaintenanceContent() {
                                             {formatDate(selectedItem.nextDueAt)}
                                         </div>
                                     </div>
-                                    <Link className="btn btn-sm btn-outline-secondary" href={`/items/${itemId}`}>
+                                    <Link className="btn btn-sm btn-outline-secondary" href={`/items/${itemId}?origin=maintenance-new`}>
                                         Ver detalhe
                                     </Link>
                                 </div>
@@ -344,6 +367,7 @@ function NewMaintenanceContent() {
                                     className="form-control"
                                     type="date"
                                     value={performedAt}
+                                    max={new Date().toISOString().split("T")[0]}
                                     onChange={(e) => setPerformedAt(e.target.value)}
                                     required
                                 />
@@ -390,12 +414,16 @@ function NewMaintenanceContent() {
                             </div>
                         </div>
 
+                        {/* 
+                            PATTERN: Footer actions
+                            WHY: Flow actions (Register/Cancel flow) are placed at the end of the wizard.
+                        */}
                         <div className="d-flex gap-2 mt-4">
                             <button className="btn btn-primary" disabled={saving}>
-                                {saving ? "Registrando..." : "Registrar"}
+                                {saving ? "Registrando..." : "Confirmar registro"}
                             </button>
                             <Link className="btn btn-outline-secondary" href="/maintenances">
-                                Cancelar
+                                Cancelar registro
                             </Link>
                         </div>
                     </form>

@@ -2,20 +2,19 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
 import Pagination from "@/components/Pagination";
-import {categoryLabelMap} from "@/lib/enums/labels";
+import { categoryLabelMap } from "@/lib/enums/labels";
+import toast from "react-hot-toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 const COLORS = {
     primary: "#0B5ED7",
     primaryDark: "#083B7A",
-    accent: "#F59E0B",
     bg: "#F3F4F6",
-    white: "#FFFFFF",
 };
 
 type Item = {
@@ -37,13 +36,17 @@ type PageResp<T> = {
 function ItemsContent() {
     const searchParams = useSearchParams();
     const origin = searchParams.get("origin");
-    const backHref = origin === "dashboard" ? "/" : "/"; // Por enquanto listagem sempre volta pro dashboard ou root
+    const backHref = origin === "dashboard" ? "/" : "/";
 
-    const [status, setStatus] = useState<string>("");
-    const [categoria, setCategoria] = useState<string>("");
-    const [itemType, setItemType] = useState<string>("");
+    const [status, setStatus] = useState("");
+    const [categoria, setCategoria] = useState("");
+    const [itemType, setItemType] = useState("");
     const [page, setPage] = useState(0);
-    const size = 10;
+    const [size, setSize] = useState(10);
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const { data, isLoading, error, refetch } = useQuery({
         queryKey: ["items", { status, itemType, categoria, page, size }],
@@ -52,38 +55,64 @@ function ItemsContent() {
             if (status) params.status = status;
             if (categoria) params.categoria = categoria;
             if (itemType) params.itemType = itemType;
+
             const res = await api.get("/items", { params });
 
             if (Array.isArray(res.data)) {
                 return {
-                    content: res.data as Item[],
+                    content: res.data,
                     totalPages: 1,
                     totalElements: res.data.length,
                     number: 0,
                     size: res.data.length,
                 } as PageResp<Item>;
             }
+
             return res.data as PageResp<Item>;
         },
     });
 
+    function openDeleteModal(item: Item) {
+        setItemToDelete(item);
+        setShowDeleteModal(true);
+    }
+
+    function closeDeleteModal() {
+        if (deleting) return;
+        setShowDeleteModal(false);
+        setItemToDelete(null);
+    }
+
+    async function confirmDelete() {
+        if (!itemToDelete) return;
+
+        try {
+            setDeleting(true);
+            await api.delete(`/items/${itemToDelete.id}`);
+            toast.success("Item removido com sucesso.");
+            closeDeleteModal();
+            refetch();
+        } catch (err) {
+            console.error(err);
+            toast.error("Erro ao remover item.");
+        } finally {
+            setDeleting(false);
+        }
+    }
+
     function formatDate(dt?: string) {
         if (!dt) return "-";
-        try {
-            const d = new Date(dt + "T00:00:00");
-            return d.toLocaleDateString("pt-BR");
-        } catch {
-            return dt;
-        }
+        const d = new Date(dt + "T00:00:00");
+        return d.toLocaleDateString("pt-BR");
     }
 
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            {/* TOPO */}
+            {/* HEADER */}
             <div className="row align-items-center mb-4">
                 <div className="col-4">
                     <Link className="btn btn-outline-secondary btn-sm" href={backHref}>
-                        ← Voltar
+                        ← Voltar para Dashboard
                     </Link>
                 </div>
 
@@ -114,8 +143,7 @@ function ItemsContent() {
                         }}
                     >
                         <div className="row g-3 align-items-end">
-
-                            <div className="col-12 col-md-2">
+                            <div className="col-md-2">
                                 <label className="form-label">Status</label>
                                 <select
                                     className="form-select"
@@ -129,7 +157,7 @@ function ItemsContent() {
                                 </select>
                             </div>
 
-                            <div className="col-12 col-md-2">
+                            <div className="col-md-2">
                                 <label className="form-label">Categoria</label>
                                 <select
                                     className="form-select"
@@ -142,21 +170,20 @@ function ItemsContent() {
                                 </select>
                             </div>
 
-                            <div className="col-12 col-md-6">
+                            <div className="col-md-6">
                                 <label className="form-label">Nome do item</label>
                                 <input
                                     className="form-control"
                                     placeholder="EXTINTOR / SPDA / CAIXA_DAGUA..."
                                     value={itemType}
-                                    onChange={(e) => setItemType(e.target.value.toUpperCase())}
+                                    onChange={(e) =>
+                                        setItemType(e.target.value.toUpperCase())
+                                    }
                                 />
                             </div>
 
-                            <div className="col-12 col-md-2">
-                                <button
-                                    className="btn btn-outline-primary w-100"
-                                    type="submit"
-                                >
+                            <div className="col-md-2">
+                                <button className="btn btn-outline-primary w-100">
                                     Aplicar
                                 </button>
                             </div>
@@ -168,11 +195,9 @@ function ItemsContent() {
             {/* TABELA */}
             <div className="card border-0 shadow-sm">
                 <div className="card-body p-0">
-                    {isLoading && <p className="p-3 m-0">Carregando…</p>}
+                    {isLoading && <p className="p-3">Carregando…</p>}
                     {error && (
-                        <p className="p-3 m-0 text-danger">
-                            Erro ao carregar itens.
-                        </p>
+                        <p className="p-3 text-danger">Erro ao carregar itens.</p>
                     )}
 
                     {!isLoading && !error && (
@@ -192,28 +217,33 @@ function ItemsContent() {
                                     {(data?.content ?? []).map((it) => (
                                         <tr key={it.id}>
                                             <td className="fw-semibold">{it.itemType}</td>
-                                            <td className="text-muted">{categoryLabelMap[it.itemCategory]}</td>
+                                            <td className="text-muted">
+                                                {categoryLabelMap[it.itemCategory]}
+                                            </td>
                                             <td>{formatDate(it.nextDueAt)}</td>
                                             <td>
                                                 <StatusPill status={it.status} />
                                             </td>
                                             <td className="text-end">
                                                 <Link
-                                                    className="btn btn-sm btn-outline-secondary"
+                                                    className="btn btn-sm btn-outline-secondary me-2"
                                                     href={`/items/${it.id}?origin=items`}
                                                 >
                                                     Abrir
                                                 </Link>
+                                                <button
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    onClick={() => openDeleteModal(it)}
+                                                >
+                                                    Remover
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
 
                                     {data?.content?.length === 0 && (
                                         <tr>
-                                            <td
-                                                colSpan={5}
-                                                className="text-muted text-center py-4"
-                                            >
+                                            <td colSpan={5} className="text-center text-muted py-4">
                                                 Nenhum item encontrado.
                                             </td>
                                         </tr>
@@ -222,26 +252,45 @@ function ItemsContent() {
                                 </table>
                             </div>
 
-                            {/* PAGINAÇÃO */}
                             <div className="px-3 py-3 border-top">
                                 <Pagination
                                     page={data?.number ?? 0}
-                                    size={data?.size ?? 10}
+                                    size={data?.size ?? size}
                                     totalPages={data?.totalPages ?? 1}
                                     onChange={setPage}
+                                    onSizeChange={(newSize) => {
+                                        setSize(newSize);
+                                        setPage(0);
+                                    }}
                                 />
                             </div>
                         </>
                     )}
                 </div>
             </div>
+
+            <ConfirmModal
+                show={showDeleteModal}
+                title="Confirmar exclusão"
+                message={
+                    <p className="mb-0">
+                        Deseja realmente remover o item{" "}
+                        <strong>{itemToDelete?.itemType}</strong>?<br />
+                        Esta ação não pode ser desfeita.
+                    </p>
+                }
+                confirmLabel="Remover"
+                loading={deleting}
+                onConfirm={confirmDelete}
+                onCancel={closeDeleteModal}
+            />
         </section>
     );
 }
 
 export default function ItemsPage() {
     return (
-        <Suspense fallback={<p className="p-3 m-0">Carregando listagem...</p>}>
+        <Suspense fallback={<p className="p-3">Carregando listagem...</p>}>
             <ItemsContent />
         </Suspense>
     );

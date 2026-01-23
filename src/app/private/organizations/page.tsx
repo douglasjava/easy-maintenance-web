@@ -28,6 +28,8 @@ export default function PrivateOrganizationsPage() {
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
 
+        if (loading) return;
+
         const payload = {
             code: crypto.randomUUID(),
             name: formData.name.trim(),

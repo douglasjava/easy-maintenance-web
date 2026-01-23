@@ -60,6 +60,8 @@ export default function PrivateUsersPage() {
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
 
+        if (loading) return;
+
         const adminToken = window.localStorage.getItem("adminToken");
         if (!adminToken) {
             toast.error("Token de administrador não encontrado. Faça login na área admin.");

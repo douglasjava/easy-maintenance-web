@@ -77,10 +77,12 @@ function MaintenancesListContent() {
 
     // item selecionado
     const [selectedItemId, setSelectedItemId] = useState<string>("");
+    const [performedAt, setPerformedAt] = useState<string>("");
+    const [issuedBy, setIssuedBy] = useState<string>("");
 
     // paginação manutenções
     const [page, setPage] = useState(0);
-    const size = 10;
+    const [size, setSize] = useState(10);
 
     const {
         data: maints,
@@ -88,11 +90,14 @@ function MaintenancesListContent() {
         error: maintsError,
         isFetching: maintsFetching,
     } = useQuery({
-        enabled: Boolean(selectedItemId),
-        queryKey: ["maintenances", { selectedItemId, page, size }],
+        queryKey: ["maintenances", { selectedItemId, performedAt, issuedBy, page, size }],
         queryFn: async () => {
-            const params = { page, size };
-            const res = await api.get(`/items/${selectedItemId}/maintenances`, {
+            const params: Record<string, any> = { page, size };
+            if (selectedItemId) params.itemId = selectedItemId;
+            if (performedAt) params.performedAt = performedAt;
+            if (issuedBy) params.issuedBy = issuedBy;
+
+            const res = await api.get(`/items/maintenances`, {
                 params,
             });
 
@@ -121,13 +126,20 @@ function MaintenancesListContent() {
         }
     }
 
+    const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            {/* TOPO */}
+            {/* 
+                PATTERN: Top navigation only
+                WHY: This is a simple list page. According to UX Rule 4, we should not duplicate actions 
+                on simple lists/dashboards. Structural navigation (Back) and global actions (Register) 
+                belong in the header.
+            */}
             <div className="row align-items-center mb-4">
                 <div className="col-4">
                     <Link className="btn btn-outline-secondary btn-sm" href={backHref}>
-                        ← Voltar
+                        ← Voltar para Dashboard
                     </Link>
                 </div>
 
@@ -154,19 +166,18 @@ function MaintenancesListContent() {
                 </div>
             </div>
 
-            {/* SELEÇÃO DE ITEM */}
+            {/* SELEÇÃO DE ITEM E FILTROS */}
             <div className="card border-0 shadow-sm mb-3">
                 <div className="card-body">
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            setItemsPage(0);
-                            refetchItems();
+                            setPage(0);
                         }}
                     >
-                        <div className="row g-2 align-items-end">
-                            <div className="col-12 col-md-10">
-                                <label className="form-label">Item</label>
+                        <div className="row g-3 align-items-end">
+                            <div className="col-12 col-md-4">
+                                <label className="form-label small fw-semibold">Item</label>
                                 <select
                                     className="form-select"
                                     value={selectedItemId}
@@ -175,22 +186,55 @@ function MaintenancesListContent() {
                                         setPage(0);
                                     }}
                                 >
-                                    <option value="">Selecione um item…</option>
+                                    <option value="">Todos os itens…</option>
                                     {items.map((it) => (
                                         <option key={String(it.id)} value={String(it.id)}>
                                             {it.itemType} • #{String(it.id)}
                                         </option>
                                     ))}
                                 </select>
+                            </div>
 
+                            <div className="col-12 col-md-3">
+                                <label className="form-label small fw-semibold">Data da manutenção</label>
+                                <input
+                                    type="date"
+                                    className="form-select"
+                                    value={performedAt}
+                                    max={today}
+                                    onChange={(e) => {
+                                        setPerformedAt(e.target.value);
+                                        setPage(0);
+                                    }}
+                                />
+                            </div>
+
+                            <div className="col-12 col-md-3">
+                                <label className="form-label small fw-semibold">Emitido por</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Ex: Extintores"
+                                    value={issuedBy}
+                                    onChange={(e) => {
+                                        setIssuedBy(e.target.value);
+                                        setPage(0);
+                                    }}
+                                />
                             </div>
 
                             <div className="col-12 col-md-2">
                                 <button
                                     className="btn btn-outline-primary w-100"
-                                    type="submit"
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedItemId("");
+                                        setPerformedAt("");
+                                        setIssuedBy("");
+                                        setPage(0);
+                                    }}
                                 >
-                                    {itemsFetching ? "..." : "OK"}
+                                    Limpar Filtros
                                 </button>
                             </div>
                         </div>
@@ -237,37 +281,17 @@ function MaintenancesListContent() {
             {/* LISTA DE MANUTENÇÕES */}
             <div className="card border-0 shadow-sm">
                 <div className="card-body p-0">
-                    {!selectedItemId && (
-                        <div className="p-3">
-                            <div
-                                className="rounded p-3"
-                                style={{
-                                    backgroundColor: COLORS.white,
-                                    border: "1px dashed rgba(11, 94, 215, 0.35)",
-                                }}
-                            >
-                                <div className="fw-semibold" style={{ color: COLORS.primaryDark }}>
-                                    Selecione um item para visualizar as manutenções
-                                </div>
-                                <div className="text-muted small mt-1">
-                                    Depois de selecionar, você verá o histórico e poderá registrar
-                                    uma nova manutenção.
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {selectedItemId && (maintsLoading || maintsFetching) && (
+                    {(maintsLoading || maintsFetching) && (
                         <p className="p-3 m-0">Carregando manutenções…</p>
                     )}
 
-                    {selectedItemId && maintsError && (
+                    {maintsError && (
                         <p className="p-3 m-0" style={{ color: COLORS.accent }}>
                             Erro ao carregar manutenções.
                         </p>
                     )}
 
-                    {selectedItemId && !maintsLoading && !maintsError && (
+                    {!maintsLoading && !maintsError && (
                         <>
                             <div className="table-responsive">
                                 <table className="table align-middle mb-0">
@@ -288,7 +312,7 @@ function MaintenancesListContent() {
                                             <td className="text-end">
                                                 <Link
                                                     className="btn btn-sm btn-outline-secondary"
-                                                    href={`/items/${selectedItemId}`}
+                                                    href={`/items/${m.itemId || selectedItemId}`}
                                                 >
                                                     Ver item
                                                 </Link>
@@ -316,6 +340,10 @@ function MaintenancesListContent() {
                                     size={maints?.size ?? size}
                                     totalPages={maints?.totalPages ?? 1}
                                     onChange={(p) => setPage(p)}
+                                    onSizeChange={(newSize) => {
+                                        setSize(newSize);
+                                        setPage(0);
+                                    }}
                                 />
                             </div>
                         </>
