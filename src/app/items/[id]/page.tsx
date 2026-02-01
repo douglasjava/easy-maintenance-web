@@ -34,7 +34,13 @@ export default function ItemDetailPage() {
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["item", id],
-        queryFn: async () => (await api.get(`/items/${id}`)).data,
+        queryFn: async () => {
+            const [itemRes, permRes] = await Promise.all([
+                api.get(`/items/${id}`),
+                api.get(`/items/${id}/can-update`).catch(() => ({ data: { canUpdate: false } }))
+            ]);
+            return { ...itemRes.data, ...permRes.data };
+        },
     });
 
     function handleDelete() {
@@ -106,6 +112,22 @@ export default function ItemDetailPage() {
                 </div>
 
                 <div className="col-4 text-end">
+                    {data?.canUpdate ? (
+                        <Link
+                            className="btn btn-outline-primary me-2"
+                            href={`/items/new?id=${id}&origin=item-detail`}
+                        >
+                            Editar
+                        </Link>
+                    ) : (
+                        <button
+                            className="btn btn-outline-secondary me-2"
+                            disabled
+                            title="Edição indisponível: este item possui manutenções registradas. Crie um novo item."
+                        >
+                            Editar
+                        </button>
+                    )}
                     <button
                         className="btn btn-outline-danger me-2"
                         onClick={handleDelete}
@@ -266,61 +288,58 @@ export default function ItemDetailPage() {
 
             {/* MODAL DE CONFIRMAÇÃO */}
             {showDeleteModal && (
-                <>
-                    <div className="modal fade show d-block" tabIndex={-1}>
-                        <div className="modal-dialog modal-dialog-centered">
-                            <div className="modal-content">
-                                <div className="modal-header">
-                                    <h5 className="modal-title text-danger">
-                                        Confirmar exclusão
-                                    </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close"
-                                        onClick={() =>
-                                            setShowDeleteModal(false)
-                                        }
-                                        disabled={deleting}
-                                    />
-                                </div>
+                <div className="modal fade show d-block" tabIndex={-1}>
+                    <div className="modal-dialog modal-dialog-centered" style={{ zIndex: 1060 }}>
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title text-danger">
+                                    Confirmar exclusão
+                                </h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() =>
+                                        setShowDeleteModal(false)
+                                    }
+                                    disabled={deleting}
+                                />
+                            </div>
 
-                                <div className="modal-body">
-                                    <p className="mb-0">
-                                        Deseja realmente remover este item?
-                                        <br />
-                                        <strong>
-                                            Esta ação não pode ser desfeita.
-                                        </strong>
-                                    </p>
-                                </div>
+                            <div className="modal-body">
+                                <p className="mb-0">
+                                    Deseja realmente remover este item?
+                                    <br />
+                                    <strong>
+                                        Esta ação não pode ser desfeita.
+                                    </strong>
+                                </p>
+                            </div>
 
-                                <div className="modal-footer">
-                                    <button
-                                        className="btn btn-secondary"
-                                        onClick={() =>
-                                            setShowDeleteModal(false)
-                                        }
-                                        disabled={deleting}
-                                    >
-                                        Cancelar
-                                    </button>
+                            <div className="modal-footer">
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() =>
+                                        setShowDeleteModal(false)
+                                    }
+                                    disabled={deleting}
+                                >
+                                    Cancelar
+                                </button>
 
-                                    <button
-                                        className="btn btn-danger"
-                                        onClick={confirmDelete}
-                                        disabled={deleting}
-                                    >
-                                        {deleting
-                                            ? "Removendo..."
-                                            : "Remover"}
-                                    </button>
-                                </div>
+                                <button
+                                    className="btn btn-danger"
+                                    onClick={confirmDelete}
+                                    disabled={deleting}
+                                >
+                                    {deleting
+                                        ? "Removendo..."
+                                        : "Remover"}
+                                </button>
                             </div>
                         </div>
                     </div>
-
-                    <div className="modal-backdrop fade show" />
-                </>
+                    <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} />
+                </div>
             )}
         </section>
     );

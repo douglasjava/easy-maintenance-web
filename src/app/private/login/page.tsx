@@ -23,11 +23,13 @@ export default function PrivateLoginPage() {
 
         try {
             setLoading(true);
+            console.log("Token digital", token)
 
             // Chamada de validação conforme especificado
             await api.get("/private/admin/validate-token", {
                 headers: {
-                    "X-Admin-Token": token
+                    "X-Admin-Token": token,
+                    "X-Skip-Interceptor-Admin-Token": "true"
                 }
             });
 

@@ -14,3 +14,15 @@ export const categoryLabelMap: Record<string, string> = {
     OPERATIONAL: "Operacional",
     REGULATORY: "Regulatório"
 }
+
+export const statusMap: Record<string, string> = {
+    ACTIVE: "Ativo",
+    INACTIVE: "Inativo"
+}
+
+export const roleLabelMap: Record<string, string> = {
+    ADMIN: "Administrador",
+    SYNDIC: "Síndico",
+    TECH: "Técnico",
+    READER: "Leitor"
+}

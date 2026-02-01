@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
+import { useState, useCallback, Suspense, useEffect } from "react";
 import { api } from "@/lib/apiClient";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import AsyncCreatableSelect from "react-select/async-creatable";
 import { AxiosError } from "axios";
 import toast from "react-hot-toast";
@@ -52,12 +52,36 @@ const EMPTY_FORM = {
 
 function NewItemContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const origin = searchParams.get("origin");
+    const editId = searchParams.get("id");
     const backHref = origin === "dashboard" ? "/" : "/items";
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [isCreatingType, setIsCreatingType] = useState(false);
+
+    useEffect(() => {
+        if (editId) {
+            api.get(`/items/${editId}`).then((res) => {
+                const item = res.data;
+                setFormData({
+                    itemType: item.itemType,
+                    itemCategory: item.itemCategory,
+                    lastPerformedAt: item.lastPerformedAt || "",
+                    address: item.location?.address || "",
+                    complement: item.location?.complement || "",
+                    normId: item.norm?.id?.toString() || "",
+                    normName: item.norm?.itemType || "",
+                    customPeriodUnit: item.customPeriodUnit || "MESES",
+                    customPeriodQty: item.customPeriodQty || 6,
+                });
+            }).catch((err) => {
+                console.error("Erro ao carregar item para edição", err);
+                toast.error("Erro ao carregar dados do item.");
+            });
+        }
+    }, [editId]);
 
     const loadOptions = useCallback(async (inputValue: string) => {
         if (!inputValue) return [];
@@ -153,15 +177,21 @@ function NewItemContent() {
 
         try {
             setLoading(true);
-            const { data } = await api.post("/items", payload);
-            toast.success("Item criado com sucesso");
-            setFormData(EMPTY_FORM); // ✅ limpa de forma correta
+            if (editId) {
+                await api.put(`/items/${editId}`, payload);
+                toast.success("Item atualizado com sucesso");
+                router.push(backHref);
+            } else {
+                await api.post("/items", payload);
+                toast.success("Item criado com sucesso");
+                setFormData(EMPTY_FORM); // ✅ limpa de forma correta
+            }
         } catch (err: any) {
             const status = err?.response?.status;
             if (status === 400) {
                 toast.error("Verifique os campos e tente novamente.");
             } else {
-                toast.error("Não foi possível criar o item. Tente novamente.");
+                toast.error(`Não foi possível ${editId ? 'atualizar' : 'criar'} o item. Tente novamente.`);
             }
         } finally {
             setLoading(false);
@@ -185,10 +215,10 @@ function NewItemContent() {
 
                 <div className="col-4 text-center">
                     <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
-                        Novo Item
+                        {editId ? "Editar Item" : "Novo Item"}
                     </h1>
                     <p className="text-muted mt-1 mb-0">
-                        Cadastre itens regulatórios ou operacionais
+                        {editId ? "Atualize as informações do item" : "Cadastre itens regulatórios ou operacionais"}
                     </p>
                 </div>
 
@@ -432,17 +462,19 @@ function NewItemContent() {
                         */}
                         <div className="d-flex flex-wrap gap-2 mt-4">
                             <button className="btn btn-primary" disabled={loading}>
-                                {loading ? "Criando..." : "Criar novo item"}
+                                {loading ? "Salvando..." : editId ? "Atualizar item" : "Criar novo item"}
                             </button>
 
-                            <button
-                                className="btn btn-outline-secondary"
-                                type="button"
-                                onClick={onReset}
-                                disabled={loading}
-                            >
-                                Limpar formulário
-                            </button>
+                            {!editId && (
+                                <button
+                                    className="btn btn-outline-secondary"
+                                    type="button"
+                                    onClick={onReset}
+                                    disabled={loading}
+                                >
+                                    Limpar formulário
+                                </button>
+                            )}
                         </div>
                     </form>
                 </div>

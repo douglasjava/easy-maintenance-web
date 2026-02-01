@@ -43,8 +43,22 @@ export default function LoginPage() {
                 const storage = remember ? window.localStorage : window.sessionStorage;
 
                 try {
-                    if (data?.organizationCode) {
-                        storage.setItem("organizationCode", String(data.organizationCode));
+                    if (data?.id) {
+                        storage.setItem("userId", String(data.id));
+                    }
+                    if (data?.organizationCodes && data.organizationCodes.length > 0) {
+                        if (data.organizationCodes.length === 1) {
+                            storage.setItem("organizationCode", String(data.organizationCodes[0]));
+                            // Tenta buscar o nome da empresa se houver apenas uma
+                            api.get(`/auth/me/organizations/${data.id}`).then(res => {
+                                const orgs = res.data;
+                                if (Array.isArray(orgs) && orgs.length === 1) {
+                                    storage.setItem("organizationCode", orgs[0].code);
+                                    storage.setItem("organizationName", orgs[0].name);
+                                }
+                            }).catch(() => {});
+                        }
+                        // Se houver mais de 1, não salvamos organizationCode ainda, redirecionamos para seleção
                     }
                     if (data?.accessToken) {
                         storage.setItem("accessToken", String(data.accessToken));
@@ -59,8 +73,12 @@ export default function LoginPage() {
 
             toast.success("Login realizado com sucesso. Redirecionando...");
 
-            // UX: após login, enviar para o dashboard (visão geral).
-            router.replace("/");
+            if (data?.organizationCodes && data.organizationCodes.length > 1) {
+                router.replace("/select-organization");
+            } else {
+                // UX: após login, enviar para o dashboard (visão geral).
+                router.replace("/");
+            }
         } catch (err: any) {
             const status = err?.response?.status;
 
@@ -148,8 +166,7 @@ export default function LoginPage() {
                             <span>Manter conectado</span>
                         </label>
 
-                        {/* Se ainda não existe, melhor deixar como "em breve" ou remover */}
-                        <Link href="#" className="login-forgot" aria-disabled="true">
+                        <Link href="/forgot-password" className="login-forgot">
                             Esqueci minha senha
                         </Link>
                     </div>
@@ -157,11 +174,6 @@ export default function LoginPage() {
                     <button className="login-btn" disabled={loading}>
                         {loading ? "Entrando..." : "Entrar"}
                     </button>
-
-                    <div className="login-foot">
-                        <span>Ainda não tem conta?</span>
-                        <Link href="/users/new">Criar conta</Link>
-                    </div>
 
                 </form>
             </div>

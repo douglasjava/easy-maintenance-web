@@ -23,6 +23,8 @@ type Item = {
     itemCategory: "REGULATORY" | "OPERATIONAL";
     status: "OK" | "NEAR_DUE" | "OVERDUE";
     nextDueAt: string;
+    canUpdate?: boolean;
+    reason?: string;
 };
 
 type PageResp<T> = {
@@ -58,17 +60,40 @@ function ItemsContent() {
 
             const res = await api.get("/items", { params });
 
+            let items: Item[] = [];
+            if (Array.isArray(res.data)) {
+                items = res.data;
+            } else if (res.data?.content) {
+                items = res.data.content;
+            }
+
+            // Busca permissão de edição para cada item
+            const itemsWithPermission = items.length > 0 ? await Promise.all(
+                items.map(async (it) => {
+                    try {
+                        const { data: perm } = await api.get(`/items/${it.id}/can-update`);
+                        return { ...it, ...perm };
+                    } catch (e) {
+                        console.error(`Erro ao verificar can-update para item ${it.id}`, e);
+                        return { ...it, canUpdate: false };
+                    }
+                })
+            ) : [];
+
             if (Array.isArray(res.data)) {
                 return {
-                    content: res.data,
+                    content: itemsWithPermission,
                     totalPages: 1,
-                    totalElements: res.data.length,
+                    totalElements: itemsWithPermission.length,
                     number: 0,
-                    size: res.data.length,
+                    size: itemsWithPermission.length,
                 } as PageResp<Item>;
             }
 
-            return res.data as PageResp<Item>;
+            return {
+                ...res.data,
+                content: itemsWithPermission
+            } as PageResp<Item>;
         },
     });
 
@@ -231,6 +256,27 @@ function ItemsContent() {
                                                 >
                                                     Abrir
                                                 </Link>
+                                                {it.canUpdate ? (
+                                                    <Link
+                                                        className="btn btn-sm btn-outline-primary me-2"
+                                                        href={`/items/new?id=${it.id}&origin=items`}
+                                                    >
+                                                        Editar
+                                                    </Link>
+                                                ) : (
+                                                    <span
+                                                        title="Edição indisponível: este item possui manutenções registradas. Crie um novo item."
+                                                        style={{ display: "inline-block", cursor: "not-allowed" }}
+                                                      >
+                                                      <button
+                                                          className="btn btn-sm btn-outline-secondary me-2"
+                                                          disabled
+                                                          style={{ pointerEvents: "none" }}
+                                                      >
+                                                        Editar
+                                                      </button>
+                                                    </span>
+                                                )}
                                                 <button
                                                     className="btn btn-sm btn-outline-danger"
                                                     onClick={() => openDeleteModal(it)}

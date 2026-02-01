@@ -48,15 +48,20 @@ api.interceptors.request.use((config) => {
   const orgId = orgFromLogin || ENV.ORG_ID;
   if (orgId) {
     config.headers["X-Org-Id"] = orgId;
+  } else {
+    // Se não houver orgId, remove o header para evitar envio de valores undefined/antigos se necessário
+    delete config.headers["X-Org-Id"];
   }
 
   // Admin token para área privativa
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && !config.headers["X-Skip-Interceptor-Admin-Token"]) {
     const adminToken = window.localStorage.getItem("adminToken");
     if (adminToken) {
       config.headers["X-Admin-Token"] = adminToken;
     }
   }
+
+  delete config.headers["X-Skip-Interceptor-Admin-Token"];
 
   if (accessToken) {
     const type = tokenType || "Bearer";

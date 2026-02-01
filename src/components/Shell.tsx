@@ -10,7 +10,11 @@ const ChatWidget = dynamic(() => import("@/ia/ChatWidget"), { ssr: false });
 export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Com basePath habilitado, o pathname incluirá o prefixo. Usar endsWith para detectar /login.
-  const isAuth = pathname?.endsWith("/login") || pathname?.endsWith("/auth/change-password"); // não exibir topbar/sidebar na tela de login ou troca de senha
+  const isAuth = pathname?.endsWith("/login") || 
+                 pathname?.endsWith("/auth/change-password") ||
+                 pathname?.endsWith("/forgot-password") ||
+                 pathname?.endsWith("/reset-password") ||
+                 pathname?.endsWith("/select-organization"); // não exibir topbar/sidebar na tela de login, troca de senha, recuperação ou seleção de org
   const isPrivate = pathname?.startsWith("/private");
 
   if (isAuth) {

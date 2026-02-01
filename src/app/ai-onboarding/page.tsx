@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import { 
@@ -25,6 +26,7 @@ interface SelectedItem extends AiItemPreview {
 }
 
 export default function AiOnboardingPage() {
+    const router = useRouter();
     const [step, setStep] = useState<1 | 2>(1);
     const [loading, setLoading] = useState(false);
     
@@ -96,10 +98,30 @@ export default function AiOnboardingPage() {
         toast.success("Item atualizado localmente.");
     }
 
-    function handleApply() {
+    async function handleApply() {
         const selectedItems = items.filter(it => it.selected);
-        console.log("Itens selecionados para aplicação futura:", selectedItems);
-        toast.success("Itens logados no console!");
+        
+        if (selectedItems.length === 0) {
+            toast.error("Selecione ao menos um item para aplicar.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const payload = {
+                items: selectedItems.map(({ selected, ...rest }) => rest)
+            };
+
+            await api.post("/ai/bootstrap/apply", payload);
+            
+            toast.success("Organização configurada com sucesso!");
+            router.push("/items");
+        } catch (err: any) {
+            toast.error("Falha ao aplicar configurações. Tente novamente.");
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
@@ -245,9 +267,16 @@ export default function AiOnboardingPage() {
                                 <button 
                                     className="btn btn-success px-5"
                                     onClick={handleApply}
-                                    disabled={items.filter(it => it.selected).length === 0}
+                                    disabled={loading || items.filter(it => it.selected).length === 0}
                                 >
-                                    Aplicar
+                                    {loading ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            Aplicando...
+                                        </>
+                                    ) : (
+                                        "Aplicar"
+                                    )}
                                 </button>
                             </div>
                         </div>
