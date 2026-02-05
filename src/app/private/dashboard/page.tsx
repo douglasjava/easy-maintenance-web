@@ -16,7 +16,7 @@ type Metrics = {
     totalUsers: number;
     organizationsByPlan: {
         FREE: number;
-        PRO: number;
+        STARTER: number;
         BUSINESS: number;
         ENTERPRISE: number;
     };
@@ -45,7 +45,7 @@ export default function PrivateDashboardPage() {
                 setMetrics({
                     totalOrganizations: 0,
                     totalUsers: 0,
-                    organizationsByPlan: { FREE: 0, PRO: 0, BUSINESS: 0, ENTERPRISE: 0 }
+                    organizationsByPlan: { FREE: 0, STARTER: 0, BUSINESS: 0, ENTERPRISE: 0 }
                 });
             } finally {
                 setLoading(false);
@@ -82,7 +82,7 @@ export default function PrivateDashboardPage() {
                 <div className="col-12 col-md-3">
                     <div className="card border-0 shadow-sm text-center p-3">
                         <div className="text-muted small">Planos gratuitos</div>
-                        <div className="h2 mb-0 text-secondary">{loading ? "..." : metrics?.organizationsByPlan.FREE}</div>
+                        <div className="h2 mb-0 text-secondary">{loading ? "..." : metrics?.organizationsByPlan.FREE ?? 0}</div>
                     </div>
                 </div>
                 <div className="col-12 col-md-3">
@@ -90,7 +90,7 @@ export default function PrivateDashboardPage() {
                         <div className="text-muted small">Planos pagos</div>
                         <div className="h2 mb-0 text-primary">
                             {loading ? "..." : (
-                                (metrics?.organizationsByPlan.PRO || 0) +
+                                (metrics?.organizationsByPlan.STARTER || 0) +
                                 (metrics?.organizationsByPlan.BUSINESS || 0) +
                                 (metrics?.organizationsByPlan.ENTERPRISE || 0)
                             )}
@@ -100,7 +100,7 @@ export default function PrivateDashboardPage() {
             </div>
 
             <div className="row g-4">
-                <div className="col-12 col-md-6">
+                <div className="col-12 col-md-4">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body d-flex flex-column">
                             <h5 className="card-title" style={{ color: COLORS.primaryDark }}>Empresas</h5>
@@ -112,13 +112,25 @@ export default function PrivateDashboardPage() {
                     </div>
                 </div>
 
-                <div className="col-12 col-md-6">
+                <div className="col-12 col-md-4">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body d-flex flex-column">
                             <h5 className="card-title" style={{ color: COLORS.primaryDark }}>Usuários</h5>
                             <p className="card-text text-muted">Gerenciar todos os usuários.</p>
                             <Link href="/private/users" className="btn btn-primary mt-auto">
                                 Ver Usuários
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="col-12 col-md-4">
+                    <div className="card border-0 shadow-sm h-100">
+                        <div className="card-body d-flex flex-column">
+                            <h5 className="card-title" style={{ color: COLORS.primaryDark }}>Faturamento</h5>
+                            <p className="card-text text-muted">Gerenciar Faturamento.</p>
+                            <Link href="/private/admin/billing" className="btn btn-primary mt-auto">
+                                Ver Faturamento
                             </Link>
                         </div>
                     </div>

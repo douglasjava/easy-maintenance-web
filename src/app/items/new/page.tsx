@@ -320,42 +320,6 @@ function NewItemContent() {
                             </div>
                         </div>
 
-                        {/* Localização */}
-                        <div className="mt-3">
-                            <div className="fw-semibold mb-2" style={{ color: COLORS.primaryDark }}>
-                                Localização (opcional)
-                            </div>
-
-                            <div className="row g-3">
-                                <div className="col-12 col-md-8">
-                                    <label className="form-label">Endereço</label>
-                                    <input
-                                        name="address"
-                                        className="form-control"
-                                        placeholder="Ex: Bloco A, Corredor 2"
-                                        value={formData.address}
-                                        onChange={(e) =>
-                                            setFormData((p) => ({ ...p, address: e.target.value }))
-                                        }
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-4">
-                                    <label className="form-label">Complemento</label>
-                                    <input
-                                        name="complement"
-                                        className="form-control"
-                                        placeholder="Ex: Próximo à recepção"
-                                        value={formData.complement}
-                                        onChange={(e) =>
-                                            setFormData((p) => ({ ...p, complement: e.target.value }))
-                                        }
-                                        disabled={loading}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
                         {/* REGULATORY */}
                         {category === "REGULATORY" && (
                             <div className="mt-4">
