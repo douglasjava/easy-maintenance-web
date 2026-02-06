@@ -41,6 +41,7 @@ export default function Sidebar() {
     }
 
     const items: NavItem[] = [
+        {href: "/landing", label: "Landing Page", section: "main"},
         {href: "/", label: "Dashboard", section: "main"},
         {href: "/items", label: "Itens", section: "main"},
         {href: "/maintenances", label: "Manutenções", section: "main"},

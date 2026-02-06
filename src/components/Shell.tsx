@@ -14,7 +14,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                  pathname?.endsWith("/auth/change-password") ||
                  pathname?.endsWith("/forgot-password") ||
                  pathname?.endsWith("/reset-password") ||
-                 pathname?.endsWith("/select-organization"); // não exibir topbar/sidebar na tela de login, troca de senha, recuperação ou seleção de org
+                 pathname?.endsWith("/select-organization") ||
+                 pathname?.includes("/landing"); // não exibir topbar/sidebar na tela de login, troca de senha, recuperação ou seleção de org ou landing page
   const isPrivate = pathname?.startsWith("/private");
 
   if (isAuth) {
