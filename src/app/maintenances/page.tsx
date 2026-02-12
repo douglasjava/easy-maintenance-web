@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import Pagination from "@/components/Pagination";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -24,7 +25,19 @@ interface Maintenance {
     id: string | number;
     itemId: string | number;
     performedAt: string; // YYYY-MM-DD
-    issuedBy?: string;
+    performedBy?: string;
+    type: string;
+    costCents: number;
+}
+
+interface Attachment {
+    id: number;
+    fileName: string;
+    attachmentType: string;
+}
+
+interface MaintenanceDetail extends Maintenance {
+    attachments: Attachment[];
 }
 
 interface PageResp<T> {
@@ -78,7 +91,46 @@ function MaintenancesListContent() {
     // item selecionado
     const [selectedItemId, setSelectedItemId] = useState<string>("");
     const [performedAt, setPerformedAt] = useState<string>("");
-    const [issuedBy, setIssuedBy] = useState<string>("");
+    const [performedBy, setPerformedBy] = useState<string>("");
+
+    // detalhe da manutenção
+    const [viewingMaintId, setViewingMaintId] = useState<string | number | null>(null);
+    const { data: maintDetail, isLoading: loadingDetail } = useQuery({
+        queryKey: ["maintenance-detail", viewingMaintId],
+        queryFn: async () => {
+            if (!viewingMaintId) return null;
+            const res = await api.get(`/items/maintenances/${viewingMaintId}`);
+            return res.data as MaintenanceDetail;
+        },
+        enabled: !!viewingMaintId,
+    });
+
+    const ATTACHMENT_TYPES: Record<string, string> = {
+        PHOTO: "Foto",
+        REPORT: "Relatório",
+        CERTIFICATE: "Certificado",
+        ART: "ART",
+        INVOICE: "Nota Fiscal",
+        OTHER: "Outro"
+    };
+
+    async function handleDownload(attachmentId: number, fileName: string) {
+        try {
+            const res = await api.get(`/maintenances/attachments/${attachmentId}/download`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error("Erro ao baixar arquivo", err);
+            toast.error("Erro ao baixar arquivo");
+        }
+    }
 
     // paginação manutenções
     const [page, setPage] = useState(0);
@@ -90,12 +142,12 @@ function MaintenancesListContent() {
         error: maintsError,
         isFetching: maintsFetching,
     } = useQuery({
-        queryKey: ["maintenances", { selectedItemId, performedAt, issuedBy, page, size }],
+        queryKey: ["maintenances", { selectedItemId, performedAt, performedBy, page, size }],
         queryFn: async () => {
             const params: Record<string, any> = { page, size };
             if (selectedItemId) params.itemId = selectedItemId;
             if (performedAt) params.performedAt = performedAt;
-            if (issuedBy) params.issuedBy = issuedBy;
+            if (performedBy) params.performedBy = performedBy;
 
             const res = await api.get(`/items/maintenances`, {
                 params,
@@ -210,14 +262,14 @@ function MaintenancesListContent() {
                             </div>
 
                             <div className="col-12 col-md-3">
-                                <label className="form-label small fw-semibold">Emitido por</label>
+                                <label className="form-label small fw-semibold">Responsável</label>
                                 <input
                                     type="text"
                                     className="form-control"
-                                    placeholder="Ex: Extintores"
-                                    value={issuedBy}
+                                    placeholder="Ex: João Silva"
+                                    value={performedBy}
                                     onChange={(e) => {
-                                        setIssuedBy(e.target.value);
+                                        setPerformedBy(e.target.value);
                                         setPage(0);
                                     }}
                                 />
@@ -230,7 +282,7 @@ function MaintenancesListContent() {
                                     onClick={() => {
                                         setSelectedItemId("");
                                         setPerformedAt("");
-                                        setIssuedBy("");
+                                        setPerformedBy("");
                                         setPage(0);
                                     }}
                                 >
@@ -299,7 +351,9 @@ function MaintenancesListContent() {
                                     <tr>
                                         <th>ID</th>
                                         <th>Data</th>
-                                        <th>Emitido por</th>
+                                        <th>Tipo</th>
+                                        <th>Responsável</th>
+                                        <th className="text-end">Custo</th>
                                         <th className="text-end">Ações</th>
                                     </tr>
                                     </thead>
@@ -308,14 +362,24 @@ function MaintenancesListContent() {
                                         <tr key={String(m.id)}>
                                             <td className="fw-semibold">{String(m.id)}</td>
                                             <td>{formatDate(m.performedAt)}</td>
-                                            <td className="text-muted">{m.issuedBy || "-"}</td>
+                                            <td>
+                                                <span className="badge bg-light text-dark border">
+                                                    {m.type}
+                                                </span>
+                                            </td>
+                                            <td className="text-muted">{m.performedBy || "-"}</td>
                                             <td className="text-end">
-                                                <Link
-                                                    className="btn btn-sm btn-outline-secondary"
-                                                    href={`/items/${m.itemId || selectedItemId}`}
-                                                >
-                                                    Ver item
-                                                </Link>
+                                                {m.costCents ? (m.costCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "-"}
+                                            </td>
+                                            <td className="text-end">
+                                                <div className="d-flex justify-content-end gap-2">
+                                                    <button
+                                                        className="btn btn-sm btn-outline-primary"
+                                                        onClick={() => setViewingMaintId(m.id)}
+                                                    >
+                                                        Visualizar
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -323,7 +387,7 @@ function MaintenancesListContent() {
                                     {maints?.content?.length === 0 && (
                                         <tr>
                                             <td
-                                                colSpan={4}
+                                                colSpan={6}
                                                 className="text-muted text-center py-4"
                                             >
                                                 Nenhuma manutenção encontrada.
@@ -350,6 +414,84 @@ function MaintenancesListContent() {
                     )}
                 </div>
             </div>
+
+            {/* Modal Detalhes Manutenção */}
+            {viewingMaintId && (
+                <div className="modal show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} tabIndex={-1}>
+                    <div className="modal-dialog modal-lg modal-dialog-centered">
+                        <div className="modal-content border-0 shadow">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Detalhes da Manutenção #{viewingMaintId}</h5>
+                                <button type="button" className="btn-close" onClick={() => setViewingMaintId(null)}></button>
+                            </div>
+                            <div className="modal-body">
+                                {loadingDetail ? (
+                                    <div className="text-center py-4">Carregando detalhes...</div>
+                                ) : maintDetail ? (
+                                    <div className="row g-3">
+                                        <div className="col-md-6">
+                                            <label className="text-muted small d-block">Data Realizada</label>
+                                            <span className="fw-semibold">{formatDate(maintDetail.performedAt)}</span>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="text-muted small d-block">Tipo</label>
+                                            <span className="badge bg-light text-dark border">{maintDetail.type}</span>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="text-muted small d-block">Responsável</label>
+                                            <span>{maintDetail.performedBy || "-"}</span>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="text-muted small d-block">Custo</label>
+                                            <span>{maintDetail.costCents ? (maintDetail.costCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "-"}</span>
+                                        </div>
+
+                                        <hr className="my-4" />
+
+                                        <div className="col-12">
+                                            <h6 className="fw-bold mb-3">Anexos</h6>
+                                            {maintDetail.attachments && maintDetail.attachments.length > 0 ? (
+                                                <div className="list-group">
+                                                    {maintDetail.attachments.map(att => (
+                                                        <div key={att.id} className="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <div className="fw-semibold">{att.fileName}</div>
+                                                                <small className="text-muted">{ATTACHMENT_TYPES[att.attachmentType] || att.attachmentType}</small>
+                                                            </div>
+                                                            <button 
+                                                                className="btn btn-sm btn-primary"
+                                                                onClick={() => handleDownload(att.id, att.fileName)}
+                                                            >
+                                                                Download
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-muted small">Nenhum anexo encontrado.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-danger">Erro ao carregar detalhes.</div>
+                                )}
+                            </div>
+                            <div className="modal-footer">
+                                {maintDetail && (
+                                    <Link
+                                        className="btn btn-outline-secondary me-auto"
+                                        href={`/items/${maintDetail.itemId}`}
+                                        onClick={() => setViewingMaintId(null)}
+                                    >
+                                        Ver item
+                                    </Link>
+                                )}
+                                <button type="button" className="btn btn-secondary" onClick={() => setViewingMaintId(null)}>Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 }

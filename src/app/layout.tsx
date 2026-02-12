@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import type { Metadata, Viewport } from "next";
 import Shell from "@/components/Shell";
 import Providers from "@/components/Providers";
+import FcmHandler from "@/components/messaging/FcmHandler";
 
 export const viewport: Viewport = {
     themeColor: "#0F172A",
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <html lang="pt-BR">
         <body>
         <Providers>
+            <FcmHandler />
             <Shell>{children}</Shell>
         </Providers>
         </body>

@@ -3,15 +3,25 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import { api } from '@/lib/apiClient';
 
 export default function LandingPage() {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulação de captura de lead
-    alert(`Obrigado! Entraremos em contato através do e-mail: ${email}`);
-    setEmail('');
+    setLoading(true);
+    try {
+      await api.post('/landing/leads', { email });
+      alert(`Obrigado! Entraremos em contato através do e-mail: ${email}`);
+      setEmail('');
+    } catch (error) {
+      console.error('Erro ao enviar lead:', error);
+      alert('Ocorreu um erro ao enviar seu e-mail. Por favor, tente novamente mais tarde.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const currentYear = new Date().getFullYear();
@@ -125,31 +135,23 @@ export default function LandingPage() {
                   />
                 </div>
                 <div className="col-md-5">
-                  <button type="submit" className="btn btn-primary btn-lg w-100 rounded-pill">Solicitar Demonstração</button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary btn-lg w-100 rounded-pill"
+                    disabled={loading}
+                  >
+                    {loading ? 'Enviando...' : 'Solicitar Demonstração'}
+                  </button>
                 </div>
               </form>
             </div>
             <div className="col-lg-6 d-none d-lg-block">
               <div className="bg-white rounded-3 shadow p-2" style={{ transform: 'perspective(1000px) rotateY(-10deg)' }}>
-                <div className="bg-light rounded p-4 border border-2">
-                  <div className="d-flex justify-content-between mb-4">
-                    <div className="h-25 bg-secondary opacity-25 rounded" style={{width: '120px', height: '20px'}}></div>
-                    <div className="h-25 bg-primary opacity-25 rounded" style={{width: '60px', height: '20px'}}></div>
-                  </div>
-                  <div className="row g-3">
-                    {[1,2,3,4].map(i => (
-                      <div key={i} className="col-6">
-                        <div className="p-3 border rounded">
-                          <div className="bg-light mb-2" style={{height: '10px', width: '60%'}}></div>
-                          <div className="bg-primary" style={{height: '15px', width: '90%'}}></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 p-3 bg-light rounded border-dashed border-2 text-center text-muted">
-                    Dashboard Preview
-                  </div>
-                </div>
+                <img 
+                  src="/dashboard_preview.png" 
+                  alt="Dashboard Preview" 
+                  className="img-fluid rounded shadow-sm"
+                />
               </div>
             </div>
           </div>
@@ -285,7 +287,13 @@ export default function LandingPage() {
           <h2 className="display-5 fw-bold mb-4">Pronto para profissionalizar sua manutenção?</h2>
           <p className="lead mb-5 opacity-75">Junte-se a centenas de gestores que já transformaram suas operações.</p>
           <div className="d-flex flex-column flex-md-row justify-content-center gap-3 mt-5">
-            <button className="btn btn-light btn-lg rounded-pill px-5" onClick={() => window.scrollTo(0, 0)}>Solicitar Demonstração</button>
+            <button 
+              className="btn btn-light btn-lg rounded-pill px-5" 
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              disabled={loading}
+            >
+              Solicitar Demonstração
+            </button>
             <a href="https://wa.me/5531995639390" target="_blank" className="btn btn-outline-light btn-lg rounded-pill px-5">Falar com Consultor</a>
           </div>
         </div>

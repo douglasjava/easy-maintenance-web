@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Logo from "./Logo";
 import {useRouter, usePathname} from "next/navigation";
+import {useState, useEffect} from "react";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -19,6 +20,7 @@ type NavItem = {
 };
 
 export default function Sidebar() {
+    const [hasOrg, setHasOrg] = useState(false);
     const router = useRouter();
     const pathname = usePathname();
 
@@ -40,9 +42,16 @@ export default function Sidebar() {
         router.push(href);
     }
 
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const orgCode = window.localStorage.getItem("organizationCode") || window.sessionStorage.getItem("organizationCode");
+            setHasOrg(!!orgCode);
+        }
+    }, [pathname]);
+
     const items: NavItem[] = [
-        {href: "/landing", label: "Landing Page", section: "main"},
         {href: "/", label: "Dashboard", section: "main"},
+        {href: "/norms", label: "📚 Normas e Obrigações", section: "main"},
         {href: "/items", label: "Itens", section: "main"},
         {href: "/maintenances", label: "Manutenções", section: "main"},
 
@@ -143,34 +152,43 @@ export default function Sidebar() {
                             <nav className="nav flex-column gap-1">
                                 {currentItems
                                     .filter((i) => i.section === "main")
+                                    .filter((i) => hasOrg || i.href === "/")
                                     .map((i) => (
                                         <NavLink key={i.href} href={i.href} label={i.label}/>
                                     ))}
                             </nav>
 
-                            <div className="mt-2"/>
+                            {hasOrg && (
+                                <>
+                                    <div className="mt-2"/>
 
-                            <SectionTitle>Ações</SectionTitle>
-                            <nav className="nav flex-column gap-1">
-                                {currentItems
-                                    .filter((i) => i.section === "actions")
-                                    .map((i) => (
-                                        <NavLink key={i.href} href={i.href} label={i.label}/>
-                                    ))}
-                            </nav>
+                                    <SectionTitle>Ações</SectionTitle>
+                                    <nav className="nav flex-column gap-1">
+                                        {currentItems
+                                            .filter((i) => i.section === "actions")
+                                            .map((i) => (
+                                                <NavLink key={i.href} href={i.href} label={i.label}/>
+                                            ))}
+                                    </nav>
+                                </>
+                            )}
 
                             <div className="mt-2"/>
                         </>
                     )}
 
-                    <SectionTitle>{isPrivate ? "Administração" : "Admin"}</SectionTitle>
-                    <nav className="nav flex-column gap-1">
-                        {currentItems
-                            .filter((i) => i.section === "admin")
-                            .map((i) => (
-                                <NavLink key={i.href} href={i.href} label={i.label}/>
-                            ))}
-                    </nav>
+                    {isPrivate && (
+                        <>
+                            <SectionTitle>Administração</SectionTitle>
+                            <nav className="nav flex-column gap-1">
+                                {currentItems
+                                    .filter((i) => i.section === "admin")
+                                    .map((i) => (
+                                        <NavLink key={i.href} href={i.href} label={i.label}/>
+                                    ))}
+                            </nav>
+                        </>
+                    )}
                 </div>
 
                 {/* rodapé */}

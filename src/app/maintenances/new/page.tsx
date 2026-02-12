@@ -92,18 +92,22 @@ function NewMaintenanceContent() {
 
     // formulário de manutenção
     const [performedAt, setPerformedAt] = useState("");
-    const [issuedBy, setIssuedBy] = useState("");
-    const [certificateNumber, setCertificateNumber] = useState("");
-    const [certificateValidUntil, setCertificateValidUntil] = useState("");
-    const [receiptUrl, setReceiptUrl] = useState("");
+    const [type, setType] = useState("PREVENTIVA");
+    const [performedBy, setPerformedBy] = useState("");
+    const [costInput, setCostInput] = useState(""); // valor formatado para o input
+    const [nextDueAt, setNextDueAt] = useState("");
+    const [step, setStep] = useState(1); // 1: Dados, 2: Anexos
+    const [maintenanceId, setMaintenanceId] = useState<string | number | null>(null);
 
     function resetForm() {
         setPerformedAt("");
-        setIssuedBy("");
-        setCertificateNumber("");
-        setCertificateValidUntil("");
-        setReceiptUrl("");
+        setType("PREVENTIVA");
+        setPerformedBy("");
+        setCostInput("");
+        setNextDueAt("");
         setItemId("");
+        setStep(1);
+        setMaintenanceId(null);
     }
 
     const [saving, setSaving] = useState(false);
@@ -198,27 +202,88 @@ function NewMaintenanceContent() {
             return;
         }
 
+        // Converte costInput (ex: "1.234,56") para centavos (123456)
+        let costCents = 0;
+        if (costInput) {
+            const numericValue = costInput.replace(/\D/g, "");
+            costCents = parseInt(numericValue, 10) || 0;
+        }
+
         const body = {
             performedAt,
-            issuedBy: issuedBy || null,
-            certificateNumber: certificateNumber || null,
-            certificateValidUntil: certificateValidUntil || null,
-            receiptUrl: receiptUrl || null,
+            type,
+            performedBy: performedBy || null,
+            costCents,
+            nextDueAt: nextDueAt || null,
         };
 
         try {
             setSaving(true);
             const { data } = await api.post(`/items/${itemId}/maintenances`, body);
-            toast.success(`Manutenção registrada`);
-            resetForm();
+            toast.success(`Manutenção registrada! Agora você pode anexar documentos.`);
+            setMaintenanceId(data.id);
+            setStep(2);
         } catch (err: any) {
+            console.error("Erro ao registrar manutenção:", err);
             const status = err?.response?.status;
             const detail = err?.response?.data?.detail;
             if (status === 400) toast.error("Verifique os campos e tente novamente.");
-            else toast.error(detail);
+            else toast.error(detail || "Erro ao registrar manutenção");
         } finally {
             setSaving(false);
         }
+    }
+
+    const [attachments, setAttachments] = useState<{ file: File; type: string }[]>([]);
+    const [uploading, setUploading] = useState(false);
+
+    const ATTACHMENT_TYPES = {
+        PHOTO: "Foto",
+        REPORT: "Relatório",
+        CERTIFICATE: "Certificado",
+        ART: "ART",
+        INVOICE: "Nota Fiscal",
+        OTHER: "Outro"
+    };
+
+    async function handleUploadAttachments() {
+        if (!maintenanceId) return;
+        
+        // Remove entradas vazias
+        const filesToUpload = attachments.filter(a => a && a.file);
+
+        if (filesToUpload.length === 0) {
+            toast.success("Finalizado sem novos anexos");
+            resetForm();
+            return;
+        }
+
+        setUploading(true);
+        try {
+            for (const att of filesToUpload) {
+                const formData = new FormData();
+                formData.append("file", att.file);
+                await api.post(`/maintenances/${maintenanceId}/attachments?type=${att.type}`, formData, {
+                    headers: { "Content-Type": "multipart/form-data" }
+                });
+            }
+            toast.success("Anexos enviados com sucesso!");
+            resetForm();
+        } catch (err: any) {
+            console.error("Erro ao enviar anexos:", err);
+            toast.error("Erro ao enviar anexos.");
+        } finally {
+            setUploading(false);
+        }
+    }
+
+    function formatCurrency(value: string) {
+        const digits = value.replace(/\D/g, "");
+        const cents = parseInt(digits || "0", 10);
+        return (cents / 100).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
     }
 
     return (
@@ -250,13 +315,14 @@ function NewMaintenanceContent() {
             </div>
 
             {/* PASSO 1: SELEÇÃO DO ITEM */}
-            <div className="card border-0 shadow-sm mb-3">
-                <div className="card-body">
-                    <div className="d-flex align-items-start gap-3">
-                        <div className="flex-grow-1">
-                            <div className="fw-semibold mb-2" style={{ color: COLORS.primaryDark }}>
-                                1) Selecionar item
-                            </div>
+            {step === 1 && (
+                <div className="card border-0 shadow-sm mb-3">
+                    <div className="card-body">
+                        <div className="d-flex align-items-start gap-3">
+                            <div className="flex-grow-1">
+                                <div className="fw-semibold mb-2" style={{ color: COLORS.primaryDark }}>
+                                    1) Selecionar item
+                                </div>
 
                             <div className="d-flex gap-2 align-items-end">
                                 <div className="flex-grow-1">
@@ -264,6 +330,7 @@ function NewMaintenanceContent() {
                                         className="form-select"
                                         value={itemId}
                                         onChange={(e) => setItemId(e.target.value)}
+                                        disabled={step !== 1}
                                     >
                                         <option value="">Selecione um item…</option>
                                         {itemsCombo.map((it) => (
@@ -351,8 +418,10 @@ function NewMaintenanceContent() {
 
                 </div>
             </div>
+            )}
 
             {/* PASSO 2: REGISTRO */}
+            {step === 1 && (
             <div className="card border-0 shadow-sm">
                 <div className="card-body">
                     <div className="fw-semibold mb-3" style={{ color: COLORS.primaryDark }}>
@@ -362,7 +431,7 @@ function NewMaintenanceContent() {
                     <form onSubmit={onSubmit}>
                         <div className="row g-3">
                             <div className="col-12 col-md-4">
-                                <label className="form-label">Data da manutenção</label>
+                                <label className="form-label">Data da manutenção*</label>
                                 <input
                                     className="form-control"
                                     type="date"
@@ -373,54 +442,56 @@ function NewMaintenanceContent() {
                                 />
                             </div>
 
-                            <div className="col-12 col-md-8">
-                                <label className="form-label">Emitido por (opcional)</label>
+                            <div className="col-12 col-md-4">
+                                <label className="form-label">Tipo de manutenção*</label>
+                                <select
+                                    className="form-select"
+                                    value={type}
+                                    onChange={(e) => setType(e.target.value)}
+                                    required
+                                >
+                                    <option value="PREVENTIVA">PREVENTIVA</option>
+                                    <option value="CORRETIVA">CORRETIVA</option>
+                                    <option value="INSPECAO">INSPECAO</option>
+                                    <option value="TESTE">TESTE</option>
+                                    <option value="EMERGENCIAL">EMERGENCIAL</option>
+                                </select>
+                            </div>
+
+                            <div className="col-12 col-md-4">
+                                <label className="form-label">Responsável</label>
                                 <input
                                     className="form-control"
-                                    value={issuedBy}
-                                    onChange={(e) => setIssuedBy(e.target.value)}
-                                    placeholder="Ex.: Empresa X"
+                                    value={performedBy}
+                                    onChange={(e) => setPerformedBy(e.target.value)}
+                                    placeholder="Ex.: João Silva"
                                 />
                             </div>
 
                             <div className="col-12 col-md-4">
-                                <label className="form-label">Nº do certificado (opcional)</label>
+                                <label className="form-label">Custo (R$)</label>
                                 <input
                                     className="form-control"
-                                    value={certificateNumber}
-                                    onChange={(e) => setCertificateNumber(e.target.value)}
-                                    placeholder="Ex.: ABC-123"
+                                    value={costInput}
+                                    onChange={(e) => setCostInput(formatCurrency(e.target.value))}
+                                    placeholder="0,00"
                                 />
                             </div>
 
                             <div className="col-12 col-md-4">
-                                <label className="form-label">Validade do certificado (opcional)</label>
+                                <label className="form-label">Data da próxima manutenção</label>
                                 <input
                                     className="form-control"
                                     type="date"
-                                    value={certificateValidUntil}
-                                    onChange={(e) => setCertificateValidUntil(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="col-12 col-md-4">
-                                <label className="form-label">Comprovante URL (opcional)</label>
-                                <input
-                                    className="form-control"
-                                    value={receiptUrl}
-                                    onChange={(e) => setReceiptUrl(e.target.value)}
-                                    placeholder="https://..."
+                                    value={nextDueAt}
+                                    onChange={(e) => setNextDueAt(e.target.value)}
                                 />
                             </div>
                         </div>
 
-                        {/* 
-                            PATTERN: Footer actions
-                            WHY: Flow actions (Register/Cancel flow) are placed at the end of the wizard.
-                        */}
                         <div className="d-flex gap-2 mt-4">
                             <button className="btn btn-primary" disabled={saving}>
-                                {saving ? "Registrando..." : "Confirmar registro"}
+                                {saving ? "Registrando..." : "Próximo passo →"}
                             </button>
                             <Link className="btn btn-outline-secondary" href="/maintenances">
                                 Cancelar registro
@@ -429,6 +500,76 @@ function NewMaintenanceContent() {
                     </form>
                 </div>
             </div>
+            )}
+
+            {/* PASSO 2: ANEXOS */}
+            {step === 2 && (
+                <div className="card border-0 shadow-sm">
+                    <div className="card-body">
+                        <div className="fw-semibold mb-3" style={{ color: COLORS.primaryDark }}>
+                            2) Anexar documentos (Opcional - Até 2)
+                        </div>
+
+                        <div className="alert alert-info py-2 small">
+                            Você pode anexar até 2 documentos. Caso não possua anexos, clique em "Finalizar".
+                        </div>
+
+                        <div className="row g-3">
+                            {[0, 1].map((idx) => (
+                                <div key={idx} className="col-12 col-md-6">
+                                    <div className="border rounded p-3 bg-light">
+                                        <label className="form-label small fw-bold">Documento {idx + 1}</label>
+                                        <input
+                                            type="file"
+                                            className="form-control mb-2"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const newAtts = [...attachments];
+                                                    newAtts[idx] = { file, type: newAtts[idx]?.type || "REPORT" };
+                                                    setAttachments(newAtts);
+                                                }
+                                            }}
+                                        />
+                                        <select
+                                            className="form-select form-select-sm"
+                                            value={attachments[idx]?.type || "REPORT"}
+                                            onChange={(e) => {
+                                                const newAtts = [...attachments];
+                                                if (newAtts[idx]) {
+                                                    newAtts[idx].type = e.target.value;
+                                                    setAttachments(newAtts);
+                                                }
+                                            }}
+                                        >
+                                            {Object.entries(ATTACHMENT_TYPES).map(([val, label]) => (
+                                                <option key={val} value={val}>{label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="d-flex gap-2 mt-4">
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleUploadAttachments}
+                                disabled={uploading}
+                            >
+                                {uploading ? "Enviando..." : "Finalizar registro"}
+                            </button>
+                            <button
+                                className="btn btn-outline-secondary"
+                                onClick={() => resetForm()}
+                                disabled={uploading}
+                            >
+                                Ignorar anexos e sair
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* PRESTADORES (opcional) */}
             {suppliersOpen && (

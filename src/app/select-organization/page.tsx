@@ -6,15 +6,17 @@ import { api } from "@/lib/apiClient";
 import Image from "next/image";
 import toast from "react-hot-toast";
 
-type Organization = {
-    id: string;
-    name: string;
-    code: string;
+type OrganizationItem = {
+    organization: {
+        id: string;
+        name: string;
+        code: string;
+    };
 };
 
 function SelectOrganizationContent() {
     const router = useRouter();
-    const [organizations, setOrganizations] = useState<Organization[]>([]);
+    const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -28,7 +30,16 @@ function SelectOrganizationContent() {
                 }
 
                 const { data } = await api.get(`/auth/me/organizations/${userId}`);
-                setOrganizations(Array.isArray(data) ? data : []);
+                const orgsList = Array.isArray(data) ? data : [];
+                setOrganizations(orgsList);
+
+                // Se houver apenas uma, seleciona automaticamente
+                if (orgsList.length === 1) {
+                    handleSelect(orgsList[0]);
+                } else if (orgsList.length === 0) {
+                    // Se não houver nenhuma, redireciona para criação (já tem o botão na tela, mas reforça)
+                    router.replace("/organizations/new");
+                }
             } catch (err) {
                 console.error("Erro ao buscar organizações:", err);
                 toast.error("Erro ao carregar suas empresas.");
@@ -40,15 +51,15 @@ function SelectOrganizationContent() {
         fetchOrganizations();
     }, [router]);
 
-    function handleSelect(org: Organization) {
+    function handleSelect(item: OrganizationItem) {
         if (typeof window !== "undefined") {
             const remember = !!window.localStorage.getItem("accessToken");
             const storage = remember ? window.localStorage : window.sessionStorage;
             
-            storage.setItem("organizationCode", org.code);
-            storage.setItem("organizationName", org.name);
+            storage.setItem("organizationCode", item.organization.code);
+            storage.setItem("organizationName", item.organization.name);
             
-            toast.success(`Empresa ${org.name} selecionada.`);
+            toast.success(`Empresa ${item.organization.name} selecionada.`);
             router.replace("/");
         }
     }
@@ -61,13 +72,13 @@ function SelectOrganizationContent() {
         <div className="login-form mt-4">
             <p className="login-sub mb-4">Selecione a empresa que deseja acessar:</p>
             <div className="list-group shadow-sm">
-                {organizations.map((org) => (
+                {organizations.map((item) => (
                     <button
-                        key={org.id}
+                        key={item.organization.id}
                         className="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3"
-                        onClick={() => handleSelect(org)}
+                        onClick={() => handleSelect(item)}
                     >
-                        <span className="fw-semibold text-dark">{org.name}</span>
+                        <span className="fw-semibold text-dark">{item.organization.name}</span>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M9 18l6-6-6-6" />
                         </svg>
@@ -76,7 +87,15 @@ function SelectOrganizationContent() {
             </div>
 
             {organizations.length === 0 && (
-                <p className="text-center text-muted mt-3">Nenhuma empresa encontrada para o seu usuário.</p>
+                <div className="text-center mt-3">
+                    <p className="text-muted">Nenhuma empresa encontrada para o seu usuário.</p>
+                    <button 
+                        className="btn btn-primary w-100 mt-2"
+                        onClick={() => router.push("/organizations/new")}
+                    >
+                        Cadastrar Nova Empresa
+                    </button>
+                </div>
             )}
 
             <div className="login-foot mt-4">

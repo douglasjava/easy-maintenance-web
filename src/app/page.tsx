@@ -74,9 +74,9 @@ export default function DashboardPage() {
             const ls = localStorage;
             const ss = sessionStorage;
             const token = ls.getItem("accessToken") || ss.getItem("accessToken");
-            const org = ls.getItem("organizationCode") || ss.getItem("organizationCode");
+            // const org = ls.getItem("organizationCode") || ss.getItem("organizationCode");
 
-            if (token && org) {
+            if (token) {
                 setIsAuthed(true);
             } else {
                 router.replace("/login");
@@ -94,6 +94,12 @@ export default function DashboardPage() {
     );
 
     async function fetchDashboard() {
+        const orgCode = localStorage.getItem("organizationCode") || sessionStorage.getItem("organizationCode");
+        if (!orgCode) {
+            setLoading(false);
+            return;
+        }
+
         setError(null);
         setLoading(true);
         try {
@@ -147,136 +153,148 @@ export default function DashboardPage() {
             </div>
 
             {/* KPIs */}
-            <div className="row g-3 mb-4">
-                <Kpi label="Itens" value={data?.kpis?.itemsTotal} color="#083B7A"/>
-                <Kpi
-                    label="Atrasados"
-                    value={data?.kpis?.overdueCount}
-                    color="#F59E0B"
-                />
-                <Kpi
-                    label="Vencendo"
-                    value={data?.kpis?.nearDueCount}
-                    color="#0B5ED7"
-                />
-                <Kpi
-                    label="Este mês"
-                    value={data?.kpis?.maintenancesThisMonth}
-                    color="#6B7280"
-                />
-            </div>
-
-            <div className="row g-3">
-                {/* ATENÇÃO AGORA */}
-                <div className="col-12 col-lg-6">
-                    <div className="card h-100 border-0 shadow-sm">
-                        <div className="card-body">
-                            <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
-                                Atenção agora
-                            </h2>
-
-                            {loading && <p>Carregando…</p>}
-
-                            {!loading && (data?.attentionNow?.length ?? 0) === 0 && (
-                                <p className="text-muted m-0">
-                                    Nenhuma pendência crítica no momento.
-                                </p>
-                            )}
-
-                            {!loading && (data?.attentionNow?.length ?? 0) > 0 && (
-                                <ul className="list-group list-group-flush">
-                                    {data!.attentionNow!.map((it, idx) => (
-                                        <li
-                                            key={idx}
-                                            className="list-group-item d-flex justify-content-between align-items-center"
-                                            style={{
-                                                borderLeft: "4px solid #F59E0B",
-                                                backgroundColor: "#FFFFFF",
-                                            }}
-                                        >
-                                            <div>
-                                                <div className="fw-semibold">
-                                                    {it.itemType}
-                                                </div>
-                                                <div className="small text-muted">
-                                                    Risco: {riskLevelLabelMap[it.riskLevel] || it.riskLevel}
-                                                </div>
-                                            </div>
-                                            <div className="small text-muted text-nowrap">
-                                                {formatDate(it.nextDueAt)}
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                    </div>
+            {!data && !loading && !error ? (
+                <div className="alert alert-info border-0 shadow-sm text-center py-5">
+                    <h5 className="fw-bold">Bem-vindo ao Easy Maintenance!</h5>
+                    <p className="mb-4">Você ainda não selecionou ou não possui uma empresa vinculada.</p>
+                    <Link href="/organizations/new" className="btn btn-primary px-4">
+                        Cadastrar minha primeira empresa
+                    </Link>
                 </div>
+            ) : (
+                <>
+                    <div className="row g-3 mb-4">
+                        <Kpi label="Itens" value={data?.kpis?.itemsTotal} color="#083B7A"/>
+                        <Kpi
+                            label="Atrasados"
+                            value={data?.kpis?.overdueCount}
+                            color="#F59E0B"
+                        />
+                        <Kpi
+                            label="Vencendo"
+                            value={data?.kpis?.nearDueCount}
+                            color="#0B5ED7"
+                        />
+                        <Kpi
+                            label="Este mês"
+                            value={data?.kpis?.maintenancesThisMonth}
+                            color="#6B7280"
+                        />
+                    </div>
 
-                {/* DISTRIBUIÇÕES */}
-                <div className="col-12 col-lg-6">
-                    <div className="card h-100 border-0 shadow-sm">
-                        <div className="card-body">
-                            <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
-                                Distribuições
-                            </h2>
+                    <div className="row g-3">
+                        {/* ATENÇÃO AGORA */}
+                        <div className="col-12 col-lg-6">
+                            <div className="card h-100 border-0 shadow-sm">
+                                <div className="card-body">
+                                    <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
+                                        Atenção agora
+                                    </h2>
 
-                            <div className="row g-3">
-                                <DistributionBlock
-                                    title="Por Status"
-                                    data={data?.breakdowns?.byStatus}
-                                    labels={statusLabelMap}
-                                />
-                                <DistributionBlock
-                                    title="Por Categoria"
-                                    data={data?.breakdowns?.byCategory}
-                                    labels={categoryLabelMap}
-                                />
-                                <div className="col-12">
-                                    <div className="border rounded p-3 bg-white">
-                                        <div className="fw-semibold mb-2">Por Tipo de Item</div>
-                                        {data?.breakdowns?.byItemType?.length ? (
-                                            <ul className="m-0 ps-3">
-                                                {data.breakdowns.byItemType.map((r) => (
-                                                    <li key={r.itemType}>
-                                                        {r.itemType}: {r.count}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <div className="text-muted">-</div>
-                                        )}
+                                    {loading && <p>Carregando…</p>}
+
+                                    {!loading && (data?.attentionNow?.length ?? 0) === 0 && (
+                                        <p className="text-muted m-0">
+                                            Nenhuma pendência crítica no momento.
+                                        </p>
+                                    )}
+
+                                    {!loading && (data?.attentionNow?.length ?? 0) > 0 && (
+                                        <ul className="list-group list-group-flush">
+                                            {data!.attentionNow!.map((it, idx) => (
+                                                <li
+                                                    key={idx}
+                                                    className="list-group-item d-flex justify-content-between align-items-center"
+                                                    style={{
+                                                        borderLeft: "4px solid #F59E0B",
+                                                        backgroundColor: "#FFFFFF",
+                                                    }}
+                                                >
+                                                    <div>
+                                                        <div className="fw-semibold">
+                                                            {it.itemType}
+                                                        </div>
+                                                        <div className="small text-muted">
+                                                            Risco: {riskLevelLabelMap[it.riskLevel] || it.riskLevel}
+                                                        </div>
+                                                    </div>
+                                                    <div className="small text-muted text-nowrap">
+                                                        {formatDate(it.nextDueAt)}
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* DISTRIBUIÇÕES */}
+                        <div className="col-12 col-lg-6">
+                            <div className="card h-100 border-0 shadow-sm">
+                                <div className="card-body">
+                                    <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
+                                        Distribuições
+                                    </h2>
+
+                                    <div className="row g-3">
+                                        <DistributionBlock
+                                            title="Por Status"
+                                            data={data?.breakdowns?.byStatus}
+                                            labels={statusLabelMap}
+                                        />
+                                        <DistributionBlock
+                                            title="Por Categoria"
+                                            data={data?.breakdowns?.byCategory}
+                                            labels={categoryLabelMap}
+                                        />
+                                        <div className="col-12">
+                                            <div className="border rounded p-3 bg-white">
+                                                <div className="fw-semibold mb-2">Por Tipo de Item</div>
+                                                {data?.breakdowns?.byItemType?.length ? (
+                                                    <ul className="m-0 ps-3">
+                                                        {data.breakdowns.byItemType.map((r) => (
+                                                            <li key={r.itemType}>
+                                                                {r.itemType}: {r.count}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <div className="text-muted">-</div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* AÇÕES RÁPIDAS */}
-            <div className="card border-0 shadow-sm mt-4">
-                <div className="card-body">
-                    <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
-                        Ações rápidas
-                    </h2>
+                    {/* AÇÕES RÁPIDAS */}
+                    <div className="card border-0 shadow-sm mt-4">
+                        <div className="card-body">
+                            <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
+                                Ações rápidas
+                            </h2>
 
-                    <div className="d-flex flex-wrap gap-2">
-                        <Link className="btn btn-primary" href="/items/new?origin=dashboard">
-                            + Cadastrar Item
-                        </Link>
-                        <Link className="btn btn-outline-primary" href="/items?origin=dashboard">
-                            Ver Itens
-                        </Link>
-                        <Link className="btn btn-outline-info" href="/ai-onboarding">
-                            ✨ Onboarding IA
-                        </Link>
-                        <Link className="btn btn-outline-secondary" href="/maintenances?origin=dashboard">
-                            Ver Manutenções
-                        </Link>
+                            <div className="d-flex flex-wrap gap-2">
+                                <Link className="btn btn-primary" href="/items/new?origin=dashboard">
+                                    + Cadastrar Item
+                                </Link>
+                                <Link className="btn btn-outline-primary" href="/items?origin=dashboard">
+                                    Ver Itens
+                                </Link>
+                                <Link className="btn btn-outline-info" href="/ai-onboarding">
+                                    ✨ Onboarding IA
+                                </Link>
+                                <Link className="btn btn-outline-secondary" href="/maintenances?origin=dashboard">
+                                    Ver Manutenções
+                                </Link>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </>
+            )}
 
             {error && <p className="text-danger mt-3">{error}</p>}
         </section>

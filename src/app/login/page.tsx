@@ -46,28 +46,44 @@ export default function LoginPage() {
                     if (data?.id) {
                         storage.setItem("userId", String(data.id));
                     }
-                    if (data?.organizationCodes && data.organizationCodes.length > 0) {
-                        if (data.organizationCodes.length === 1) {
-                            storage.setItem("organizationCode", String(data.organizationCodes[0]));
-                            // Tenta buscar o nome da empresa se houver apenas uma
-                            api.get(`/auth/me/organizations/${data.id}`).then(res => {
-                                const orgs = res.data;
-                                if (Array.isArray(orgs) && orgs.length === 1) {
-                                    storage.setItem("organizationCode", orgs[0].code);
-                                    storage.setItem("organizationName", orgs[0].name);
-                                }
-                            }).catch(() => {});
-                        }
-                        // Se houver mais de 1, não salvamos organizationCode ainda, redirecionamos para seleção
-                    }
                     if (data?.accessToken) {
                         storage.setItem("accessToken", String(data.accessToken));
                     }
                     if (data?.tokenType) {
                         storage.setItem("tokenType", String(data.tokenType));
                     }
-                } catch {
-                    // ignore
+
+                    if (data?.organizationCodes && data.organizationCodes.length === 1) {
+                        const orgCode = data.organizationCodes[0];
+                        storage.setItem("organizationCode", String(orgCode));
+                        
+                        // Busca detalhes da organização para pegar o nome
+                        try {
+                            const res = await api.get(`/auth/me/organizations/${data.id}`);
+                            const orgs = res.data;
+                            if (Array.isArray(orgs)) {
+                                const currentOrg = orgs.find((item: any) => item.organization.code === orgCode);
+                                if (currentOrg) {
+                                    storage.setItem("organizationName", currentOrg.organization.name);
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Erro ao buscar detalhes da organização:", err);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erro ao salvar dados no storage:", e);
+                }
+
+                // Após salvar os tokens no storage, tenta vincular o FCM token ao usuário logado
+                try {
+                    const fcm = window.localStorage.getItem("fcmToken") || window.sessionStorage.getItem("fcmToken");
+                    if (fcm) {
+                        await api.post("/push/tokens/link", { token: fcm });
+                        console.log("FCM token vinculado ao usuário");
+                    }
+                } catch (err) {
+                    console.warn("Falha ao vincular FCM token ao usuário:", err);
                 }
             }
 
@@ -75,9 +91,10 @@ export default function LoginPage() {
 
             if (data?.organizationCodes && data.organizationCodes.length > 1) {
                 router.replace("/select-organization");
-            } else {
-                // UX: após login, enviar para o dashboard (visão geral).
+            } else if (data?.organizationCodes && data.organizationCodes.length === 1) {
                 router.replace("/");
+            } else {
+                router.replace("/organizations/new");
             }
         } catch (err: any) {
             const status = err?.response?.status;
