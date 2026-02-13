@@ -4,7 +4,11 @@ import Link from "next/link";
 import {useEffect, useMemo, useState} from "react";
 import {useRouter} from "next/navigation";
 import {api} from "@/lib/apiClient";
-import {categoryLabelMap, riskLevelLabelMap, statusLabelMap} from "@/lib/enums/labels";
+import {DashboardHeader} from "@/components/dashboard/DashboardHeader";
+import {KPIGrid} from "@/components/dashboard/KPIGrid";
+import {AttentionCard} from "@/components/dashboard/AttentionCard";
+import {BreakdownCard} from "@/components/dashboard/BreakdownCard";
+import {QuickActions} from "@/components/dashboard/QuickActions";
 
 /* =========================
    Tipos
@@ -141,217 +145,50 @@ export default function DashboardPage() {
        Render
     ========================= */
     return (
-        <section style={{backgroundColor: "#F3F4F6"}} className="p-3">
-            {/* TOPO */}
-            <div className="text-center mb-4">
-                <h1 className="h4 m-0" style={{color: "#083B7A"}}>
-                    Dashboard
-                </h1>
-                <p className="text-muted mt-1">
-                    Visão geral de manutenções, prazos e conformidade
-                </p>
-            </div>
+        <section style={{backgroundColor: "#f8f9fa", minHeight: "100vh"}} className="pb-5">
+            <div className="container">
+                <DashboardHeader 
+                    title="Dashboard" 
+                    subtitle="Visão geral de manutenções, prazos e conformidade" 
+                />
 
-            {/* KPIs */}
-            {!data && !loading && !error ? (
-                <div className="alert alert-info border-0 shadow-sm text-center py-5">
-                    <h5 className="fw-bold">Bem-vindo ao Easy Maintenance!</h5>
-                    <p className="mb-4">Você ainda não selecionou ou não possui uma empresa vinculada.</p>
-                    <Link href="/organizations/new" className="btn btn-primary px-4">
-                        Cadastrar minha primeira empresa
-                    </Link>
-                </div>
-            ) : (
-                <>
-                    <div className="row g-3 mb-4">
-                        <Kpi label="Itens" value={data?.kpis?.itemsTotal} color="#083B7A"/>
-                        <Kpi
-                            label="Atrasados"
-                            value={data?.kpis?.overdueCount}
-                            color="#F59E0B"
-                        />
-                        <Kpi
-                            label="Vencendo"
-                            value={data?.kpis?.nearDueCount}
-                            color="#0B5ED7"
-                        />
-                        <Kpi
-                            label="Este mês"
-                            value={data?.kpis?.maintenancesThisMonth}
-                            color="#6B7280"
-                        />
+                {!data && !loading && !error ? (
+                    <div className="alert alert-info border-0 shadow-sm text-center py-5 rounded-4">
+                        <h5 className="fw-bold">Bem-vindo ao Easy Maintenance!</h5>
+                        <p className="mb-4 text-muted">Você ainda não selecionou ou não possui uma empresa vinculada.</p>
+                        <Link href="/organizations/new" className="btn btn-primary px-4 py-2 fw-semibold rounded-pill">
+                            Cadastrar minha primeira empresa
+                        </Link>
                     </div>
-
-                    <div className="row g-3">
-                        {/* ATENÇÃO AGORA */}
-                        <div className="col-12 col-lg-6">
-                            <div className="card h-100 border-0 shadow-sm">
-                                <div className="card-body">
-                                    <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
-                                        Atenção agora
-                                    </h2>
-
-                                    {loading && <p>Carregando…</p>}
-
-                                    {!loading && (data?.attentionNow?.length ?? 0) === 0 && (
-                                        <p className="text-muted m-0">
-                                            Nenhuma pendência crítica no momento.
-                                        </p>
-                                    )}
-
-                                    {!loading && (data?.attentionNow?.length ?? 0) > 0 && (
-                                        <ul className="list-group list-group-flush">
-                                            {data!.attentionNow!.map((it, idx) => (
-                                                <li
-                                                    key={idx}
-                                                    className="list-group-item d-flex justify-content-between align-items-center"
-                                                    style={{
-                                                        borderLeft: "4px solid #F59E0B",
-                                                        backgroundColor: "#FFFFFF",
-                                                    }}
-                                                >
-                                                    <div>
-                                                        <div className="fw-semibold">
-                                                            {it.itemType}
-                                                        </div>
-                                                        <div className="small text-muted">
-                                                            Risco: {riskLevelLabelMap[it.riskLevel] || it.riskLevel}
-                                                        </div>
-                                                    </div>
-                                                    <div className="small text-muted text-nowrap">
-                                                        {formatDate(it.nextDueAt)}
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* DISTRIBUIÇÕES */}
-                        <div className="col-12 col-lg-6">
-                            <div className="card h-100 border-0 shadow-sm">
-                                <div className="card-body">
-                                    <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
-                                        Distribuições
-                                    </h2>
-
-                                    <div className="row g-3">
-                                        <DistributionBlock
-                                            title="Por Status"
-                                            data={data?.breakdowns?.byStatus}
-                                            labels={statusLabelMap}
-                                        />
-                                        <DistributionBlock
-                                            title="Por Categoria"
-                                            data={data?.breakdowns?.byCategory}
-                                            labels={categoryLabelMap}
-                                        />
-                                        <div className="col-12">
-                                            <div className="border rounded p-3 bg-white">
-                                                <div className="fw-semibold mb-2">Por Tipo de Item</div>
-                                                {data?.breakdowns?.byItemType?.length ? (
-                                                    <ul className="m-0 ps-3">
-                                                        {data.breakdowns.byItemType.map((r) => (
-                                                            <li key={r.itemType}>
-                                                                {r.itemType}: {r.count}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                ) : (
-                                                    <div className="text-muted">-</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* AÇÕES RÁPIDAS */}
-                    <div className="card border-0 shadow-sm mt-4">
-                        <div className="card-body">
-                            <h2 className="h6 mb-3" style={{color: "#083B7A"}}>
-                                Ações rápidas
-                            </h2>
-
-                            <div className="d-flex flex-wrap gap-2">
-                                <Link className="btn btn-primary" href="/items/new?origin=dashboard">
-                                    + Cadastrar Item
-                                </Link>
-                                <Link className="btn btn-outline-primary" href="/items?origin=dashboard">
-                                    Ver Itens
-                                </Link>
-                                <Link className="btn btn-outline-info" href="/ai-onboarding">
-                                    ✨ Onboarding IA
-                                </Link>
-                                <Link className="btn btn-outline-secondary" href="/maintenances?origin=dashboard">
-                                    Ver Manutenções
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {error && <p className="text-danger mt-3">{error}</p>}
-        </section>
-    );
-}
-
-/* =========================
-   Componentes auxiliares
-========================= */
-function Kpi({
-                 label,
-                 value,
-                 color,
-             }: {
-    label: string;
-    value?: number;
-    color: string;
-}) {
-    return (
-        <div className="col-6 col-md-3">
-            <div className="card border-0 shadow-sm text-center">
-                <div className="card-body">
-                    <div className="small text-muted">{label}</div>
-                    <div className="h4 fw-bold m-0" style={{color}}>
-                        {value ?? "-"}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function DistributionBlock({
-                               title,
-                               data,
-                               labels,
-                           }: {
-    title: string;
-    data?: Record<string, number>;
-    labels?: Record<string, string>;
-}) {
-    return (
-        <div className="col-12 col-md-6">
-            <div className="border rounded p-3 bg-white h-100">
-                <div className="fw-semibold mb-2">{title}</div>
-                {data ? (
-                    <ul className="m-0 ps-3">
-                        {Object.entries(data).map(([k, v]) => (
-                            <li key={k}>
-                                {labels?.[k] || k}: {v}
-                            </li>
-                        ))}
-                    </ul>
                 ) : (
-                    <div className="text-muted">-</div>
+                    <>
+                        {data && <KPIGrid kpis={data.kpis} />}
+
+                        <div className="row g-4">
+                            <div className="col-12 col-lg-7">
+                                {data && <AttentionCard items={data.attentionNow} />}
+                            </div>
+                            <div className="col-12 col-lg-5">
+                                {data && (
+                                    <BreakdownCard 
+                                        statusBreakdown={data.breakdowns.byStatus}
+                                        categoryBreakdown={data.breakdowns.byCategory}
+                                        itemTypeBreakdown={data.breakdowns.byItemType}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        {data && <QuickActions />}
+                    </>
+                )}
+
+                {error && (
+                    <div className="alert alert-danger border-0 shadow-sm mt-4 rounded-3">
+                        {error}
+                    </div>
                 )}
             </div>
-        </div>
+        </section>
     );
 }

@@ -51,7 +51,7 @@ export default function Sidebar() {
 
     const items: NavItem[] = [
         {href: "/", label: "Dashboard", section: "main"},
-        {href: "/norms", label: "📚 Normas e Obrigações", section: "main"},
+        {href: "/norms", label: "Normas e Obrigações", section: "main"},
         {href: "/items", label: "Itens", section: "main"},
         {href: "/maintenances", label: "Manutenções", section: "main"},
 

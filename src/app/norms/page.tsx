@@ -160,7 +160,7 @@ export default function NormsPage() {
               <h5 className="fw-bold text-info-emphasis">Dica de Gestão</h5>
               <p className="text-info-emphasis mb-0">
                 O descumprimento destas normas pode gerar multas pesadas, interdições e, em casos de acidentes, 
-                responsabilidade civil e criminal para síndicos e gestores. Utilize o <strong>Easy Maintenance</strong> 
+                responsabilidade civil e criminal para síndicos e gestores. Utilize o <strong>Easy Maintenance </strong>
                 para agendar as inspeções obrigatórias e manter o histórico de conformidade sempre em dia.
               </p>
             </div>
