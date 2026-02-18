@@ -346,13 +346,6 @@ export default function CreateUserPage() {
 
                                 <div className="mt-4 d-flex justify-content-between">
                                     <button
-                                        type="button"
-                                        className="btn btn-outline-secondary px-4 py-2"
-                                        onClick={() => setStep(3)}
-                                    >
-                                        Pular (Configurar depois)
-                                    </button>
-                                    <button
                                         type="submit"
                                         className="btn btn-primary px-5 py-2 fw-bold"
                                         disabled={loading}
@@ -364,13 +357,13 @@ export default function CreateUserPage() {
                         ) : (
                             <form onSubmit={onSubmitStep3}>
                                 <div className="alert alert-info border-0 shadow-sm mb-4">
-                                    <h6 className="alert-heading fw-bold mb-1">Passo 3: Dados de Faturamento</h6>
+                                    <h6 className="alert-heading fw-bold mb-1">Passo 3: Dados de Pagamento</h6>
                                     <p className="small mb-0">Configure os dados para cobrança deste usuário.</p>
                                 </div>
 
                                 <div className="row g-3">
                                     <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Email de Faturamento</label>
+                                        <label className="form-label fw-bold small">Email de Pagamento</label>
                                         <input
                                             type="email"
                                             className="form-control"
@@ -486,13 +479,6 @@ export default function CreateUserPage() {
                                 </div>
 
                                 <div className="mt-4 d-flex justify-content-between">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-secondary px-4 py-2"
-                                        onClick={() => router.push("/private/users")}
-                                    >
-                                        Pular (Configurar depois)
-                                    </button>
                                     <button
                                         type="submit"
                                         className="btn btn-success px-5 py-2 fw-bold"
