@@ -52,6 +52,9 @@ export default function LoginPage() {
                     if (data?.tokenType) {
                         storage.setItem("tokenType", String(data.tokenType));
                     }
+                    if (data?.name) {
+                        storage.setItem("userName", String(data.name));
+                    }
 
                     if (data?.organizationCodes && data.organizationCodes.length === 1) {
                         const orgCode = data.organizationCodes[0];

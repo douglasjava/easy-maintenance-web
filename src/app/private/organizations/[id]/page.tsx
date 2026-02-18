@@ -4,11 +4,9 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import ConfirmModal from "@/components/ConfirmModal";
-import { roleLabelMap } from "@/lib/enums/labels";
 import AsyncSelect from "react-select/async";
 
-type Plan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE";
+type Plan = "FREE" | "STARTER" | "PRO" | "BUSINESS" | "ENTERPRISE";
 
 type Organization = {
     id: string;
@@ -53,12 +51,11 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     const [currentStep, setCurrentStep] = useState(1);
     const [stepOneCompleted, setStepOneCompleted] = useState(false);
     const [payerLabel, setPayerLabel] = useState("");
-
-    const [users, setUsers] = useState<User[]>([]);
-    const [loadingUsers, setLoadingUsers] = useState(false);
     const [subscriptionForm, setSubscriptionForm] = useState({
         payerUserId: "",
+        payerEmail: "",
         status: "ACTIVE",
+        planCode: "",
         currentPeriodEnd: "",
         currentPeriodStart: ""
     });
@@ -108,8 +105,10 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                 const subRes = await api.get(`/private/admin/billing/organizations/${data.code}/subscription`);
                 if (subRes.data) {
                     setSubscriptionForm({
+                        payerEmail: subRes.data.payerEmail ? String(subRes.data.payerEmail) : "",
                         payerUserId: subRes.data.payerUserId ? String(subRes.data.payerUserId) : "",
                         status: subRes.data.status || "ACTIVE",
+                        planCode: subRes.data.planCode || "FREE",
                         currentPeriodStart: subRes.data.currentPeriodStart ? subRes.data.currentPeriodStart.split("T")[0] : "",
                         currentPeriodEnd: subRes.data.currentPeriodEnd ? subRes.data.currentPeriodEnd.split("T")[0] : ""
                     });
@@ -306,7 +305,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
 
                                 const payload = {
                                     payerUserId: Number(subscriptionForm.payerUserId),
-                                    planCode: planForm,
+                                    planCode: subscriptionForm.planCode,
                                     status: subscriptionForm.status,
                                     currentPeriodStart: toTimestamp(subscriptionForm.currentPeriodStart),
                                     currentPeriodEnd: toTimestamp(subscriptionForm.currentPeriodEnd)
@@ -331,29 +330,21 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                                         placeholder="Digite o nome para buscar..."
                                         noOptionsMessage={() => "Nenhum usuário encontrado"}
                                         loadingMessage={() => "Buscando..."}
-                                        value={subscriptionForm.payerUserId ? { value: subscriptionForm.payerUserId, label: payerLabel } : null}
+                                        value={subscriptionForm.payerEmail ? { value: subscriptionForm.payerEmail, label: payerLabel } : null}
                                         onChange={(option: any) => {
-                                            setSubscriptionForm(p => ({ 
-                                                ...p, 
-                                                payerUserId: option ? option.value : "" 
-                                            }));
+                                            setSubscriptionForm(p => ({...p, payerEmail: option ? option.value : ""}));
                                             setPayerLabel(option ? option.label : "");
                                         }}
                                         isClearable
                                         classNamePrefix="react-select"
                                     />
-                                    {subscriptionForm.payerUserId && (
-                                        <div className="small text-success mt-1">
-                                            ID do Usuário Selecionado: {subscriptionForm.payerUserId}
-                                        </div>
-                                    )}
                                 </div>
                                 <div className="col-12 col-md-6">
                                     <label className="form-label small fw-medium">Plano</label>
                                     <select
                                         className="form-select"
-                                        value={planForm}
-                                        onChange={(e) => setPlanForm(e.target.value as Plan)}
+                                        value={subscriptionForm.planCode}
+                                        onChange={(e) => setSubscriptionForm(p => ({ ...p, planCode: e.target.value }))}
                                         required
                                     >
                                         <option value="FREE">FREE</option>

@@ -22,6 +22,11 @@ type Organization = {
     doc: string;
 };
 
+type UserOrganization = {
+    organization: Organization;
+    subscription?: any;
+};
+
 const COLORS = {
     primary: "#0B5ED7",
     primaryDark: "#083B7A",
@@ -32,10 +37,61 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     const { id } = use(params);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
-    const [orgs, setOrgs] = useState<Organization[]>([]);
-    const [activeTab, setActiveTab] = useState<"profile" | "organizations" | "security">("profile");
+    const [orgs, setOrgs] = useState<UserOrganization[]>([]);
+    const [activeTab, setActiveTab] = useState<"profile" | "organizations" | "billing" | "payment" | "security">("profile");
     const [loadingOrgs, setLoadingOrgs] = useState(false);
     const [orgCount, setOrgCount] = useState(0);
+
+    const [loadingBilling, setLoadingBilling] = useState(false);
+    const [billingForm, setBillingForm] = useState({
+        planCode: "FREE",
+        status: "ACTIVE",
+        currentPeriodStart: "",
+        currentPeriodEnd: ""
+    });
+
+    const [loadingPayment, setLoadingPayment] = useState(false);
+    const [paymentForm, setPaymentForm] = useState({
+        billingEmail: "",
+        doc: "",
+        street: "",
+        number: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "BR",
+        status: "ACTIVE",
+    });
+
+    async function handleZipCodeBlur() {
+        const zip = paymentForm.zipCode.replace(/\D/g, "");
+        if (zip.length !== 8) return;
+
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${zip}/json/`);
+            const data = await response.json();
+
+            if (!data.erro) {
+                setPaymentForm(prev => ({
+                    ...prev,
+                    street: data.logradouro || prev.street,
+                    neighborhood: data.bairro || prev.neighborhood,
+                    city: data.localidade || prev.city,
+                    state: data.uf || prev.state,
+                }));
+            }
+        } catch (error) {
+            console.error("Error fetching zip code", error);
+        }
+    }
+
+    const plans = [
+        { code: "FREE", name: "FREE", description: "pode cadastrar 1 Empresa" },
+        { code: "STARTER", name: "STARTER", description: "pode cadastrar 3 Empresa" },
+        { code: "BUSINESS", name: "BUSINESS", description: "pode cadastrar 5 Empresa" },
+        { code: "ENTERPRISE", name: "ENTERPRISE", description: "pode cadastrar 15 Empresa" },
+    ];
 
     const [profileForm, setProfileForm] = useState(
         {
@@ -60,7 +116,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     const [resetting, setResetting] = useState(false);
 
     // Unlink Modal state
-    const [orgToUnlink, setOrgToUnlink] = useState<Organization | null>(null);
+    const [orgToUnlink, setOrgToUnlink] = useState<UserOrganization | null>(null);
     const [unlinking, setUnlinking] = useState(false);
 
     useEffect(() => {
@@ -103,9 +159,65 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         }
     }
 
+    async function fetchUserBilling() {
+        try {
+            setLoadingBilling(true);
+            const adminToken = window.localStorage.getItem("adminToken");
+            const { data } = await api.get(`/private/admin/billing/user/${id}/subscription`, {
+                headers: { "X-Admin-Token": adminToken },
+            });
+            if (data) {
+                setBillingForm({
+                    planCode: data.planCode || "FREE",
+                    status: data.status || "ACTIVE",
+                    currentPeriodStart: data.currentPeriodStart ? data.currentPeriodStart.split("T")[0] : "",
+                    currentPeriodEnd: data.currentPeriodEnd ? data.currentPeriodEnd.split("T")[0] : ""
+                });
+            }
+        } catch (err) {
+            console.error("Error fetching billing", err);
+        } finally {
+            setLoadingBilling(false);
+        }
+    }
+
+    async function fetchUserPayment() {
+        try {
+            setLoadingPayment(true);
+            const adminToken = window.localStorage.getItem("adminToken");
+            const { data } = await api.get(`/private/admin/billing/users/${id}/account`, {
+                headers: { "X-Admin-Token": adminToken },
+            });
+            if (data) {
+                setPaymentForm({
+                    billingEmail: data.billingEmail || "",
+                    doc: data.doc || "",
+                    street: data.street || "",
+                    number: data.number || "",
+                    neighborhood: data.neighborhood || "",
+                    city: data.city || "",
+                    state: data.state || "",
+                    zipCode: data.zipCode || "",
+                    country: data.country || "BR",
+                    status: data.status || "ACTIVE",
+                });
+            }
+        } catch (err) {
+            console.error("Error fetching payment details", err);
+        } finally {
+            setLoadingPayment(false);
+        }
+    }
+
     useEffect(() => {
         if (activeTab === "organizations") {
             fetchUserOrgs();
+        }
+        if (activeTab === "billing") {
+            fetchUserBilling();
+        }
+        if (activeTab === "payment") {
+            fetchUserPayment();
         }
     }, [activeTab]);
 
@@ -124,7 +236,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     }
 
     async function handleUnlinkOrg(orgId: string) {
-        const org = orgs.find(o => o.id === orgId);
+        const org = orgs.find(o => o.organization.id === orgId);
         if (org) {
             setOrgToUnlink(org);
         }
@@ -135,7 +247,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         try {
             setUnlinking(true);
             const adminToken = window.localStorage.getItem("adminToken");
-            await api.delete(`/private/admin/users/${id}/organizations/${orgToUnlink.code}`, {
+            await api.delete(`/private/admin/users/${id}/organizations/${orgToUnlink.organization.code}`, {
                 headers: { "X-Admin-Token": adminToken },
             });
             toast.success("Vínculo com a organização removido.");
@@ -196,6 +308,61 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             toast.error("Erro ao vincular organização.");
         } finally {
             setLinkingOrg(false);
+        }
+    }
+
+    async function handleUpdateBilling(e: React.FormEvent) {
+        e.preventDefault();
+        try {
+            setLoadingBilling(true);
+            const adminToken = window.localStorage.getItem("adminToken");
+            
+            const toTimestamp = (dateStr: string) => {
+                if (!dateStr) return undefined;
+                return Math.floor(new Date(dateStr).getTime() / 1000);
+            };
+
+            const payload = {
+                userId: Number(id),
+                planCode: billingForm.planCode,
+                status: billingForm.status,
+                currentPeriodStart: toTimestamp(billingForm.currentPeriodStart),
+                currentPeriodEnd: toTimestamp(billingForm.currentPeriodEnd)
+            };
+
+            await api.put(`/private/admin/billing/user/${id}/subscription`, payload, {
+                headers: { "X-Admin-Token": adminToken },
+            });
+            toast.success("Assinatura atualizada.");
+            fetchUserBilling();
+        } catch (err) {
+            toast.error("Erro ao atualizar assinatura.");
+        } finally {
+            setLoadingBilling(false);
+        }
+    }
+
+    async function handleUpdatePayment(e: React.FormEvent) {
+        e.preventDefault();
+        try {
+            setLoadingPayment(true);
+            const adminToken = window.localStorage.getItem("adminToken");
+            
+            const payload = {
+                ...paymentForm,
+                zipCode: paymentForm.zipCode.replace(/\D/g, ""),
+                doc: paymentForm.doc.replace(/\D/g, ""),
+            };
+
+            await api.put(`/private/admin/billing/users/${id}/account`, payload, {
+                headers: { "X-Admin-Token": adminToken },
+            });
+            toast.success("Dados de faturamento atualizados.");
+            fetchUserPayment();
+        } catch (err) {
+            toast.error("Erro ao atualizar dados de faturamento.");
+        } finally {
+            setLoadingPayment(false);
         }
     }
 
@@ -278,6 +445,22 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                                 onClick={() => setActiveTab("organizations")}
                             >
                                 Organizações
+                            </button>
+                        </li>
+                        <li className="nav-item">
+                            <button
+                                className={`nav-link ${activeTab === "billing" ? "active fw-bold shadow-sm" : "text-muted"}`}
+                                onClick={() => setActiveTab("billing")}
+                            >
+                                Assinatura
+                            </button>
+                        </li>
+                        <li className="nav-item">
+                            <button
+                                className={`nav-link ${activeTab === "payment" ? "active fw-bold shadow-sm" : "text-muted"}`}
+                                onClick={() => setActiveTab("payment")}
+                            >
+                                Pagamento
                             </button>
                         </li>
                         <li className="nav-item">
@@ -369,13 +552,13 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                                             <tr><td colSpan={3} className="text-center text-muted">Usuário não vinculado a nenhuma empresa.</td></tr>
                                         ) : (
                                             orgs.map(org => (
-                                                <tr key={org.id}>
-                                                    <td className="fw-semibold">{org.name}</td>
-                                                    <td className="fw-semibold">{org.doc}</td>
+                                                <tr key={org.organization.id}>
+                                                    <td className="fw-semibold">{org.organization.name}</td>
+                                                    <td className="fw-semibold">{org.organization.doc}</td>
                                                     <td className="text-end">
                                                         <button
                                                             className="btn btn-sm btn-outline-danger"
-                                                            onClick={() => handleUnlinkOrg(org.id)}
+                                                            onClick={() => handleUnlinkOrg(org.organization.id)}
                                                         >
                                                             Remover
                                                         </button>
@@ -386,6 +569,181 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === "billing" && (
+                        <div>
+                            <div className="mb-4">
+                                <h6 className="fw-bold">Plano e Assinatura</h6>
+                                <p className="text-muted small">Gerencie o plano do usuário e o período de validade.</p>
+                            </div>
+                            <form onSubmit={handleUpdateBilling}>
+                                <div className="row g-3">
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label">Plano</label>
+                                        <select
+                                            className="form-select"
+                                            value={billingForm.planCode}
+                                            onChange={(e) => setBillingForm(p => ({ ...p, planCode: e.target.value }))}
+                                            required
+                                        >
+                                            {plans.map(plan => (
+                                                <option key={plan.code} value={plan.code}>
+                                                    {plan.name} - {plan.description}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label">Status</label>
+                                        <select
+                                            className="form-select"
+                                            value={billingForm.status}
+                                            onChange={(e) => setBillingForm(p => ({ ...p, status: e.target.value }))}
+                                            required
+                                        >
+                                            <option value="ACTIVE">Ativo</option>
+                                            <option value="PAST_DUE">Em atraso</option>
+                                            <option value="CANCELED">Cancelado</option>
+                                            <option value="TRIALING">Degustação</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label">Início do Período</label>
+                                        <input
+                                            type="date"
+                                            className="form-control"
+                                            value={billingForm.currentPeriodStart}
+                                            onChange={(e) => setBillingForm(p => ({ ...p, currentPeriodStart: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label">Fim do Período</label>
+                                        <input
+                                            type="date"
+                                            className="form-control"
+                                            value={billingForm.currentPeriodEnd}
+                                            onChange={(e) => setBillingForm(p => ({ ...p, currentPeriodEnd: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                                <button className="btn btn-primary mt-4" type="submit" disabled={loadingBilling}>
+                                    {loadingBilling ? "Salvando..." : "Salvar Assinatura"}
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    {activeTab === "payment" && (
+                        <div>
+                            <div className="mb-4">
+                                <h6 className="fw-bold">Dados de Faturamento</h6>
+                                <p className="text-muted small">Gerencie as informações de cobrança e endereço deste usuário.</p>
+                            </div>
+                            <form onSubmit={handleUpdatePayment}>
+                                <div className="row g-3">
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label">Email de Faturamento</label>
+                                        <input
+                                            type="email"
+                                            className="form-control"
+                                            value={paymentForm.billingEmail}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, billingEmail: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label">Documento (CPF/CNPJ)</label>
+                                        <input
+                                            className="form-control"
+                                            value={paymentForm.doc}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, doc: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-4">
+                                        <label className="form-label">CEP</label>
+                                        <input
+                                            className="form-control"
+                                            value={paymentForm.zipCode}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, zipCode: e.target.value }))}
+                                            onBlur={handleZipCodeBlur}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-8">
+                                        <label className="form-label">Logradouro</label>
+                                        <input
+                                            className="form-control"
+                                            value={paymentForm.street}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, street: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-3">
+                                        <label className="form-label">Número</label>
+                                        <input
+                                            className="form-control"
+                                            value={paymentForm.number}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, number: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-5">
+                                        <label className="form-label">Bairro</label>
+                                        <input
+                                            className="form-control"
+                                            value={paymentForm.neighborhood}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, neighborhood: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-4">
+                                        <label className="form-label">Cidade</label>
+                                        <input
+                                            className="form-control"
+                                            value={paymentForm.city}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, city: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-2">
+                                        <label className="form-label">Estado (UF)</label>
+                                        <input
+                                            className="form-control"
+                                            maxLength={2}
+                                            value={paymentForm.state}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, state: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-4">
+                                        <label className="form-label">País</label>
+                                        <input
+                                            className="form-control"
+                                            value={paymentForm.country}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, country: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label">Status da Conta</label>
+                                        <select
+                                            className="form-select"
+                                            value={paymentForm.status}
+                                            onChange={(e) => setPaymentForm(p => ({ ...p, status: e.target.value }))}
+                                            required
+                                        >
+                                            <option value="ACTIVE">Ativo</option>
+                                            <option value="INACTIVE">Inativo</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button className="btn btn-primary mt-4" type="submit" disabled={loadingPayment}>
+                                    {loadingPayment ? "Salvando..." : "Salvar Dados de Faturamento"}
+                                </button>
+                            </form>
                         </div>
                     )}
 
@@ -409,7 +767,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             <ConfirmModal
                 show={!!orgToUnlink}
                 title="Remover Organização"
-                message={`Tem certeza que deseja remover este usuário da empresa ${orgToUnlink?.name}?`}
+                message={`Tem certeza que deseja remover este usuário da empresa ${orgToUnlink?.organization.name}?`}
                 onConfirm={confirmUnlinkOrg}
                 onCancel={() => setOrgToUnlink(null)}
                 loading={unlinking}

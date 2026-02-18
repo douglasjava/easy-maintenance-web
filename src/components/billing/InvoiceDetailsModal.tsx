@@ -6,6 +6,7 @@ import { formatMoney, formatDate } from "@/lib/formatters";
 
 type InvoiceItem = {
   organizationCode: string;
+  description: string;
   planCode: string;
   amountCents: number;
 };
@@ -105,7 +106,7 @@ export default function InvoiceDetailsModal({ invoiceId }: InvoiceDetailsModalPr
                   <table className="table table-sm align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th>Organização</th>
+                        <th>Descrição</th>
                         <th>Plano</th>
                         <th className="text-end">Valor</th>
                       </tr>
@@ -113,7 +114,7 @@ export default function InvoiceDetailsModal({ invoiceId }: InvoiceDetailsModalPr
                     <tbody>
                       {invoice.items.map((item, idx) => (
                         <tr key={idx}>
-                          <td>{item.organizationCode}</td>
+                          <td>{item.description}</td>
                           <td>{item.planCode}</td>
                           <td className="text-end">{formatMoney(item.amountCents)}</td>
                         </tr>

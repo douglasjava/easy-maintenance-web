@@ -87,7 +87,7 @@ export default function PrivateUsersListPage() {
                                     <th>Nome</th>
                                     <th>Email</th>
                                     <th>Status</th>
-                                    <th>Empresas Vinculadas</th>
+                                    <th className="text-center">Empresas Vinculadas</th>
                                     <th className="text-end">Ações</th>
                                 </tr>
                             </thead>
@@ -110,7 +110,7 @@ export default function PrivateUsersListPage() {
                                                     {statusMap[user.status]}
                                                 </span>
                                             </td>
-                                            <td>{user.organizationCodes?.length || 0}</td>
+                                            <td className="text-center">{user.organizationCodes?.length || 0}</td>
                                             <td className="text-end">
                                                 <Link
                                                     href={`/private/users/${user.id}`}

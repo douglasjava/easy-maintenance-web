@@ -54,12 +54,14 @@ export default function TopBar() {
         window.localStorage.removeItem("accessToken");
         window.localStorage.removeItem("tokenType");
         window.localStorage.removeItem("userId");
+        window.localStorage.removeItem("userName");
 
         window.sessionStorage.removeItem("organizationCode");
         window.sessionStorage.removeItem("organizationName");
         window.sessionStorage.removeItem("accessToken");
         window.sessionStorage.removeItem("tokenType");
         window.sessionStorage.removeItem("userId");
+        window.sessionStorage.removeItem("userName");
       }
     } catch {}
     router.replace("/login");

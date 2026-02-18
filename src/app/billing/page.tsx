@@ -1,14 +1,83 @@
 "use client";
 
-import { useState } from "react";
-import { CreditCard, Download, CheckCircle2, Calendar } from "lucide-react";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/apiClient";
+import { formatMoney, formatDate } from "@/lib/formatters";
+import { Calendar, CreditCard } from "lucide-react";
+import toast from "react-hot-toast";
+
+// Tipagens do endpoint /me/billing/summary
+type BillingAccount = {
+  id: number;
+  userId: number;
+  billingEmail: string;
+  doc: string;
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type InvoiceItem = {
+  id: number;
+  organizationCode?: string;
+  planCode?: string;
+  description: string;
+  quantity: number;
+  unitAmountCents: number;
+  amountCents: number;
+  createdAt: string;
+};
+
+type OpenInvoice = {
+  id: number;
+  payerUserId: number;
+  currency: string;
+  periodStart: string; // YYYY-MM-DD
+  periodEnd: string; // YYYY-MM-DD
+  status: string; // OPEN | PAID | etc
+  dueDate: string; // YYYY-MM-DD
+  subtotalCents: number;
+  discountCents: number;
+  totalCents: number;
+  items: InvoiceItem[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type BillingSummary = {
+  account: BillingAccount | null;
+  currentOpenInvoice: OpenInvoice | null;
+};
 
 export default function BillingPage() {
-  const [invoices] = useState([
-    { id: "1", date: "2026-02-01", amount: "R$ 149,90", status: "Pago", method: "Cartão **** 1234" },
-    { id: "2", date: "2026-01-01", amount: "R$ 149,90", status: "Pago", method: "Cartão **** 1234" },
-    { id: "3", date: "2025-12-01", amount: "R$ 149,90", status: "Pago", method: "Cartão **** 1234" },
-  ]);
+  const [summary, setSummary] = useState<BillingSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSummary() {
+      try {
+        setLoading(true);
+        const { data } = await api.get("/me/billing/summary");
+        setSummary(data);
+      } catch (err) {
+        console.error("Erro ao carregar faturamento do usuário", err);
+        toast.error("Não foi possível carregar seu faturamento.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSummary();
+  }, []);
+
+  const account = summary?.account || null;
+  const invoice = summary?.currentOpenInvoice || null;
 
   return (
     <div className="container py-4">
@@ -17,108 +86,168 @@ export default function BillingPage() {
         <p className="text-muted mb-0">Gerencie seu plano, faturas e métodos de pagamento</p>
       </div>
 
-      <div className="row g-4">
-        <div className="col-12 col-lg-4">
-          <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden border-top border-primary border-4">
-            <div className="card-body p-4">
-              <h6 className="text-muted small text-uppercase fw-bold mb-3">Plano Atual</h6>
-              <h3 className="fw-bold mb-2">Plano Pro</h3>
-              <p className="text-muted mb-4">Seu próximo ciclo de faturamento começa em 01 de Março de 2026</p>
-              
-              <div className="bg-light p-3 rounded-3 mb-4">
-                <div className="d-flex align-items-center gap-2 mb-2 text-success">
-                  <CheckCircle2 size={18} />
-                  <span className="small fw-medium">Até 500 ativos de manutenção</span>
-                </div>
-                <div className="d-flex align-items-center gap-2 mb-2 text-success">
-                  <CheckCircle2 size={18} />
-                  <span className="small fw-medium">Relatórios avançados</span>
-                </div>
-                <div className="d-flex align-items-center gap-2 text-success">
-                  <CheckCircle2 size={18} />
-                  <span className="small fw-medium">Suporte prioritário 24/7</span>
+      {loading && (
+        <div className="text-center text-muted py-5">Carregando informações de faturamento...</div>
+      )}
+
+      {!loading && (
+        <>
+          {/* Resumo em Cards */}
+          <div className="row g-4 mb-4">
+            <div className="col-12 col-md-4">
+              <div className="card border-0 shadow-sm rounded-4 h-100">
+                <div className="card-body p-4">
+                  <div className="text-muted small mb-1">Status da Conta</div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className={`badge rounded-pill ${account?.status === "ACTIVE" ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary"}`}>
+                      {account?.status || "Indefinido"}
+                    </span>
+                  </div>
                 </div>
               </div>
-
-              <button className="btn btn-primary w-100 rounded-3 py-2 fw-bold">Alterar Plano</button>
             </div>
-          </div>
-        </div>
 
-        <div className="col-12 col-lg-8">
-          <div className="card border-0 shadow-sm rounded-4 h-100">
-            <div className="card-header bg-white border-bottom py-3 px-4">
-              <h5 className="card-title mb-0 fw-bold">Histórico de Faturas</h5>
-            </div>
-            <div className="card-body p-0">
-              <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0">
-                  <thead className="bg-light">
-                    <tr>
-                      <th className="border-0 px-4 py-3 text-muted small text-uppercase">Data</th>
-                      <th className="border-0 py-3 text-muted small text-uppercase">Valor</th>
-                      <th className="border-0 py-3 text-muted small text-uppercase">Método</th>
-                      <th className="border-0 py-3 text-muted small text-uppercase">Status</th>
-                      <th className="border-0 py-3 text-end px-4 text-muted small text-uppercase">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoices.map((inv) => (
-                      <tr key={inv.id}>
-                        <td className="px-4 py-3">
-                          <div className="d-flex align-items-center gap-2">
-                            <Calendar size={16} className="text-muted" />
-                            <span className="fw-medium">{new Date(inv.date).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 fw-bold text-dark">{inv.amount}</td>
-                        <td className="py-3 text-muted small">{inv.method}</td>
-                        <td className="py-3">
-                          <span className="badge bg-success-subtle text-success rounded-pill px-3">
-                            {inv.status}
-                          </span>
-                        </td>
-                        <td className="py-3 text-end px-4">
-                          <button className="btn btn-light btn-sm rounded-circle p-2 border-0" title="Baixar PDF">
-                            <Download size={18} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="col-12 col-md-4">
+              <div className="card border-0 shadow-sm rounded-4 h-100">
+                <div className="card-body p-4">
+                  <div className="text-muted small mb-1">Próximo Vencimento</div>
+                  <div className="h5 mb-0">{invoice?.dueDate ? formatDate(invoice.dueDate) : "—"}</div>
+                </div>
               </div>
             </div>
-            <div className="card-footer bg-white border-top py-3 px-4 text-center">
-              <button className="btn btn-link text-muted text-decoration-none small p-0">Ver todas as faturas</button>
+
+            <div className="col-12 col-md-4">
+              <div className="card border-0 shadow-sm rounded-4 h-100">
+                <div className="card-body p-4">
+                  <div className="text-muted small mb-1">Total a Pagar (Fatura Aberta)</div>
+                  <div className="h5 mb-0 text-primary">{formatMoney(invoice?.totalCents || 0)}</div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="card border-0 shadow-sm rounded-4 mt-4 overflow-hidden">
-        <div className="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
-          <div className="d-flex align-items-center gap-3">
-            <div className="bg-primary-subtle p-3 rounded-3 text-primary">
-              <CreditCard size={24} />
+          {/* Conteúdo principal: Conta e Fatura Atual */}
+          <div className="row g-4">
+            {/* Conta de Faturamento */}
+            <div className="col-12 col-lg-4">
+              <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                <div className="card-header bg-white border-0 py-3 px-4">
+                  <h6 className="mb-0 fw-bold">Conta de Faturamento</h6>
+                </div>
+                <div className="card-body p-4">
+                  {!account ? (
+                    <div className="text-muted small">Nenhuma conta de faturamento encontrada.</div>
+                  ) : (
+                    <div className="d-flex flex-column gap-2">
+                      <div>
+                        <div className="text-muted small">E-mail de Cobrança</div>
+                        <div className="fw-semibold">{account.billingEmail}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted small">Documento</div>
+                        <div className="fw-semibold">{account.doc}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted small">Endereço</div>
+                        <div className="fw-semibold">
+                          {account.street}, {account.number}
+                        </div>
+                        <div className="small text-muted">
+                          {account.neighborhood} • {account.city}/{account.state}
+                        </div>
+                        <div className="small text-muted">CEP {account.zipCode} • {account.country}</div>
+                      </div>
+                      <div className="d-flex align-items-center gap-2 mt-2">
+                        <div className="bg-primary-subtle p-2 rounded-3 text-primary">
+                          <CreditCard size={18} />
+                        </div>
+                        <div>
+                          <div className="fw-semibold small">Método de Pagamento</div>
+                          <div className="text-muted x-small">Definido pela plataforma • Somente visualização</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <h6 className="fw-bold mb-1">Método de Pagamento</h6>
-              <p className="text-muted small mb-0">Cartão de crédito terminando em 1234 • Expira em 08/2028</p>
+
+            {/* Fatura Aberta Atual */}
+            <div className="col-12 col-lg-8">
+              <div className="card border-0 shadow-sm rounded-4 h-100">
+                <div className="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 className="mb-0 fw-bold">Fatura Atual</h6>
+                    <div className="small text-muted">Período {invoice ? `${formatDate(invoice.periodStart)} a ${formatDate(invoice.periodEnd)}` : "—"}</div>
+                  </div>
+                  <div>
+                    <span className={`badge rounded-pill ${invoice?.status === "PAID" ? "bg-success-subtle text-success" : invoice?.status === "OPEN" ? "bg-warning-subtle text-warning" : "bg-secondary-subtle text-secondary"}`}>
+                      {invoice?.status || "Sem fatura"}
+                    </span>
+                  </div>
+                </div>
+                <div className="card-body p-0">
+                  {!invoice ? (
+                    <div className="text-muted small px-4 py-4">Nenhuma fatura em aberto.</div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-hover align-middle mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th className="ps-4">Descrição</th>
+                            <th className="text-center">Qtd.</th>
+                            <th className="text-center">Plano</th>
+                            <th className="text-end pe-4">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoice.items.map((item) => (
+                            <tr key={item.id}>
+                              <td className="ps-4">
+                                <div className="fw-semibold">{item.description}</div>
+                              </td>
+                              <td className="text-center">{item.quantity}</td>
+                              <td className="text-center">{item.planCode || "-"}</td>
+                              <td className="text-end pe-4">{formatMoney(item.amountCents)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td colSpan={3} className="text-end fw-medium">Subtotal</td>
+                            <td className="text-end pe-4">{formatMoney(invoice.subtotalCents)}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} className="text-end fw-medium">Desconto</td>
+                            <td className="text-end pe-4 text-danger">-{formatMoney(invoice.discountCents)}</td>
+                          </tr>
+                          <tr className="table-light">
+                            <td colSpan={3} className="text-end fw-bold">Total</td>
+                            <td className="text-end pe-4 fw-bold text-primary">{formatMoney(invoice.totalCents)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                {invoice && (
+                  <div className="card-footer bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+                    <div className="small text-muted">Vencimento: <span className="fw-semibold">{formatDate(invoice.dueDate)}</span></div>
+                    <div className="small text-muted">Moeda: <span className="fw-semibold">{invoice.currency}</span></div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <button className="btn btn-outline-primary rounded-pill px-4">Editar</button>
-        </div>
-      </div>
 
-      <style jsx>{`
-        .bg-success-subtle {
-          background-color: #d1e7dd;
-        }
-        .bg-primary-subtle {
-          background-color: #e7f0fe;
-        }
-      `}</style>
+          <style jsx>{`
+            .bg-success-subtle { background-color: #d1e7dd; }
+            .bg-warning-subtle { background-color: #fff3cd; }
+            .bg-secondary-subtle { background-color: #e2e3e5; }
+            .bg-primary-subtle { background-color: #e7f0fe; }
+          `}</style>
+        </>
+      )}
     </div>
   );
 }

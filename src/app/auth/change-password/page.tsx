@@ -62,7 +62,9 @@ export default function ChangePasswordPage() {
                 router.replace("/login");
             }, 2000);
         } catch (err: any) {
-            toast.error("Erro ao alterar a senha. Tente novamente.");
+            toast.error(
+                err?.response?.data?.detail || "Erro ao alterar a senha. Tente novamente."
+            );
         } finally {
             setLoading(false);
         }

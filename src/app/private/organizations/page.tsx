@@ -16,6 +16,7 @@ type Organization = {
     id: string;
     code: string;
     name: string;
+    doc: string;
     plan: string;
     city?: string;
     status?: string;
@@ -84,10 +85,9 @@ export default function PrivateOrganizationsListPage() {
                         <table className="table table-hover mb-0">
                             <thead className="table-light">
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Code</th>
-                                    <th>Plan</th>
-                                    <th>City</th>
+                                    <th>Nome</th>
+                                    <th>Documento</th>
+                                    <th>Cidade</th>
                                     <th>Status</th>
                                     <th className="text-end">Actions</th>
                                 </tr>
@@ -105,12 +105,7 @@ export default function PrivateOrganizationsListPage() {
                                     organizations.map((org) => (
                                         <tr key={org.id}>
                                             <td className="fw-semibold">{org.name}</td>
-                                            <td><small className="text-muted">{org.code}</small></td>
-                                            <td>
-                                                <span className={`badge ${org.plan === 'FREE' ? 'bg-secondary' : 'bg-primary'}`}>
-                                                    {org.plan}
-                                                </span>
-                                            </td>
+                                            <td><small className="text-muted">{org.doc}</small></td>
                                             <td>{org.city || "-"}</td>
                                             <td>
                                                 <span className="badge bg-success-subtle text-success border border-success-subtle">

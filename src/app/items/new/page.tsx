@@ -323,9 +323,7 @@ function NewItemContent() {
                         {/* REGULATORY */}
                         {category === "REGULATORY" && (
                             <div className="mt-4">
-                                <div className="fw-semibold mb-2" style={{ color: COLORS.primaryDark }}>
-                                    Norma
-                                </div>
+                                <label className="form-label">Norma</label>
 
                                 {normsLoading ? (
                                     <p className="form-text m-0">Carregando normas…</p>

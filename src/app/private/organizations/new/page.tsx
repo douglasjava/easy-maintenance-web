@@ -213,10 +213,14 @@ export default function CreateOrganizationPage() {
                                     <div className="col-12 col-md-6">
                                         <label className="form-label fw-bold small">Documento (CNPJ/CPF)</label>
                                         <input
+                                            inputMode="numeric"
                                             className="form-control"
                                             placeholder="00.000.000/0001-00"
                                             value={formData.doc}
-                                            onChange={(e) => setFormData(p => ({ ...p, doc: e.target.value }))}
+                                            onChange={(e) => {
+                                                const onlyNumbers = e.target.value.replace(/\D/g, "");
+                                                setFormData(p => ({ ...p, doc: onlyNumbers }));
+                                            }}
                                         />
                                     </div>
 
@@ -369,10 +373,10 @@ export default function CreateOrganizationPage() {
                                             onChange={(e) => setSubscriptionData(p => ({ ...p, status: e.target.value }))}
                                             required
                                         >
-                                            <option value="ACTIVE">ACTIVE</option>
-                                            <option value="PAST_DUE">PAST_DUE</option>
-                                            <option value="CANCELED">CANCELED</option>
-                                            <option value="TRIALING">TRIALING</option>
+                                            <option value="ACTIVE">ATIVO</option>
+                                            <option value="PAST_DUE">EM ATRASO</option>
+                                            <option value="CANCELED">CANCELADO</option>
+                                            <option value="TRIALING">EM TESTE</option>
                                         </select>
                                     </div>
 
