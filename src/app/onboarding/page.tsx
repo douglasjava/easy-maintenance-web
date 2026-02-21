@@ -205,8 +205,8 @@ export default function OnboardingPage() {
 
             toast.success("Organização criada!");
 
-            window.localStorage.setItem("organizationCode", organizationCode);
-            window.localStorage.setItem("organizationName", organizationName);
+            window.localStorage.setItem("organizationCode", returnedOrgCode);
+            window.localStorage.setItem("organizationName", returnedOrgName);
 
             router.push("/");
             // Em alguns casos o reload é necessário se o estado global não reagir ao localStorage
@@ -311,7 +311,7 @@ export default function OnboardingPage() {
                                     </div>
 
                                     <div className="col-md-6">
-                                        <label className="form-label">CPF/CNPJ (Documento)</label>
+                                        <label className="form-label">CPF (Documento)</label>
                                         <input
                                             type="text" className="form-control" required
                                             value={billingData.doc}
