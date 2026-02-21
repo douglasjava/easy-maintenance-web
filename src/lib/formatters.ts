@@ -19,3 +19,37 @@ export function formatDateTime(date: string | Date | null | undefined): string {
     timeStyle: "short",
   }).format(d);
 }
+
+export class Formatters {
+    static onlyNumbers(value: string): string {
+        return value.replace(/\D/g, "");
+    }
+
+    static cardNumber(value: string): string {
+        return this.onlyNumbers(value)
+            .slice(0, 16)
+            .replace(/(\d{4})(?=\d)/g, "$1 ");
+    }
+
+    static cardExpiry(value: string): string {
+        const numbers = this.onlyNumbers(value).slice(0, 4);
+
+        if (numbers.length <= 2) return numbers;
+
+        return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
+    }
+
+    static cardCVC(value: string): string {
+        return this.onlyNumbers(value).slice(0, 4);
+    }
+
+    static cardHolder(value: string): string {
+        return value
+            .toUpperCase()
+            .replace(/[^\p{L}\s]/gu, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+}
+

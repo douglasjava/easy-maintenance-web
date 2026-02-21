@@ -78,20 +78,34 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     if (status === 401 || status === 403) {
       if (typeof window !== "undefined") {
-        try {
-          // limpa Local Storage
-          window.localStorage.removeItem("organizationCode");
-          window.localStorage.removeItem("accessToken");
-          window.localStorage.removeItem("tokenType");
-          // limpa Session Storage
-          window.sessionStorage.removeItem("organizationCode");
-          window.sessionStorage.removeItem("accessToken");
-          window.sessionStorage.removeItem("tokenType");
-        } catch {}
-        // Redireciona para login
         const currentPath = window.location.pathname || "";
-        if (!currentPath.endsWith("/login")) {
-          window.location.href = "/login";
+        const isPrivate = currentPath.startsWith("/private");
+
+        if (isPrivate) {
+          // Área privativa: limpar apenas o token de admin e redirecionar para /private/login
+          try {
+            window.localStorage.removeItem("adminToken");
+          } catch {}
+
+          if (!currentPath.endsWith("/private/login")) {
+            window.location.href = "/private/login";
+          }
+        } else {
+          // Aplicação convencional: limpar tokens de sessão do app e redirecionar para /login
+          try {
+            // limpa Local Storage
+            window.localStorage.removeItem("organizationCode");
+            window.localStorage.removeItem("accessToken");
+            window.localStorage.removeItem("tokenType");
+            // limpa Session Storage
+            window.sessionStorage.removeItem("organizationCode");
+            window.sessionStorage.removeItem("accessToken");
+            window.sessionStorage.removeItem("tokenType");
+          } catch {}
+
+          if (!currentPath.endsWith("/login")) {
+            window.location.href = "/login";
+          }
         }
       }
     }

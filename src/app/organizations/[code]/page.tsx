@@ -55,7 +55,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
           return;
         }
 
-        const response = await api.get(`/auth/me/organizations/${userId}`);
+        const response = await api.get(`/organizations/me/${userId}`);
         const orgs = Array.isArray(response.data) ? response.data : [];
         const found = orgs.find((item: OrganizationItem) => item.organization.code === code);
 

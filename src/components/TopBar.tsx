@@ -36,7 +36,7 @@ export default function TopBar() {
         const userId = window.sessionStorage.getItem("userId") || window.localStorage.getItem("userId");
         if (!userId) return;
 
-        const { data } = await api.get(`/auth/me/organizations/${userId}`);
+        const { data } = await api.get(`/organizations/me/${userId}`);
         setOrganizations(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Erro ao carregar organizações no TopBar:", err);

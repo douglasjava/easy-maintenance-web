@@ -62,7 +62,7 @@ export default function LoginPage() {
                         
                         // Busca detalhes da organização para pegar o nome
                         try {
-                            const res = await api.get(`/auth/me/organizations/${data.id}`);
+                            const res = await api.get(`/organizations/me/${data.id}`);
                             const orgs = res.data;
                             if (Array.isArray(orgs)) {
                                 const currentOrg = orgs.find((item: any) => item.organization.code === orgCode);
@@ -97,7 +97,7 @@ export default function LoginPage() {
             } else if (data?.organizationCodes && data.organizationCodes.length === 1) {
                 router.replace("/");
             } else {
-                router.replace("/organizations/new");
+                router.replace("/onboarding");
             }
         } catch (err: any) {
             const status = err?.response?.status;

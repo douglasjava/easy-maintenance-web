@@ -19,6 +19,7 @@ type BillingAccount = {
   state: string;
   zipCode: string;
   country: string;
+  paymentMethod?: string;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -59,22 +60,49 @@ type BillingSummary = {
 export default function BillingPage() {
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+
+  async function fetchSummary() {
+    try {
+      setLoading(true);
+      const { data } = await api.get("/me/billing/summary");
+      setSummary(data);
+    } catch (err) {
+      console.error("Erro ao carregar faturamento do usuário", err);
+      toast.error("Não foi possível carregar seu faturamento.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchSummary() {
-      try {
-        setLoading(true);
-        const { data } = await api.get("/me/billing/summary");
-        setSummary(data);
-      } catch (err) {
-        console.error("Erro ao carregar faturamento do usuário", err);
-        toast.error("Não foi possível carregar seu faturamento.");
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchSummary();
   }, []);
+
+  async function handleUpdatePaymentMethod(method: string) {
+    if (!summary?.account) return;
+    try {
+      setUpdating(true);
+      const payload = {
+        ...summary.account,
+        paymentMethod: method,
+      };
+      // Omitir campos que o back pode não aceitar se vierem do GET (como id, timestamps)
+      delete (payload as any).id;
+      delete (payload as any).userId;
+      delete (payload as any).createdAt;
+      delete (payload as any).updatedAt;
+
+      await api.put("/me/billing/users/account", payload);
+      toast.success("Método de pagamento atualizado.");
+      fetchSummary();
+    } catch (err) {
+      console.error("Erro ao atualizar método de pagamento", err);
+      toast.error("Erro ao atualizar método de pagamento.");
+    } finally {
+      setUpdating(false);
+    }
+  }
 
   const account = summary?.account || null;
   const invoice = summary?.currentOpenInvoice || null;
@@ -157,14 +185,26 @@ export default function BillingPage() {
                         </div>
                         <div className="small text-muted">CEP {account.zipCode} • {account.country}</div>
                       </div>
-                      <div className="d-flex align-items-center gap-2 mt-2">
-                        <div className="bg-primary-subtle p-2 rounded-3 text-primary">
-                          <CreditCard size={18} />
+                      <div className="d-flex flex-column gap-3 mt-2">
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="bg-primary-subtle p-2 rounded-3 text-primary">
+                            <CreditCard size={18} />
+                          </div>
+                          <div className="flex-grow-1">
+                            <div className="fw-semibold small">Método de Pagamento</div>
+                            <select 
+                              className="form-select form-select-sm mt-1"
+                              value={account.paymentMethod || ""}
+                              onChange={(e) => handleUpdatePaymentMethod(e.target.value)}
+                              disabled={updating}
+                            >
+                              <option value="" disabled>Selecione...</option>
+                              <option value="PIX">PIX</option>
+                              <option value="CARD">CARTÃO DE CRÉDITO</option>
+                            </select>
+                          </div>
                         </div>
-                        <div>
-                          <div className="fw-semibold small">Método de Pagamento</div>
-                          <div className="text-muted x-small">Definido pela plataforma • Somente visualização</div>
-                        </div>
+                        {updating && <div className="text-primary small text-center">Atualizando...</div>}
                       </div>
                     </div>
                   )}

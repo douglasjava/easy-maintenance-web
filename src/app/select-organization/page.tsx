@@ -29,7 +29,7 @@ function SelectOrganizationContent() {
                     return;
                 }
 
-                const { data } = await api.get(`/auth/me/organizations/${userId}`);
+                const { data } = await api.get(`/organizations/me/${userId}`);
                 const orgsList = Array.isArray(data) ? data : [];
                 setOrganizations(orgsList);
 
@@ -37,8 +37,8 @@ function SelectOrganizationContent() {
                 if (orgsList.length === 1) {
                     handleSelect(orgsList[0]);
                 } else if (orgsList.length === 0) {
-                    // Se não houver nenhuma, redireciona para criação (já tem o botão na tela, mas reforça)
-                    router.replace("/organizations/new");
+                    // Se não houver nenhuma, redireciona para o onboarding de faturamento (primeiro passo)
+                    router.replace("/onboarding/billing");
                 }
             } catch (err) {
                 console.error("Erro ao buscar organizações:", err);
@@ -91,9 +91,9 @@ function SelectOrganizationContent() {
                     <p className="text-muted">Nenhuma empresa encontrada para o seu usuário.</p>
                     <button 
                         className="btn btn-primary w-100 mt-2"
-                        onClick={() => router.push("/organizations/new")}
+                        onClick={() => router.push("/onboarding")}
                     >
-                        Cadastrar Nova Empresa
+                        Iniciar Onboarding (Faturamento)
                     </button>
                 </div>
             )}

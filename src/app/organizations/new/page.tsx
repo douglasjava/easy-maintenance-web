@@ -184,15 +184,22 @@ export default function NewOrganizationPage() {
                 {/* Progress Indicator */}
                 <div className="d-flex justify-content-center mb-4">
                     <div className="d-flex align-items-center">
-                        <div className={`rounded-circle d-flex align-items-center justify-content-center ${step === 1 ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ width: 32, height: 32 }}>
-                            {step > 1 ? '✓' : '1'}
+                        <div className="rounded-circle d-flex align-items-center justify-content-center bg-success text-white" style={{ width: 32, height: 32 }}>
+                            ✓
                         </div>
-                        <div className="mx-2 fw-medium" style={{ color: step === 1 ? COLORS.primaryDark : '#6c757d' }}>Organização</div>
+                        <div className="mx-2 fw-medium text-muted">Faturamento</div>
                         <div className="bg-secondary opacity-25" style={{ width: 50, height: 2 }}></div>
-                        <div className={`rounded-circle d-flex align-items-center justify-content-center mx-2 ${step === 2 ? 'bg-primary text-white' : 'bg-light text-muted border'}`} style={{ width: 32, height: 32 }}>
-                            2
+
+                        <div className={`rounded-circle d-flex align-items-center justify-content-center mx-2 ${step === 1 ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ width: 32, height: 32 }}>
+                            {step > 1 ? '✓' : '2'}
                         </div>
-                        <div className="fw-medium" style={{ color: step === 2 ? COLORS.primaryDark : '#6c757d' }}>Assinatura</div>
+                        <div className="fw-medium" style={{ color: step === 1 ? COLORS.primaryDark : '#6c757d' }}>Organização</div>
+                        <div className="bg-secondary opacity-25 mx-2" style={{ width: 50, height: 2 }}></div>
+
+                        <div className={`rounded-circle d-flex align-items-center justify-content-center ${step === 2 ? 'bg-primary text-white' : 'bg-light text-muted border'}`} style={{ width: 32, height: 32 }}>
+                            3
+                        </div>
+                        <div className="mx-2 fw-medium" style={{ color: step === 2 ? COLORS.primaryDark : '#6c757d' }}>Assinatura</div>
                     </div>
                 </div>
 
@@ -362,10 +369,10 @@ export default function NewOrganizationPage() {
                                             onChange={(e) => setSubscriptionData(p => ({ ...p, status: e.target.value }))}
                                             required
                                         >
-                                            <option value="ACTIVE">ACTIVE</option>
-                                            <option value="PAST_DUE">PAST_DUE</option>
-                                            <option value="CANCELED">CANCELED</option>
-                                            <option value="TRIALING">TRIALING</option>
+                                            <option value="ACTIVE">ATIVO</option>
+                                            <option value="PAST_DUE">VENCIDO</option>
+                                            <option value="CANCELED">CANCELADO</option>
+                                            <option value="TRIALING">EM TESTE</option>
                                         </select>
                                     </div>
 
