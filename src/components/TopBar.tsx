@@ -21,9 +21,13 @@ export default function TopBar() {
   const [currentOrgName, setCurrentOrgName] = useState("");
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState("Usuário");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    const adminToken = window.localStorage.getItem("adminToken");
+    setIsAdmin(!!adminToken);
 
     const orgName = window.localStorage.getItem("organizationName") || window.sessionStorage.getItem("organizationName");
     if (orgName) setCurrentOrgName(orgName);
@@ -62,6 +66,7 @@ export default function TopBar() {
         window.sessionStorage.removeItem("tokenType");
         window.sessionStorage.removeItem("userId");
         window.sessionStorage.removeItem("userName");
+        window.localStorage.removeItem("adminToken");
       }
     } catch {}
     router.replace("/login");
@@ -178,24 +183,49 @@ export default function TopBar() {
                   <hr className="dropdown-divider" />
                 </li>
               )}
-              <li>
-                <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/profile")}>
-                  <User size={18} className="text-muted" />
-                  Minha conta
-                </button>
-              </li>
-              <li>
-                <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/organizations")}>
-                  <Building size={18} className="text-muted" />
-                  Minhas Empresas
-                </button>
-              </li>
-              <li>
-                <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/billing")}>
-                  <CreditCard size={18} className="text-muted" />
-                  Faturamento
-                </button>
-              </li>
+              {isAdmin ? (
+                <>
+                  <li>
+                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/private/users")}>
+                      <User size={18} className="text-muted" />
+                      Usuarios
+                    </button>
+                  </li>
+                  <li>
+                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/private/organizations")}>
+                      <Building size={18} className="text-muted" />
+                      Empresas
+                    </button>
+                  </li>
+                  <li>
+                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/private/admin/billing")}>
+                      <CreditCard size={18} className="text-muted" />
+                      Faturamento
+                    </button>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/profile")}>
+                      <User size={18} className="text-muted" />
+                      Minha conta
+                    </button>
+                  </li>
+                  <li>
+                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/organizations")}>
+                      <Building size={18} className="text-muted" />
+                      Minhas Empresas
+                    </button>
+                  </li>
+                  <li>
+                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/billing")}>
+                      <CreditCard size={18} className="text-muted" />
+                      Faturamento
+                    </button>
+                  </li>
+                </>
+              )}
               <li><hr className="dropdown-divider" /></li>
               <li>
                 <button className="dropdown-item d-flex align-items-center gap-2 py-2 text-danger" onClick={handleLogout}>
