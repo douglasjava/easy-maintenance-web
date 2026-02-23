@@ -1,11 +1,12 @@
-export type CompanyType = 'CONDOMINIUM' | 'HOSPITAL' | 'SCHOOL' | 'INDUSTRY' | 'OFFICE';
+export type CompanyType = 'CONDOMINIUM' | 'HOSPITAL' | 'SCHOOL' | 'INDUSTRY' | 'OFFICE' | 'OTHER';
 
 export const COMPANY_TYPE_MAP: Record<CompanyType, string> = {
     CONDOMINIUM: "CONDOMINIO",
     HOSPITAL: "HOSPITAL",
     SCHOOL: "ESCOLA",
     INDUSTRY: "INDUSTRIA",
-    OFFICE: "ESCRITORIO"
+    OFFICE: "ESCRITORIO",
+    OTHER: "OUTROS"
 };
 
 export interface AiBootstrapPreviewRequest {

@@ -43,7 +43,7 @@ export default function OnboardingPage() {
         status: "ACTIVE",
         phone: "",
         planCode: "FREE",
-        subscriptionStatus: "ACTIVE",
+        subscriptionStatus: "TRIAL",
         currentPeriodStart: "",
         currentPeriodEnd: "",
         trialEndsAt: "",
@@ -52,6 +52,7 @@ export default function OnboardingPage() {
     // Dados do Step 2 — Organização
     const [orgData, setOrgData] = useState({
         orgName: "",
+        orgType: "",
         orgDoc: "",
         orgZipCode: "",
         orgStreet: "",
@@ -61,7 +62,7 @@ export default function OnboardingPage() {
         orgState: "",
         orgComplement: "",
         planCode: "FREE",
-        subscriptionStatus: "ACTIVE",
+        subscriptionStatus: "TRIAL",
         currentPeriodStart: "",
         currentPeriodEnd: "",
         trialEndsAt: "",
@@ -174,6 +175,7 @@ export default function OnboardingPage() {
             const payload = {
                 code: crypto.randomUUID(),
                 name: orgData.orgName,
+                companyType: orgData.orgType,
                 plan: billingData.planCode,
                 city: orgData.orgCity,
                 street: orgData.orgStreet,
@@ -450,7 +452,7 @@ export default function OnboardingPage() {
                             <form onSubmit={handleStep2}>
                                 <h5 className="mb-4 border-bottom pb-2">Sua Organização</h5>
                                 <div className="row g-3">
-                                    <div className="col-md-12">
+                                    <div className="col-md-9">
                                         <label className="form-label">Nome da Organização</label>
                                         <input
                                             type="text" className="form-control" required
@@ -458,10 +460,26 @@ export default function OnboardingPage() {
                                             onChange={e => setOrgData({...orgData, orgName: e.target.value})}
                                         />
                                     </div>
+                                    <div className="col-md-3">
+                                        <label className="form-label">Tipo da Organização</label>
+                                        <select
+                                            className="form-select"
+                                            value={orgData.orgType}
+                                            onChange={e => setOrgData({...orgData, orgType: e.target.value})}
+                                            required
+                                        >
+                                            <option value="CONDOMINIUM">CONDOMINIO</option>
+                                            <option value="HOSPITAL">HOSPITAL</option>
+                                            <option value="SCHOOL">ESCOLA</option>
+                                            <option value="INDUSTRY">INDUSTRIA</option>
+                                            <option value="OFFICE">ESCRITORIO</option>
+                                            <option value="OTHER">OUTROS</option>
+                                        </select>
+                                    </div>
                                     <div className="col-md-6">
-                                        <label className="form-label">Documento (CNPJ/CPF)</label>
+                                        <label className="form-label">Documento (CNPJ/OUTRO)</label>
                                         <input
-                                            type="text" className="form-control" required
+                                            type="text" className="form-control"
                                             value={orgData.orgDoc}
                                             onChange={e => setOrgData({...orgData, orgDoc: e.target.value})}
                                         />
