@@ -4,12 +4,14 @@ import {useState} from "react";
 import Link from "next/link";
 import {api} from "@/lib/apiClient";
 import {useRouter} from "next/navigation";
+import {useAuth} from "@/contexts/AuthContext";
 import Image from "next/image";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const { login } = useAuth();
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -30,6 +32,8 @@ export default function LoginPage() {
 
             const {data} = await api.post("/auth/login", {email, password});
 
+            await login(data, remember);
+
             if (data?.firstAccess === true) {
                 if (typeof window !== "undefined") {
                     window.sessionStorage.setItem("tempIdUser", String(data.id));
@@ -43,19 +47,6 @@ export default function LoginPage() {
                 const storage = remember ? window.localStorage : window.sessionStorage;
 
                 try {
-                    if (data?.id) {
-                        storage.setItem("userId", String(data.id));
-                    }
-                    if (data?.accessToken) {
-                        storage.setItem("accessToken", String(data.accessToken));
-                    }
-                    if (data?.tokenType) {
-                        storage.setItem("tokenType", String(data.tokenType));
-                    }
-                    if (data?.name) {
-                        storage.setItem("userName", String(data.name));
-                    }
-
                     if (data?.organizationCodes && data.organizationCodes.length === 1) {
                         const orgCode = data.organizationCodes[0];
                         storage.setItem("organizationCode", String(orgCode));

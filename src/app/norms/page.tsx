@@ -1,6 +1,7 @@
 "use client";
 
 import { Info, BookOpen, ShieldCheck } from "lucide-react";
+import { PrivateRoute } from "@/components/PrivateRoute";
 
 const NORMS = [
   {
@@ -85,7 +86,8 @@ const NORMS = [
 
 export default function NormsPage() {
   return (
-    <div className="container py-4">
+    <PrivateRoute>
+      <div className="container py-4">
       <div className="text-center mb-5">
         <div className="d-inline-flex p-3 rounded-circle bg-primary-subtle text-primary mb-3">
           <BookOpen size={40} />
@@ -185,5 +187,6 @@ export default function NormsPage() {
         }
       `}</style>
     </div>
+    </PrivateRoute>
   );
 }

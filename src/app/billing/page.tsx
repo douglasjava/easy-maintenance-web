@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { formatMoney, formatDate } from "@/lib/formatters";
-import { Calendar, CreditCard } from "lucide-react";
+import { Calendar, CreditCard, AlertCircle, CheckCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
 
 // Tipagens do endpoint /me/billing/summary
@@ -58,6 +59,7 @@ type BillingSummary = {
 };
 
 export default function BillingPage() {
+  const { isBlocked } = useAuth();
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -113,6 +115,18 @@ export default function BillingPage() {
         <h2 className="mb-1 fw-bold">Faturamento</h2>
         <p className="text-muted mb-0">Gerencie seu plano, faturas e métodos de pagamento</p>
       </div>
+
+      {isBlocked && (
+        <div className="alert alert-danger border-0 shadow-sm mb-4 rounded-4 p-4 d-flex align-items-center">
+          <div className="me-3 bg-danger bg-opacity-10 p-3 rounded-circle text-danger">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <h5 className="fw-bold mb-1">Acesso Bloqueado</h5>
+            <p className="mb-0 text-muted">Seu período de avaliação terminou ou há faturas pendentes. Regularize sua situação para retomar o uso completo do sistema.</p>
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="text-center text-muted py-5">Carregando informações de faturamento...</div>

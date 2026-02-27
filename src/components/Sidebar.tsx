@@ -4,6 +4,7 @@ import Link from "next/link";
 import Logo from "./Logo";
 import {useRouter, usePathname} from "next/navigation";
 import {useState, useEffect} from "react";
+import {useAuth} from "@/contexts/AuthContext";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -23,6 +24,7 @@ export default function Sidebar() {
     const [hasOrg, setHasOrg] = useState(false);
     const router = useRouter();
     const pathname = usePathname();
+    const { isBlocked } = useAuth();
 
     function closeOffcanvas() {
         try {
@@ -153,12 +155,13 @@ export default function Sidebar() {
                                 {currentItems
                                     .filter((i) => i.section === "main")
                                     .filter((i) => hasOrg || i.href === "/")
+                                    .filter((i) => !isBlocked || i.href === "/")
                                     .map((i) => (
                                         <NavLink key={i.href} href={i.href} label={i.label}/>
                                     ))}
                             </nav>
 
-                            {hasOrg && (
+                            {hasOrg && !isBlocked && (
                                 <>
                                     <div className="mt-2"/>
 

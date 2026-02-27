@@ -9,6 +9,8 @@ import {KPIGrid} from "@/components/dashboard/KPIGrid";
 import {AttentionCard} from "@/components/dashboard/AttentionCard";
 import {BreakdownCard} from "@/components/dashboard/BreakdownCard";
 import {QuickActions} from "@/components/dashboard/QuickActions";
+import {useAuth} from "@/contexts/AuthContext";
+import {PrivateRoute} from "@/components/PrivateRoute";
 
 /* =========================
    Tipos
@@ -56,9 +58,7 @@ interface DashboardResponse {
 ========================= */
 export default function DashboardPage() {
     const router = useRouter();
-
-    const [checking, setChecking] = useState(true);
-    const [isAuthed, setIsAuthed] = useState(false);
+    const { isBlocked, token, loading: authLoading } = useAuth();
 
     // parâmetros
     const [daysAhead, setDaysAhead] = useState(30);
@@ -69,28 +69,6 @@ export default function DashboardPage() {
     const [data, setData] = useState<DashboardResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    /* =========================
-       Auth client-side
-    ========================= */
-    useEffect(() => {
-        try {
-            const ls = localStorage;
-            const ss = sessionStorage;
-            const token = ls.getItem("accessToken") || ss.getItem("accessToken");
-            // const org = ls.getItem("organizationCode") || ss.getItem("organizationCode");
-
-            if (token) {
-                setIsAuthed(true);
-            } else {
-                router.replace("/login");
-            }
-        } catch {
-            router.replace("/login");
-        } finally {
-            setChecking(false);
-        }
-    }, [router]);
 
     const params = useMemo(
         () => ({daysAhead, nearDueThresholdDays, limitAttention}),
@@ -122,14 +100,14 @@ export default function DashboardPage() {
     }
 
     useEffect(() => {
-        if (isAuthed && !checking) {
+        if (token && !authLoading) {
             fetchDashboard();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthed, checking]);
+    }, [token, authLoading]);
 
-    if (checking) return <p className="p-3">Carregando…</p>;
-    if (!isAuthed) return <p className="p-3">Redirecionando…</p>;
+    if (authLoading) return <p className="p-3">Carregando…</p>;
+    if (!token) return <p className="p-3">Redirecionando…</p>;
 
     function formatDate(dt?: string) {
         if (!dt) return "-";
@@ -145,14 +123,34 @@ export default function DashboardPage() {
        Render
     ========================= */
     return (
-        <section style={{backgroundColor: "#f8f9fa", minHeight: "100vh"}} className="pb-5">
-            <div className="container">
-                <DashboardHeader 
-                    title="Dashboard" 
-                    subtitle="Visão geral de manutenções, prazos e conformidade" 
-                />
+        <PrivateRoute>
+            <section style={{backgroundColor: "#f8f9fa", minHeight: "100vh"}} className="pb-5">
+                <div className="container">
+                    <DashboardHeader 
+                        title="Dashboard" 
+                        subtitle="Visão geral de manutenções, prazos e conformidade" 
+                    />
 
-                {!data && !loading && !error ? (
+                    {isBlocked && (
+                        <div className="alert alert-warning border-0 shadow-sm mb-4 rounded-4 p-4 d-flex align-items-center">
+                            <div className="me-3 bg-warning bg-opacity-10 p-3 rounded-circle text-warning">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div>
+                                <h5 className="fw-bold mb-1">Assinatura Expirada</h5>
+                                <p className="mb-0 text-muted">Seu período de avaliação terminou. Finalize o pagamento para continuar.</p>
+                                <Link href="/billing" className="btn btn-warning btn-sm mt-2 fw-bold px-3">
+                                    Regularizar agora
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+
+                    {!data && !loading && !error ? (
                     <div className="alert alert-info border-0 shadow-sm text-center py-5 rounded-4">
                         <h5 className="fw-bold">Bem-vindo ao Easy Maintenance!</h5>
                         <p className="mb-4 text-muted">Você ainda não selecionou ou não possui uma empresa vinculada.</p>
@@ -190,5 +188,6 @@ export default function DashboardPage() {
                 )}
             </div>
         </section>
+        </PrivateRoute>
     );
 }

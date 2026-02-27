@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
+import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
 
 type OrganizationItem = {
@@ -17,6 +18,7 @@ import { User, Building, CreditCard, LogOut, ChevronDown } from "lucide-react";
 
 export default function TopBar() {
   const router = useRouter();
+  const { logout, isBlocked } = useAuth();
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [currentOrgName, setCurrentOrgName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,25 +53,7 @@ export default function TopBar() {
   }, []);
 
   function handleLogout() {
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem("organizationCode");
-        window.localStorage.removeItem("organizationName");
-        window.localStorage.removeItem("accessToken");
-        window.localStorage.removeItem("tokenType");
-        window.localStorage.removeItem("userId");
-        window.localStorage.removeItem("userName");
-
-        window.sessionStorage.removeItem("organizationCode");
-        window.sessionStorage.removeItem("organizationName");
-        window.sessionStorage.removeItem("accessToken");
-        window.sessionStorage.removeItem("tokenType");
-        window.sessionStorage.removeItem("userId");
-        window.sessionStorage.removeItem("userName");
-        window.localStorage.removeItem("adminToken");
-      }
-    } catch {}
-    router.replace("/login");
+    logout();
   }
 
   async function handleSwitchOrg(item: OrganizationItem) {
@@ -132,6 +116,7 @@ export default function TopBar() {
                     <button 
                       className={`dropdown-item ${item.organization.name === currentOrgName ? 'active' : ''}`}
                       onClick={() => handleSwitchOrg(item)}
+                      disabled={isBlocked}
                     >
                       {item.organization.name}
                     </button>
@@ -207,13 +192,13 @@ export default function TopBar() {
               ) : (
                 <>
                   <li>
-                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/profile")}>
+                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/profile")} disabled={isBlocked}>
                       <User size={18} className="text-muted" />
                       Minha conta
                     </button>
                   </li>
                   <li>
-                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/organizations")}>
+                    <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/organizations")} disabled={isBlocked}>
                       <Building size={18} className="text-muted" />
                       Minhas Empresas
                     </button>
