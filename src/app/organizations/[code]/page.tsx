@@ -30,7 +30,7 @@ type OrganizationItem = {
     payerEmail: string;
     planCode: string;
     planName: string;
-    priceCents: number;
+    valueCents: number;
     status: string;
     currentPeriodStart: string;
     currentPeriodEnd: string;
@@ -157,14 +157,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
                   <label className="text-muted small d-block mb-1">CNPJ/CPF</label>
                   <div className="fw-medium">{org.doc || "-"}</div>
                 </div>
-                <div className="col-md-6">
-                  <label className="text-muted small d-block mb-1">Código Identificador</label>
-                  <div className="fw-medium text-primary">{org.code}</div>
-                </div>
-                <div className="col-md-6">
-                  <label className="text-muted small d-block mb-1">ID Interno</label>
-                  <div className="fw-medium">{org.id}</div>
-                </div>
                 
                 <div className="col-12">
                   <hr className="my-2 opacity-10" />
@@ -234,13 +226,9 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
               <div className="row g-4">
                 <div className="col-6">
                   <label className="text-muted small d-block mb-1">Valor</label>
-                  <div className="fw-medium">{formatCurrency(sub.priceCents)}</div>
+                  <div className="fw-medium">{formatCurrency(sub.valueCents)}</div>
                 </div>
-                <div className="col-6">
-                  <label className="text-muted small d-block mb-1">Código do Plano</label>
-                  <div className="fw-medium">{sub.planCode}</div>
-                </div>
-                
+
                 <div className="col-12">
                   <hr className="my-2 opacity-10" />
                 </div>
@@ -253,14 +241,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
                       <div className="fw-medium">
                         {new Date(sub.currentPeriodStart).toLocaleDateString("pt-BR")} até {new Date(sub.currentPeriodEnd).toLocaleDateString("pt-BR")}
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="d-flex align-items-start gap-3 mb-3">
-                    <Hash size={20} className="text-muted mt-1" />
-                    <div>
-                      <label className="text-muted small d-block">ID da Assinatura</label>
-                      <div className="fw-medium">{sub.id}</div>
                     </div>
                   </div>
 

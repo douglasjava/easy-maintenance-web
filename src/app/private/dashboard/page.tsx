@@ -15,7 +15,6 @@ type Metrics = {
     totalOrganizations: number;
     totalUsers: number;
     organizationsByPlan: {
-        FREE: number;
         STARTER: number;
         BUSINESS: number;
         ENTERPRISE: number;
@@ -38,14 +37,15 @@ export default function PrivateDashboardPage() {
                 const { data } = await api.get("/private/admin/metrics", {
                     headers: { "X-Admin-Token": adminToken },
                 });
+
                 setMetrics(data);
+
             } catch (err) {
                 console.error("Error fetching metrics", err);
-                // Mocking data if endpoint doesn't exist yet to show the UI
                 setMetrics({
                     totalOrganizations: 0,
                     totalUsers: 0,
-                    organizationsByPlan: { FREE: 0, STARTER: 0, BUSINESS: 0, ENTERPRISE: 0 }
+                    organizationsByPlan: { STARTER: 0, BUSINESS: 0, ENTERPRISE: 0 }
                 });
             } finally {
                 setLoading(false);
@@ -77,12 +77,6 @@ export default function PrivateDashboardPage() {
                     <div className="card border-0 shadow-sm text-center p-3">
                         <div className="text-muted small">Total Usuários</div>
                         <div className="h2 mb-0">{loading ? "..." : metrics?.totalUsers}</div>
-                    </div>
-                </div>
-                <div className="col-12 col-md-3">
-                    <div className="card border-0 shadow-sm text-center p-3">
-                        <div className="text-muted small">Planos gratuitos</div>
-                        <div className="h2 mb-0 text-secondary">{loading ? "..." : metrics?.organizationsByPlan.FREE ?? 0}</div>
                     </div>
                 </div>
                 <div className="col-12 col-md-3">

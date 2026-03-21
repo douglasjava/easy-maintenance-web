@@ -6,7 +6,7 @@ import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import AsyncSelect from "react-select/async";
 
-type Plan = "FREE" | "STARTER" | "PRO" | "BUSINESS" | "ENTERPRISE";
+type Plan = "STARTER" | "PRO" | "BUSINESS" | "ENTERPRISE";
 
 type Organization = {
     id: string;
@@ -72,7 +72,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
         state: "",
         complement: ""
     });
-    const [planForm, setPlanForm] = useState<Plan>("FREE");
+    const [planForm, setPlanForm] = useState<Plan>("STARTER");
 
     useEffect(() => {
         fetchOrg();
@@ -108,7 +108,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                         payerEmail: subRes.data.payerEmail ? String(subRes.data.payerEmail) : "",
                         payerUserId: subRes.data.payerUserId ? String(subRes.data.payerUserId) : "",
                         status: subRes.data.status || "ACTIVE",
-                        planCode: subRes.data.planCode || "FREE",
+                        planCode: subRes.data.planCode || "STARTER",
                         currentPeriodStart: subRes.data.currentPeriodStart ? subRes.data.currentPeriodStart.split("T")[0] : "",
                         currentPeriodEnd: subRes.data.currentPeriodEnd ? subRes.data.currentPeriodEnd.split("T")[0] : ""
                     });
@@ -347,7 +347,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                                         onChange={(e) => setSubscriptionForm(p => ({ ...p, planCode: e.target.value }))}
                                         required
                                     >
-                                        <option value="FREE">FREE</option>
                                         <option value="STARTER">STARTER</option>
                                         <option value="BUSINESS">BUSINESS</option>
                                         <option value="ENTERPRISE">ENTERPRISE</option>

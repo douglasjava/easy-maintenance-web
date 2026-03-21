@@ -99,7 +99,7 @@ export default function PrivateOrganizationsListPage() {
                                     </tr>
                                 ) : organizations.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-4 text-muted">No organizations found.</td>
+                                        <td colSpan={6} className="text-center py-4 text-muted">Nenhuma empresa encontrada</td>
                                     </tr>
                                 ) : (
                                     organizations.map((org) => (

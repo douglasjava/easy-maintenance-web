@@ -44,7 +44,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
     const [loadingBilling, setLoadingBilling] = useState(false);
     const [billingForm, setBillingForm] = useState({
-        planCode: "FREE",
+        planCode: "STARTER",
         status: "ACTIVE",
         currentPeriodStart: "",
         currentPeriodEnd: ""
@@ -87,8 +87,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     }
 
     const plans = [
-        { code: "FREE", name: "FREE", description: "pode cadastrar 1 Empresa" },
-        { code: "STARTER", name: "STARTER", description: "pode cadastrar 3 Empresa" },
+        { code: "STARTER", name: "STARTER", description: "pode cadastrar 1 Empresa" },
         { code: "BUSINESS", name: "BUSINESS", description: "pode cadastrar 5 Empresa" },
         { code: "ENTERPRISE", name: "ENTERPRISE", description: "pode cadastrar 15 Empresa" },
     ];
@@ -168,7 +167,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             });
             if (data) {
                 setBillingForm({
-                    planCode: data.planCode || "FREE",
+                    planCode: data.planCode || "STARTER",
                     status: data.status || "ACTIVE",
                     currentPeriodStart: data.currentPeriodStart ? data.currentPeriodStart.split("T")[0] : "",
                     currentPeriodEnd: data.currentPeriodEnd ? data.currentPeriodEnd.split("T")[0] : ""

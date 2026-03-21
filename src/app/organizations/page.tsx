@@ -115,7 +115,7 @@ export default function OrganizationsPage() {
                       <Building size={24} />
                     </div>
                     <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2">
-                      {item.subscription.planCode || "FREE"}
+                      {item.subscription.planCode || "STARTER"}
                     </span>
                   </div>
                   <h5 className="fw-bold mb-1">{item.organization.name}</h5>

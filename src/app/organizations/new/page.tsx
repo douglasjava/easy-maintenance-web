@@ -6,7 +6,7 @@ import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 
-type Plan = "FREE" | "STARTER" | "BUSINESS" | "ENTERPRISE";
+type Plan = "STARTER" | "BUSINESS" | "ENTERPRISE";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -29,7 +29,7 @@ const EMPTY_FORM = {
 const EMPTY_SUBSCRIPTION = {
     payerUserId: "",
     payerUserName: "",
-    planCode: "FREE" as Plan,
+    planCode: "STARTER" as Plan,
     status: "ACTIVE",
     currentPeriodStart: "",
     currentPeriodEnd: "",
@@ -85,7 +85,7 @@ export default function NewOrganizationPage() {
         const payload = {
             code: orgCode,
             name: formData.name.trim(),
-            plan: "FREE", 
+            plan: "STARTER",
             city: formData.city?.trim() || undefined,
             street: formData.street?.trim() || undefined,
             number: formData.number?.trim() || undefined,
@@ -354,7 +354,6 @@ export default function NewOrganizationPage() {
                                             onChange={(e) => setSubscriptionData(p => ({ ...p, planCode: e.target.value as Plan }))}
                                             required
                                         >
-                                            <option value="FREE">FREE</option>
                                             <option value="STARTER">STARTER</option>
                                             <option value="BUSINESS">BUSINESS</option>
                                             <option value="ENTERPRISE">ENTERPRISE</option>

@@ -26,3 +26,20 @@ export const roleLabelMap: Record<string, string> = {
     TECH: "Técnico",
     READER: "Leitor"
 }
+
+export const subscriptionStatusLabelMap: Record<string, string> = {
+    TRIAL: "Degustação",
+    PENDING_PAYMENT: "Pagamento Pendente",
+    ACTIVE: "Ativo",
+    PAST_DUE: "Atrasado",
+    BLOCKED: "Bloqueado",
+    CANCELED: "Cancelado",
+    NONE: "Nenhum",
+    PENDING_ACTIVATION: "Ativação Pendente",
+    PAYMENT_FAILED: "Falha no Pagamento"
+}
+
+export const sourceTypeLabelMap: Record<string, string> = {
+    USER: "Usuário",
+    ORGANIZATION: "Organização"
+}

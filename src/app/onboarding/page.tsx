@@ -42,7 +42,7 @@ export default function OnboardingPage() {
         country: "BR",
         status: "ACTIVE",
         phone: "",
-        planCode: "FREE",
+        planCode: "STARTER",
         subscriptionStatus: "TRIAL",
         currentPeriodStart: "",
         currentPeriodEnd: "",
@@ -61,7 +61,7 @@ export default function OnboardingPage() {
         orgCity: "",
         orgState: "",
         orgComplement: "",
-        planCode: "FREE",
+        planCode: "STARTER",
         subscriptionStatus: "TRIAL",
         currentPeriodStart: "",
         currentPeriodEnd: "",
@@ -397,7 +397,6 @@ export default function OnboardingPage() {
                                             onChange={e => setBillingData({...billingData, planCode: e.target.value})}
                                             required
                                         >
-                                            <option value="FREE">FREE</option>
                                             <option value="STARTER">STARTER</option>
                                             <option value="BUSINESS">BUSINESS</option>
                                             <option value="ENTERPRISE">ENTERPRISE</option>
@@ -410,13 +409,8 @@ export default function OnboardingPage() {
 
                                         <div className="row">
                                             <div className="col-md-3">
-                                                <strong>FREE</strong>
-                                                <div className="text-muted small">1 empresa</div>
-                                            </div>
-
-                                            <div className="col-md-3">
                                                 <strong>STARTER</strong>
-                                                <div className="text-muted small">2 empresas</div>
+                                                <div className="text-muted small">1 empresas</div>
                                             </div>
 
                                             <div className="col-md-3">
@@ -555,7 +549,6 @@ export default function OnboardingPage() {
                                             onChange={e => setOrgData({...orgData, planCode: e.target.value})}
                                             required
                                         >
-                                            <option value="FREE">FREE</option>
                                             <option value="STARTER">STARTER</option>
                                             <option value="BUSINESS">BUSINESS</option>
                                             <option value="ENTERPRISE">ENTERPRISE</option>
@@ -567,14 +560,10 @@ export default function OnboardingPage() {
                                         <label className="form-label d-block">Legenda dos planos</label>
 
                                         <div className="row">
-                                            <div className="col-md-3">
-                                                <strong>FREE</strong>
-                                                <div className="text-muted small">1 empresa</div>
-                                            </div>
 
                                             <div className="col-md-3">
                                                 <strong>STARTER</strong>
-                                                <div className="text-muted small">2 empresas</div>
+                                                <div className="text-muted small">1 empresas</div>
                                             </div>
 
                                             <div className="col-md-3">

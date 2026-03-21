@@ -31,6 +31,11 @@ export default function TopBar() {
     const adminToken = window.localStorage.getItem("adminToken");
     setIsAdmin(!!adminToken);
 
+    if (adminToken) {
+      // Se for admin privado, não precisamos carregar dados de usuário comum
+      return;
+    }
+
     const orgName = window.localStorage.getItem("organizationName") || window.sessionStorage.getItem("organizationName");
     if (orgName) setCurrentOrgName(orgName);
 
@@ -53,7 +58,12 @@ export default function TopBar() {
   }, []);
 
   function handleLogout() {
-    logout();
+    if (isAdmin) {
+      window.localStorage.removeItem("adminToken");
+      router.push("/private/login");
+    } else {
+      logout();
+    }
   }
 
   async function handleSwitchOrg(item: OrganizationItem) {
@@ -97,7 +107,7 @@ export default function TopBar() {
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          {organizations.length > 0 && (
+          {!isAdmin && organizations.length > 0 && (
             <div className="dropdown">
               <button 
                 className="btn btn-sm btn-outline-light dropdown-toggle border-0" 
@@ -137,22 +147,22 @@ export default function TopBar() {
                 className="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white"
                 style={{ width: 34, height: 34, fontSize: '0.9rem', fontWeight: 600 }}
               >
-                {userName.charAt(0).toUpperCase()}
+                {isAdmin ? "A" : userName.charAt(0).toUpperCase()}
               </div>
               <div className="d-none d-lg-block text-start" style={{ lineHeight: 1.1 }}>
-                <small className="d-block opacity-75" style={{ fontSize: '0.7rem' }}>Bem-vindo,</small>
-                <span className="fw-medium" style={{ fontSize: '0.85rem' }}>{userName}</span>
+                <small className="d-block opacity-75" style={{ fontSize: '0.7rem' }}>{isAdmin ? "Administrador" : "Bem-vindo,"}</small>
+                <span className="fw-medium" style={{ fontSize: '0.85rem' }}>{isAdmin ? "Global" : userName}</span>
               </div>
               <ChevronDown size={14} className="opacity-50" />
             </button>
             <ul className="dropdown-menu dropdown-menu-end shadow border-0 mt-2" style={{ minWidth: 200 }}>
               <li>
                 <div className="px-3 py-2 d-lg-none">
-                  <p className="mb-0 fw-bold">{userName}</p>
-                  <small className="text-muted">{currentOrgName}</small>
+                  <p className="mb-0 fw-bold">{isAdmin ? "Administrador Global" : userName}</p>
+                  {!isAdmin && currentOrgName && <small className="text-muted">{currentOrgName}</small>}
                 </div>
               </li>
-              {organizations.length > 0 && (
+              {!isAdmin && organizations.length > 0 && (
                 <li className="d-md-none">
                   <h6 className="dropdown-header text-uppercase small fw-bold">Trocar Empresa</h6>
                   {organizations.map((item) => (

@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import BillingAdminLayout from "../BillingAdminLayout";
 import { formatMoney, formatDate } from "@/lib/formatters";
 import EditSubscriptionModal from "@/components/billing/EditSubscriptionModal";
+import { sourceTypeLabelMap, subscriptionStatusLabelMap } from "@/lib/enums/labels";
 
 type Plan = {
   code: string;
@@ -14,15 +15,18 @@ type Plan = {
 };
 
 type Subscription = {
-  organizationCode: string;
-  organizationName: string;
+  itemId: number;
+  subscriptionId: number;
+  sourceType: string;
   planCode: string;
-  planName: string;
-  priceCents: number;
-  payerUserId: string;
-  payerEmail: string;
+  payerAccountId: number;
+  payerName: string;
   status: string;
-  currentPeriodEnd: string;
+  periodStart: number;
+  periodEnd: number;
+  totalCents: number;
+  organizationCode?: string; // Mantido para compatibilidade se necessário
+  organizationName?: string; // Mantido para compatibilidade se necessário
 };
 
 export default function SubscriptionsPage() {
@@ -32,8 +36,7 @@ export default function SubscriptionsPage() {
   const [filters, setFilters] = useState({
     status: "",
     planCode: "",
-    payerUserId: "",
-    queryNameOrCodeOrganization: "",
+    payerName: "",
   });
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
@@ -60,7 +63,8 @@ export default function SubscriptionsPage() {
       );
 
       const res = await api.get("/private/admin/billing/subscriptions", { params: params });
-      setSubscriptions(res.data);
+      // O response agora vem com "content", "totalElements", etc.
+      setSubscriptions(res.data.content || []);
     } catch (err) {
       console.error("Error fetching subscriptions", err);
       toast.error("Erro ao carregar assinaturas");
@@ -77,10 +81,29 @@ export default function SubscriptionsPage() {
     setFilters({
       status: "",
       planCode: "",
-      payerUserId: "",
-      queryNameOrCodeOrganization: "",
+      payerName: "",
     });
   }
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "ACTIVE":
+        return "bg-success";
+      case "TRIAL":
+        return "bg-info text-dark";
+      case "PENDING_PAYMENT":
+      case "PENDING_ACTIVATION":
+        return "bg-warning text-dark";
+      case "PAST_DUE":
+      case "PAYMENT_FAILED":
+        return "bg-danger";
+      case "BLOCKED":
+      case "CANCELED":
+        return "bg-secondary";
+      default:
+        return "bg-light text-dark border";
+    }
+  };
 
   return (
     <BillingAdminLayout>
@@ -95,9 +118,11 @@ export default function SubscriptionsPage() {
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             >
               <option value="">Todos</option>
-              <option value="ACTIVE">Ativa</option>
-              <option value="PAST_DUE">Em atraso</option>
-              <option value="CANCELED">Cancelada</option>
+              {Object.entries(subscriptionStatusLabelMap).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
             </select>
           </div>
           <div className="col-12 col-md-3">
@@ -115,22 +140,14 @@ export default function SubscriptionsPage() {
               ))}
             </select>
           </div>
-          <div className="col-12 col-md-2">
-            <label className="form-label small fw-medium">ID Pagador</label>
-            <input
-              type="number"
-              className="form-control"
-              value={filters.payerUserId}
-              onChange={(e) => setFilters({ ...filters, payerUserId: e.target.value })}
-            />
-          </div>
-          <div className="col-12 col-md-4">
-            <label className="form-label small fw-medium">Empresa (Nome ou Código)</label>
+          <div className="col-12 col-md-6">
+            <label className="form-label small fw-medium">Nome do Responsável</label>
             <input
               type="text"
               className="form-control"
-              value={filters.queryNameOrCodeOrganization}
-              onChange={(e) => setFilters({ ...filters, queryNameOrCodeOrganization: e.target.value })}
+              value={filters.payerName}
+              onChange={(e) => setFilters({ ...filters, payerName: e.target.value })}
+              placeholder="Pesquisar por nome..."
             />
           </div>
           <div className="col-12 d-flex gap-2">
@@ -148,49 +165,44 @@ export default function SubscriptionsPage() {
         <table className="table table-hover align-middle mb-0">
           <thead className="table-light">
             <tr>
-              <th>Organização</th>
-              <th>Plano</th>
-              <th>Pagador</th>
+              <th>Nome do Responsável</th>
+              <th>Tipo</th>
               <th>Status</th>
-              <th>Período Fim</th>
+              <th>Valor</th>
+              <th>Início</th>
+              <th>Fim</th>
               <th className="text-end">Ações</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="text-center py-5 text-muted">
+                <td colSpan={7} className="text-center py-5 text-muted">
                   Carregando...
                 </td>
               </tr>
             ) : subscriptions.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-5 text-muted">
+                <td colSpan={7} className="text-center py-5 text-muted">
                   Nenhuma assinatura encontrada
                 </td>
               </tr>
             ) : (
-              subscriptions.map((sub) => (
-                <tr key={sub.organizationCode}>
+              subscriptions.map((sub, index) => (
+                <tr key={sub.subscriptionId || index}>
                   <td>
-                    <div className="fw-semibold">{sub.organizationName}</div>
-                    <small className="text-muted">{sub.organizationCode}</small>
+                    <div className="fw-semibold">{sub.payerName}</div>
+                    <small className="text-muted">ID: {sub.payerAccountId}</small>
                   </td>
+                  <td>{sourceTypeLabelMap[sub.sourceType] || sub.sourceType}</td>
                   <td>
-                    <div className="fw-medium">{sub.planName}</div>
-                    <small className="text-muted">{formatMoney(sub.priceCents)}</small>
-                  </td>
-                  <td className="small">{sub.payerEmail}</td>
-                  <td>
-                    <span
-                      className={`badge ${
-                        sub.status === "ACTIVE" ? "bg-success" : "bg-warning text-dark"
-                      }`}
-                    >
-                      {sub.status}
+                    <span className={`badge ${getStatusBadgeClass(sub.status)}`}>
+                      {subscriptionStatusLabelMap[sub.status] || sub.status}
                     </span>
                   </td>
-                  <td>{formatDate(sub.currentPeriodEnd)}</td>
+                  <td>{formatMoney(sub.totalCents)}</td>
+                  <td>{formatDate(sub.periodStart)}</td>
+                  <td>{formatDate(sub.periodEnd)}</td>
                   <td className="text-end">
                     <button
                       className="btn btn-sm btn-outline-primary"
@@ -208,11 +220,16 @@ export default function SubscriptionsPage() {
         </table>
       </div>
 
-      <EditSubscriptionModal
-        subscription={selectedSubscription}
-        plans={plans}
-        onSave={fetchSubscriptions}
-      />
+      {selectedSubscription && (
+        <EditSubscriptionModal
+          subscription={selectedSubscription as any}
+          plans={plans}
+          onSave={() => {
+            fetchSubscriptions();
+            setSelectedSubscription(null);
+          }}
+        />
+      )}
     </BillingAdminLayout>
   );
 }
