@@ -67,19 +67,19 @@ export default function PrivateDashboardPage() {
             </div>
 
             <div className="row g-4 mb-4">
-                <div className="col-12 col-md-3">
+                <div className="col-12 col-md-4">
                     <div className="card border-0 shadow-sm text-center p-3">
                         <div className="text-muted small">Total Empresas</div>
                         <div className="h2 mb-0">{loading ? "..." : metrics?.totalOrganizations}</div>
                     </div>
                 </div>
-                <div className="col-12 col-md-3">
+                <div className="col-12 col-md-4">
                     <div className="card border-0 shadow-sm text-center p-3">
                         <div className="text-muted small">Total Usuários</div>
                         <div className="h2 mb-0">{loading ? "..." : metrics?.totalUsers}</div>
                     </div>
                 </div>
-                <div className="col-12 col-md-3">
+                <div className="col-12 col-md-4">
                     <div className="card border-0 shadow-sm text-center p-3">
                         <div className="text-muted small">Planos pagos</div>
                         <div className="h2 mb-0 text-primary">

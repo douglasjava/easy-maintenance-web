@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import ConfirmModal from "@/components/ConfirmModal";
-import {roleLabelMap} from "@/lib/enums/labels";
+import {roleLabelMap, subscriptionStatusLabelMap} from "@/lib/enums/labels";
 
 type User = {
     id: string;
@@ -22,9 +22,21 @@ type Organization = {
     doc: string;
 };
 
+type Subscription = {
+    id: string;
+    sourceId: string;
+    sourceType: string;
+    planCode: string;
+    planName: string;
+    valueCents: string;
+    status: string;
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+};
+
 type UserOrganization = {
     organization: Organization;
-    subscription?: any;
+    subscription: Subscription;
 };
 
 const COLORS = {
@@ -540,6 +552,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                                     <thead className="table-light">
                                         <tr>
                                             <th>Nome Empresa</th>
+                                            <th>Status</th>
                                             <th>Documento</th>
                                             <th className="text-end">Ações</th>
                                         </tr>
@@ -553,6 +566,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                                             orgs.map(org => (
                                                 <tr key={org.organization.id}>
                                                     <td className="fw-semibold">{org.organization.name}</td>
+                                                    <td className="fw-semibold">{subscriptionStatusLabelMap[org.subscription.status]}</td>
                                                     <td className="fw-semibold">{org.organization.doc}</td>
                                                     <td className="text-end">
                                                         <button

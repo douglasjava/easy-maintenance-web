@@ -62,9 +62,7 @@ export default function CreateUserPage() {
 
         } catch (err) {
             console.error("Error creating user", err);
-            toast.error(
-                err?.response?.data?.detail || "Erro ao criar usuário. Tente novamente."
-            );
+            toast.error("Erro ao criar usuário. Tente novamente.");
         } finally {
             setLoading(false);
         }

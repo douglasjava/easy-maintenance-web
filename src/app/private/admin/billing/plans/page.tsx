@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import BillingAdminLayout from "../BillingAdminLayout";
 import { formatMoney } from "@/lib/formatters";
 import PlanModal from "@/components/billing/PlanModal";
+import {billingCycleLabelMap, statusMap, subscriptionStatusLabelMap} from "@/lib/enums/labels";
 
 type Plan = {
   code: string;
@@ -83,14 +84,14 @@ export default function PlansPage() {
                   <td className="fw-medium">{plan.code}</td>
                   <td>{plan.name}</td>
                   <td>{formatMoney(plan.priceCents)}</td>
-                  <td>{plan.billingCycle}</td>
+                  <td>{billingCycleLabelMap[plan.billingCycle] || plan.billingCycle}</td>
                   <td>
                     <span
                       className={`badge ${
                         plan.status === "ACTIVE" ? "bg-success" : "bg-secondary"
                       }`}
                     >
-                      {plan.status}
+                      {statusMap[plan.status]}
                     </span>
                   </td>
                   <td className="text-end">

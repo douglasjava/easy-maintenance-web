@@ -43,3 +43,8 @@ export const sourceTypeLabelMap: Record<string, string> = {
     USER: "Usuário",
     ORGANIZATION: "Organização"
 }
+
+export const billingCycleLabelMap: Record<string, string> = {
+    MONTHLY: "Mensal",
+    YEARLY: "Anual"
+}

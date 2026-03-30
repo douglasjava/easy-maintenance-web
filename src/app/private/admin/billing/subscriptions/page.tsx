@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import BillingAdminLayout from "../BillingAdminLayout";
-import { formatMoney, formatDate } from "@/lib/formatters";
+import {formatMoney, formatDate, formatDateTime} from "@/lib/formatters";
 import EditSubscriptionModal from "@/components/billing/EditSubscriptionModal";
 import { sourceTypeLabelMap, subscriptionStatusLabelMap } from "@/lib/enums/labels";
 
@@ -192,7 +192,6 @@ export default function SubscriptionsPage() {
                 <tr key={sub.subscriptionId || index}>
                   <td>
                     <div className="fw-semibold">{sub.payerName}</div>
-                    <small className="text-muted">ID: {sub.payerAccountId}</small>
                   </td>
                   <td>{sourceTypeLabelMap[sub.sourceType] || sub.sourceType}</td>
                   <td>
@@ -201,8 +200,8 @@ export default function SubscriptionsPage() {
                     </span>
                   </td>
                   <td>{formatMoney(sub.totalCents)}</td>
-                  <td>{formatDate(sub.periodStart)}</td>
-                  <td>{formatDate(sub.periodEnd)}</td>
+                  <td>{formatDateTime(sub.periodStart)}</td>
+                  <td>{formatDateTime(sub.periodEnd)}</td>
                   <td className="text-end">
                     <button
                       className="btn btn-sm btn-outline-primary"
