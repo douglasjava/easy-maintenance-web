@@ -22,9 +22,14 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    setIsMounted(true);
     fetchPlans();
   }, []);
+
+  if (!isMounted) return null;
 
   async function fetchPlans() {
     try {

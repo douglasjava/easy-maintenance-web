@@ -2,24 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { api } from "@/lib/apiClient";
+import { adminOrganizationsService, Organization } from "@/services/private/admin-organizations.service";
 import toast from "react-hot-toast";
 import Pagination from "@/components/Pagination";
+import PageHeader from "@/components/admin/PageHeader";
+import StatusBadge from "@/components/admin/StatusBadge";
 
 const COLORS = {
     primary: "#0B5ED7",
     primaryDark: "#083B7A",
     bg: "#F3F4F6",
-};
-
-type Organization = {
-    id: string;
-    code: string;
-    name: string;
-    doc: string;
-    plan: string;
-    city?: string;
-    status?: string;
 };
 
 export default function PrivateOrganizationsListPage() {
@@ -36,22 +28,13 @@ export default function PrivateOrganizationsListPage() {
     async function fetchOrganizations() {
         try {
             setLoading(true);
-            const adminToken = window.localStorage.getItem("adminToken");
-            if (!adminToken) {
-                toast.error("Admin token not found");
-                return;
-            }
-
-            const { data } = await api.get("/private/admin/organizations", {
-                params: { page, size },
-                headers: { "X-Admin-Token": adminToken },
-            });
+            const data = await adminOrganizationsService.list({ page, size });
 
             setOrganizations(data.content || []);
             setTotalPages(data.totalPages || 0);
         } catch (err) {
             console.error("Error fetching organizations", err);
-            toast.error("Failed to load organizations");
+            toast.error("Erro ao carregar empresas");
         } finally {
             setLoading(false);
         }
@@ -59,25 +42,16 @@ export default function PrivateOrganizationsListPage() {
 
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div>
-                    <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
-                        Empresas
-                    </h1>
-                    <p className="text-muted mt-1 mb-0">
-                        Gerenciar todas as organizações
-                    </p>
-                </div>
-
-                <div className="d-flex gap-2">
-                    <Link className="btn btn-outline-secondary" href="/private/dashboard">
-                        ← Voltar para Dashboard
+            <PageHeader 
+                title="Empresas" 
+                description="Gerenciar todas as organizações"
+                backUrl="/private/dashboard"
+                actions={
+                    <Link className="btn btn-primary btn-sm" href="/private/organizations/new">
+                        + Criar Empresa
                     </Link>
-                    <Link className="btn btn-primary" href="/private/organizations/new">
-                        + Criar uma Empresa
-                    </Link>
-                </div>
-            </div>
+                }
+            />
 
             <div className="card border-0 shadow-sm">
                 <div className="card-body p-0">
@@ -88,18 +62,17 @@ export default function PrivateOrganizationsListPage() {
                                     <th>Nome</th>
                                     <th>Documento</th>
                                     <th>Cidade</th>
-                                    <th>Status</th>
-                                    <th className="text-end">Actions</th>
+                                    <th className="text-end">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-4">Loading...</td>
+                                        <td colSpan={5} className="text-center py-4">Carregando...</td>
                                     </tr>
                                 ) : organizations.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-4 text-muted">Nenhuma empresa encontrada</td>
+                                        <td colSpan={5} className="text-center py-4 text-muted">Nenhuma empresa encontrada</td>
                                     </tr>
                                 ) : (
                                     organizations.map((org) => (
@@ -107,17 +80,12 @@ export default function PrivateOrganizationsListPage() {
                                             <td className="fw-semibold">{org.name}</td>
                                             <td><small className="text-muted">{org.doc}</small></td>
                                             <td>{org.city || "-"}</td>
-                                            <td>
-                                                <span className="badge bg-success-subtle text-success border border-success-subtle">
-                                                    Active
-                                                </span>
-                                            </td>
                                             <td className="text-end">
                                                 <Link
                                                     href={`/private/organizations/${org.id}`}
                                                     className="btn btn-sm btn-outline-primary"
                                                 >
-                                                    View Details
+                                                    Ver detalhes
                                                 </Link>
                                             </td>
                                         </tr>

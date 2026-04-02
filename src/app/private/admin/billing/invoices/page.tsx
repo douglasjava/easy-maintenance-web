@@ -19,6 +19,8 @@ type Invoice = {
   dueDate: string;
 };
 
+import StatusBadge from "@/components/admin/StatusBadge";
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +35,19 @@ export default function InvoicesPage() {
   });
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
-    fetchInvoices();
-  }, [page, size]);
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      fetchInvoices();
+    }
+  }, [page, size, isMounted]);
+
+  if (!isMounted) return null;
 
   async function fetchInvoices() {
     try {
@@ -69,10 +81,10 @@ export default function InvoicesPage() {
 
   return (
     <BillingAdminLayout>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h5 className="fw-bold m-0">Filtros</h5>
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4 gap-3">
+        <h5 className="fw-bold m-0">Filtros e Faturas</h5>
         <button
-          className="btn btn-primary btn-sm"
+          className="btn btn-primary btn-sm align-self-stretch align-self-sm-center"
           data-bs-toggle="modal"
           data-bs-target="#generateInvoicesModal"
         >
@@ -96,7 +108,7 @@ export default function InvoicesPage() {
               <option value="VOID">Cancelada</option>
             </select>
           </div>
-          <div className="col-12 col-md-2">
+          <div className="col-12 col-sm-6 col-md-2">
             <label className="form-label small fw-medium">Data Início</label>
             <input
               type="date"
@@ -105,7 +117,7 @@ export default function InvoicesPage() {
               onChange={(e) => setFilters({ ...filters, periodStart: e.target.value })}
             />
           </div>
-          <div className="col-12 col-md-2">
+          <div className="col-12 col-sm-6 col-md-2">
             <label className="form-label small fw-medium">Data Fim</label>
             <input
               type="date"
@@ -124,10 +136,10 @@ export default function InvoicesPage() {
             />
           </div>
           <div className="col-12 col-md-2 d-flex align-items-end gap-2">
-            <button className="btn btn-primary btn-sm flex-grow-1" onClick={handleFilter}>
+            <button className="btn btn-primary btn-sm flex-fill" onClick={handleFilter}>
               Filtrar
             </button>
-            <button className="btn btn-outline-secondary btn-sm" onClick={handleClear}>
+            <button className="btn btn-outline-secondary btn-sm flex-fill" onClick={handleClear}>
               Limpar
             </button>
           </div>
@@ -168,13 +180,7 @@ export default function InvoicesPage() {
                   <td>{inv.payerUserId}</td>
                   <td className="fw-semibold">{formatMoney(inv.totalCents)}</td>
                   <td>
-                    <span
-                      className={`badge ${
-                        inv.status === "PAID" ? "bg-success" : "bg-warning text-dark"
-                      }`}
-                    >
-                      {inv.status}
-                    </span>
+                    <StatusBadge status={inv.status} />
                   </td>
                   <td>{formatDate(inv.dueDate)}</td>
                   <td className="text-end">

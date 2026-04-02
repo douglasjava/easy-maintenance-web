@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import BillingAdminLayout from "./BillingAdminLayout";
 import { formatMoney } from "@/lib/formatters";
 import GenerateInvoicesModal from "@/components/billing/GenerateInvoicesModal";
+import StatusBadge from "@/components/admin/StatusBadge";
 
 type OverviewData = {
   counters: {
@@ -57,7 +58,15 @@ export default function BillingOverviewPage() {
   const [page, setPage] = useState(0);
   const [size] = useState(10);
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     async function fetchOverview() {
       try {
         setLoading(true);
@@ -71,22 +80,24 @@ export default function BillingOverviewPage() {
       }
     }
     fetchOverview();
-  }, [page, size]);
+  }, [page, size, isMounted]);
+
+  if (!isMounted) return null;
 
   if (loading && !data) {
     return (
       <BillingAdminLayout>
-        <div className="text-center py-5">Carregando...</div>
+        <div className="text-center py-5 text-muted">Carregando...</div>
       </BillingAdminLayout>
     );
   }
 
   return (
     <BillingAdminLayout>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h5 className="fw-bold m-0">Visão Geral de Faturamento</h5>
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4 gap-3">
+        <h6 className="fw-bold m-0">Visão Geral de Faturamento</h6>
         <button
-          className="btn btn-primary btn-sm"
+          className="btn btn-primary btn-sm align-self-stretch align-self-sm-center"
           data-bs-toggle="modal"
           data-bs-target="#generateInvoicesModal"
         >
@@ -94,21 +105,21 @@ export default function BillingOverviewPage() {
         </button>
       </div>
 
-      <div className="row g-4 mb-5">
-        <div className="col-12 col-md-4">
-          <div className="card border-0 shadow-sm p-4 bg-white rounded-4">
+      <div className="row g-3 mb-5">
+        <div className="col-12 col-sm-6 col-lg-4">
+          <div className="card border shadow-sm p-3 p-md-4 bg-light rounded-3 h-100">
             <div className="text-muted small fw-medium mb-1">Total Organizações</div>
             <div className="h3 mb-0 fw-bold text-dark">{data?.counters.totalOrganizations || 0}</div>
           </div>
         </div>
-        <div className="col-12 col-md-4">
-          <div className="card border-0 shadow-sm p-4 bg-white rounded-4">
+        <div className="col-12 col-sm-6 col-lg-4">
+          <div className="card border shadow-sm p-3 p-md-4 bg-light rounded-3 h-100">
             <div className="text-muted small fw-medium mb-1">Total Pagadores</div>
             <div className="h3 mb-0 fw-bold text-dark">{data?.counters.totalPayers || 0}</div>
           </div>
         </div>
-        <div className="col-12 col-md-4">
-          <div className="card border-0 shadow-sm p-4 bg-white rounded-4">
+        <div className="col-12 col-lg-4">
+          <div className="card border shadow-sm p-3 p-md-4 bg-light rounded-3 h-100">
             <div className="text-muted small fw-medium mb-1">Receita Mensal Estimada</div>
             <div className="h3 mb-0 fw-bold text-success">
               {formatMoney(data?.counters.estimatedMonthlyRevenueCents || 0)}
@@ -117,8 +128,8 @@ export default function BillingOverviewPage() {
         </div>
       </div>
 
-      <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div className="card-header bg-white py-3 border-0">
+      <div className="card border shadow-sm rounded-3 overflow-hidden">
+        <div className="card-header bg-white py-3 border-bottom">
           <h6 className="fw-bold m-0">Pagadores e Assinaturas</h6>
         </div>
         <div className="table-responsive">
@@ -142,9 +153,10 @@ export default function BillingOverviewPage() {
                   <td className="text-center">
                     {payer.userSubscription ? (
                       <div>
-                        <span className={`badge rounded-pill mb-1 ${payer.userSubscription.status === 'ACTIVE' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'}`}>
-                          {payer.userSubscription.planName}
-                        </span>
+                        <div className="mb-1">
+                          <StatusBadge status={payer.userSubscription.status} />
+                        </div>
+                        <div className="small fw-semibold">{payer.userSubscription.planName}</div>
                         <div className="small text-muted">{formatMoney(payer.userSubscription.priceCents)}</div>
                       </div>
                     ) : (
@@ -159,14 +171,14 @@ export default function BillingOverviewPage() {
                   </td>
                   <td className="text-center">
                     <div className="fw-bold text-primary">{formatMoney(payer.revenue.totalCents)}</div>
-                    <div className="x-small text-muted">
+                    <div className="small text-muted" style={{ fontSize: '0.75rem' }}>
                       User: {formatMoney(payer.revenue.userCents)} | Orgs: {formatMoney(payer.revenue.orgsCents)}
                     </div>
                   </td>
                   <td className="text-end pe-4">
                     <Link
                       href={`/private/users/${payer.userId}`}
-                      className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                      className="btn btn-sm btn-outline-primary"
                     >
                       Ver Detalhes
                     </Link>
@@ -186,7 +198,7 @@ export default function BillingOverviewPage() {
 
         {/* Pagination */}
         {data && data.payers.totalPages > 1 && (
-          <div className="card-footer bg-white border-0 py-3">
+          <div className="card-footer bg-white border-top py-3">
             <div className="d-flex justify-content-between align-items-center">
               <span className="small text-muted">
                 Página {data.payers.page + 1} de {data.payers.totalPages} ({data.payers.totalElements} registros)

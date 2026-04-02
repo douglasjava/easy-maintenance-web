@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { api } from "@/lib/apiClient";
-import toast from "react-hot-toast";
+import { adminDashboardService, AdminMetrics } from "@/services/private/admin-dashboard.service";
+import PageHeader from "@/components/admin/PageHeader";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -11,35 +11,15 @@ const COLORS = {
     bg: "#F3F4F6",
 };
 
-type Metrics = {
-    totalOrganizations: number;
-    totalUsers: number;
-    organizationsByPlan: {
-        STARTER: number;
-        BUSINESS: number;
-        ENTERPRISE: number;
-    };
-};
-
 export default function PrivateDashboardPage() {
-    const [metrics, setMetrics] = useState<Metrics | null>(null);
+    const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchMetrics() {
             try {
-                const adminToken = window.localStorage.getItem("adminToken");
-                if (!adminToken) {
-                    toast.error("Admin token not found");
-                    return;
-                }
-
-                const { data } = await api.get("/private/admin/metrics", {
-                    headers: { "X-Admin-Token": adminToken },
-                });
-
+                const data = await adminDashboardService.getMetrics();
                 setMetrics(data);
-
             } catch (err) {
                 console.error("Error fetching metrics", err);
                 setMetrics({
@@ -57,31 +37,27 @@ export default function PrivateDashboardPage() {
 
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            <div className="mb-4">
-                <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
-                    Painel de Administração Global
-                </h1>
-                <p className="text-muted mt-1 mb-0">
-                    Visão geral e gestão de todo o sistema.
-                </p>
-            </div>
+            <PageHeader 
+                title="Painel de Administração Global" 
+                description="Visão geral e gestão de todo o sistema."
+            />
 
             <div className="row g-4 mb-4">
-                <div className="col-12 col-md-4">
-                    <div className="card border-0 shadow-sm text-center p-3">
+                <div className="col-12 col-sm-6 col-lg-4">
+                    <div className="card border-0 shadow-sm text-center p-3 h-100">
                         <div className="text-muted small">Total Empresas</div>
                         <div className="h2 mb-0">{loading ? "..." : metrics?.totalOrganizations}</div>
                     </div>
                 </div>
-                <div className="col-12 col-md-4">
-                    <div className="card border-0 shadow-sm text-center p-3">
+                <div className="col-12 col-sm-6 col-lg-4">
+                    <div className="card border-0 shadow-sm text-center p-3 h-100">
                         <div className="text-muted small">Total Usuários</div>
                         <div className="h2 mb-0">{loading ? "..." : metrics?.totalUsers}</div>
                     </div>
                 </div>
-                <div className="col-12 col-md-4">
-                    <div className="card border-0 shadow-sm text-center p-3">
-                        <div className="text-muted small">Planos pagos</div>
+                <div className="col-12 col-sm-12 col-lg-4">
+                    <div className="card border-0 shadow-sm text-center p-3 h-100">
+                        <div className="text-muted small">Planos ativos</div>
                         <div className="h2 mb-0 text-primary">
                             {loading ? "..." : (
                                 (metrics?.organizationsByPlan.STARTER || 0) +
@@ -94,11 +70,11 @@ export default function PrivateDashboardPage() {
             </div>
 
             <div className="row g-4">
-                <div className="col-12 col-md-4">
+                <div className="col-12 col-md-6 col-lg-4">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body d-flex flex-column">
-                            <h5 className="card-title" style={{ color: COLORS.primaryDark }}>Empresas</h5>
-                            <p className="card-text text-muted">Gerenciar todas as organizações</p>
+                            <h5 className="card-title fw-bold" style={{ color: COLORS.primaryDark }}>Empresas</h5>
+                            <p className="card-text text-muted small">Gerenciar todas as organizações cadastradas no sistema.</p>
                             <Link href="/private/organizations" className="btn btn-primary mt-auto">
                                 Ver Empresas
                             </Link>
@@ -106,11 +82,11 @@ export default function PrivateDashboardPage() {
                     </div>
                 </div>
 
-                <div className="col-12 col-md-4">
+                <div className="col-12 col-md-6 col-lg-4">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body d-flex flex-column">
-                            <h5 className="card-title" style={{ color: COLORS.primaryDark }}>Usuários</h5>
-                            <p className="card-text text-muted">Gerenciar todos os usuários.</p>
+                            <h5 className="card-title fw-bold" style={{ color: COLORS.primaryDark }}>Usuários</h5>
+                            <p className="card-text text-muted small">Gerenciar todos os usuários e suas permissões.</p>
                             <Link href="/private/users" className="btn btn-primary mt-auto">
                                 Ver Usuários
                             </Link>
@@ -118,11 +94,11 @@ export default function PrivateDashboardPage() {
                     </div>
                 </div>
 
-                <div className="col-12 col-md-4">
+                <div className="col-12 col-md-12 col-lg-4">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body d-flex flex-column">
-                            <h5 className="card-title" style={{ color: COLORS.primaryDark }}>Faturamento</h5>
-                            <p className="card-text text-muted">Gerenciar Faturamento.</p>
+                            <h5 className="card-title fw-bold" style={{ color: COLORS.primaryDark }}>Faturamento</h5>
+                            <p className="card-text text-muted small">Gerenciar assinaturas, faturas e planos globais.</p>
                             <Link href="/private/admin/billing" className="btn btn-primary mt-auto">
                                 Ver Faturamento
                             </Link>

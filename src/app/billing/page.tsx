@@ -205,6 +205,7 @@ export default function BillingPage() {
     const {isBlocked} = useAuth();
     const [summary, setSummary] = useState<BillingSummary | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isMounted, setIsMounted] = useState(false);
 
     // Plan Change Modal State
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -213,6 +214,18 @@ export default function BillingPage() {
     // Cancellation Modal State
     const [itemToCancel, setItemToCancel] = useState<number | null>(null);
     const [cancelLoading, setCancelLoading] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (isMounted) {
+            fetchSummary();
+        }
+    }, [isMounted]);
+
+    if (!isMounted) return null;
 
     async function fetchSummary() {
         try {
@@ -228,8 +241,14 @@ export default function BillingPage() {
     }
 
     useEffect(() => {
-        fetchSummary();
+        setIsMounted(true);
     }, []);
+
+    useEffect(() => {
+        if (isMounted) {
+            fetchSummary();
+        }
+    }, [isMounted]);
 
     async function handleChangePlan(itemId: number) {
         const item = summary?.items.find(i => i.id === itemId);

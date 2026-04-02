@@ -20,6 +20,7 @@ type Subscription = {
   sourceType: string;
   planCode: string;
   payerAccountId: number;
+  idUser: number;
   payerName: string;
   status: string;
   periodStart: number;
@@ -28,6 +29,10 @@ type Subscription = {
   organizationCode?: string; // Mantido para compatibilidade se necessário
   organizationName?: string; // Mantido para compatibilidade se necessário
 };
+
+import PlanChangeDialog from "@/components/billing/PlanChangeDialog";
+import ConfirmModal from "@/components/ConfirmModal";
+import StatusBadge from "@/components/admin/StatusBadge";
 
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -38,11 +43,17 @@ export default function SubscriptionsPage() {
     planCode: "",
     payerName: "",
   });
-  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
+
+  // Modal states
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<{ id: number; planCode: string; idUser: number } | null>(null);
+  const [itemToCancel, setItemToCancel] = useState<{ id: number; idUser: number } | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    fetchPlans();
-    fetchSubscriptions();
+    setIsMounted(true);
   }, []);
 
   async function fetchPlans() {
@@ -63,7 +74,6 @@ export default function SubscriptionsPage() {
       );
 
       const res = await api.get("/private/admin/billing/subscriptions", { params: params });
-      // O response agora vem com "content", "totalElements", etc.
       setSubscriptions(res.data.content || []);
     } catch (err) {
       console.error("Error fetching subscriptions", err);
@@ -72,6 +82,15 @@ export default function SubscriptionsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (isMounted) {
+      fetchPlans();
+      if (filters.status === "" && filters.planCode === "" && filters.payerName === "") {
+        fetchSubscriptions();
+      }
+    }
+  }, [isMounted, filters]);
 
   function handleFilter() {
     fetchSubscriptions();
@@ -85,32 +104,37 @@ export default function SubscriptionsPage() {
     });
   }
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case "ACTIVE":
-        return "bg-success";
-      case "TRIAL":
-        return "bg-info text-dark";
-      case "PENDING_PAYMENT":
-      case "PENDING_ACTIVATION":
-        return "bg-warning text-dark";
-      case "PAST_DUE":
-      case "PAYMENT_FAILED":
-        return "bg-danger";
-      case "BLOCKED":
-      case "CANCELED":
-        return "bg-secondary";
-      default:
-        return "bg-light text-dark border";
+  if (!isMounted) return null;
+
+  async function handleCancelSubscription(itemId: number, idUser: number) {
+    try {
+      setCancelLoading(true);
+      const adminToken = window.localStorage.getItem("adminToken");
+      await api.post(`/private/admin/billing/subscription-items/${itemId}/cancel`, {}, {
+            headers: { "X-Admin-Token": adminToken , "X-id-User": idUser },
+        });
+      toast.success("Assinatura cancelada com sucesso!");
+      setItemToCancel(null);
+      fetchSubscriptions();
+    } catch (err) {
+      console.error("Error canceling subscription", err);
+      toast.error("Erro ao cancelar assinatura");
+    } finally {
+      setCancelLoading(false);
     }
-  };
+  }
+
+  function handleOpenChangePlan(itemId: number, planCode: string, idUser: number) {
+    setSelectedItem({ id: itemId, planCode, idUser });
+    setIsPlanModalOpen(true);
+  }
 
   return (
     <BillingAdminLayout>
       <div className="mb-4">
         <h5 className="fw-bold mb-3">Filtros</h5>
         <div className="row g-3">
-          <div className="col-12 col-md-3">
+          <div className="col-12 col-md-4">
             <label className="form-label small fw-medium">Status</label>
             <select
               className="form-select"
@@ -125,7 +149,7 @@ export default function SubscriptionsPage() {
               ))}
             </select>
           </div>
-          <div className="col-12 col-md-3">
+          <div className="col-12 col-md-4">
             <label className="form-label small fw-medium">Plano</label>
             <select
               className="form-select"
@@ -140,7 +164,7 @@ export default function SubscriptionsPage() {
               ))}
             </select>
           </div>
-          <div className="col-12 col-md-6">
+          <div className="col-12 col-md-4">
             <label className="form-label small fw-medium">Nome do Responsável</label>
             <input
               type="text"
@@ -151,10 +175,10 @@ export default function SubscriptionsPage() {
             />
           </div>
           <div className="col-12 d-flex gap-2">
-            <button className="btn btn-primary btn-sm px-4" onClick={handleFilter}>
+            <button className="btn btn-primary btn-sm px-4 flex-fill flex-md-initial" onClick={handleFilter}>
               Filtrar
             </button>
-            <button className="btn btn-outline-secondary btn-sm px-4" onClick={handleClear}>
+            <button className="btn btn-outline-secondary btn-sm px-4 flex-fill flex-md-initial" onClick={handleClear}>
               Limpar
             </button>
           </div>
@@ -195,22 +219,32 @@ export default function SubscriptionsPage() {
                   </td>
                   <td>{sourceTypeLabelMap[sub.sourceType] || sub.sourceType}</td>
                   <td>
-                    <span className={`badge ${getStatusBadgeClass(sub.status)}`}>
-                      {subscriptionStatusLabelMap[sub.status] || sub.status}
-                    </span>
+                    <StatusBadge status={sub.status} />
                   </td>
                   <td>{formatMoney(sub.totalCents)}</td>
                   <td>{formatDateTime(sub.periodStart)}</td>
                   <td>{formatDateTime(sub.periodEnd)}</td>
                   <td className="text-end">
-                    <button
-                      className="btn btn-sm btn-outline-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#editSubscriptionModal"
-                      onClick={() => setSelectedSubscription(sub)}
-                    >
-                      Editar
-                    </button>
+                    <div className="d-flex justify-content-end gap-2">
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
+                      >
+                        Upgrade
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
+                      >
+                        Downgrade
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => setItemToCancel({ id: sub.itemId, idUser: sub.idUser })}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -219,16 +253,31 @@ export default function SubscriptionsPage() {
         </table>
       </div>
 
-      {selectedSubscription && (
-        <EditSubscriptionModal
-          subscription={selectedSubscription as any}
-          plans={plans}
-          onSave={() => {
-            fetchSubscriptions();
-            setSelectedSubscription(null);
+      {isPlanModalOpen && selectedItem && (
+        <PlanChangeDialog
+          show={isPlanModalOpen}
+          onClose={() => {
+            setIsPlanModalOpen(false);
+            setSelectedItem(null);
           }}
+          onSuccess={fetchSubscriptions}
+          itemId={selectedItem.id}
+          currentPlanCode={selectedItem.planCode}
+          isAdmin={true}
+          payerAccountId={selectedItem.payerAccountId}
         />
       )}
+
+      <ConfirmModal
+        show={!!itemToCancel}
+        title="Cancelar Assinatura"
+        message="Tem certeza que deseja cancelar esta assinatura? Esta ação removerá o acesso aos recursos relacionados ao final do período vigente."
+        confirmLabel="Confirmar Cancelamento"
+        cancelLabel="Manter Assinatura"
+        loading={cancelLoading}
+        onConfirm={() => itemToCancel && handleCancelSubscription(itemToCancel.id, itemToCancel.idUser)}
+        onCancel={() => !cancelLoading && setItemToCancel(null)}
+      />
     </BillingAdminLayout>
   );
 }

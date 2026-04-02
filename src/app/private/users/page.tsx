@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { api } from "@/lib/apiClient";
+import { adminUsersService, AdminUser } from "@/services/private/admin-users.service";
 import toast from "react-hot-toast";
 import Pagination from "@/components/Pagination";
-import {categoryLabelMap, statusMap} from "@/lib/enums/labels";
+import PageHeader from "@/components/admin/PageHeader";
+import StatusBadge from "@/components/admin/StatusBadge";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -13,16 +14,8 @@ const COLORS = {
     bg: "#F3F4F6",
 };
 
-type User = {
-    id: string;
-    name: string;
-    email: string;
-    status: string;
-    organizationCodes: []
-};
-
 export default function PrivateUsersListPage() {
-    const [users, setUsers] = useState<User[]>([]);
+    const [users, setUsers] = useState<AdminUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(0);
     const [size, setSize] = useState(10);
@@ -35,16 +28,7 @@ export default function PrivateUsersListPage() {
     async function fetchUsers() {
         try {
             setLoading(true);
-            const adminToken = window.localStorage.getItem("adminToken");
-            if (!adminToken) {
-                toast.error("Token de administrador não encontrado");
-                return;
-            }
-
-            const { data } = await api.get("/private/admin/users", {
-                params: { page, size },
-                headers: { "X-Admin-Token": adminToken },
-            });
+            const data = await adminUsersService.list({ page, size });
 
             setUsers(data.content || []);
             setTotalPages(data.totalPages || 0);
@@ -58,25 +42,16 @@ export default function PrivateUsersListPage() {
 
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div>
-                    <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
-                        Usuários
-                    </h1>
-                    <p className="text-muted mt-1 mb-0">
-                        Gerenciar usuários do sistema.
-                    </p>
-                </div>
-
-                <div className="d-flex gap-2">
-                    <Link className="btn btn-outline-secondary" href="/private/dashboard">
-                        ← Voltar para Dashboard
-                    </Link>
-                    <Link className="btn btn-primary" href="/private/users/new">
+            <PageHeader 
+                title="Usuários" 
+                description="Gerenciar usuários do sistema."
+                backUrl="/private/dashboard"
+                actions={
+                    <Link className="btn btn-primary btn-sm" href="/private/users/new">
                         + Criar Usuário
                     </Link>
-                </div>
-            </div>
+                }
+            />
 
             <div className="card border-0 shadow-sm">
                 <div className="card-body p-0">
@@ -106,9 +81,7 @@ export default function PrivateUsersListPage() {
                                             <td className="fw-semibold">{user.name}</td>
                                             <td>{user.email}</td>
                                             <td>
-                                                <span className={`badge ${user.status === 'ACTIVE' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}`}>
-                                                    {statusMap[user.status]}
-                                                </span>
+                                                <StatusBadge status={user.status} />
                                             </td>
                                             <td className="text-center">{user.organizationCodes?.length || 0}</td>
                                             <td className="text-end">

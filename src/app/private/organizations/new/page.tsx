@@ -3,9 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { adminOrganizationsService } from "@/services/private/admin-organizations.service";
+import { adminUsersService } from "@/services/private/admin-users.service";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import AsyncSelect from "react-select/async";
+import PageHeader from "@/components/admin/PageHeader";
 
 type Plan = "STARTER" | "BUSINESS" | "ENTERPRISE";
 
@@ -70,15 +73,16 @@ export default function CreateOrganizationPage() {
         if (!inputValue || inputValue.length < 2) return [];
 
         try {
-            const adminToken = window.localStorage.getItem("adminToken");
-            const { data } = await api.get(`/private/admin/users?name=${encodeURIComponent(inputValue)}`, {
-                headers: { "X-Admin-Token": adminToken },
-            });
+            const data = await adminUsersService.list({ page: 0, size: 20 });
+            // O ideal seria um endpoint de busca por nome, mas o service list aceita params.
+            // Se o backend suportar filtro por nome no list, adminUsersService.list({ name: inputValue })
 
-            return (data.content || []).map((user: any) => ({
-                value: String(user.id),
-                label: `${user.name} (${user.email})`
-            }));
+            return (data.content || [])
+                .filter(u => u.name.toLowerCase().includes(inputValue.toLowerCase()) || u.email.toLowerCase().includes(inputValue.toLowerCase()))
+                .map((user: any) => ({
+                    value: String(user.id),
+                    label: `${user.name} (${user.email})`
+                }));
         } catch (err) {
             console.error(err);
             return [];
@@ -112,7 +116,7 @@ export default function CreateOrganizationPage() {
 
         try {
             setLoading(true);
-            await api.post("/private/admin/organizations", payload);
+            await adminOrganizationsService.create(payload);
 
             toast.success("Empresa criada com sucesso. Agora configure a assinatura.");
             setCreatedOrgCode(orgCode);
@@ -149,7 +153,7 @@ export default function CreateOrganizationPage() {
 
         try {
             setLoading(true);
-            await api.put(`/private/admin/billing/organizations/${createdOrgCode}/subscription`, payload);
+            await adminBillingService.updateUserSubscription(createdOrgCode, payload);
 
             toast.success("Assinatura configurada com sucesso.");
             router.push("/private/organizations");
@@ -163,262 +167,226 @@ export default function CreateOrganizationPage() {
 
     return (
         <section style={{ backgroundColor: COLORS.bg, minHeight: "100vh" }} className="p-3">
-            <div className="container-fluid" style={{ maxWidth: "1200px" }}>
-                <div className="d-flex align-items-center justify-content-between mb-4">
-                    <div>
-                        <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
-                            Criar Empresa
-                        </h1>
-                        <p className="text-muted mt-1 mb-0">
-                            Cadastre uma nova organização no sistema.
-                        </p>
-                    </div>
+            <PageHeader 
+                title="Criar Nova Empresa"
+                description={`Passo ${step} de 2: ${step === 1 ? "Dados da Empresa" : "Configuração da Assinatura"}`}
+                backUrl="/private/organizations"
+            />
 
-                    <Link className="btn btn-outline-secondary" href="/private/organizations">
-                        ← Voltar para a lista
-                    </Link>
-                </div>
-
-                {/* Progress Indicator */}
-                <div className="d-flex justify-content-center mb-4">
-                    <div className="d-flex align-items-center">
-                        <div className={`rounded-circle d-flex align-items-center justify-content-center ${step === 1 ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ width: 32, height: 32 }}>
-                            {step > 1 ? '✓' : '1'}
+            <div className="card border-0 shadow-sm mx-auto overflow-hidden" style={{ maxWidth: "1000px" }}>
+                <div className="card-body p-4 p-md-5">
+                    {/* PROGRESS BAR */}
+                    <div className="d-flex align-items-center mb-5 position-relative justify-content-between px-md-5">
+                        <div className="position-absolute top-50 start-0 end-0 border-top d-none d-sm-block" style={{ zIndex: 0, marginTop: "-1px" }}></div>
+                        
+                        <div className="text-center position-relative bg-white px-2 px-md-3" style={{ zIndex: 1 }}>
+                            <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 ${step >= 1 ? "bg-primary text-white" : "bg-secondary text-white"}`} style={{ width: "40px", height: "40px" }}>
+                                1
+                            </div>
+                            <div className={`small fw-bold ${step >= 1 ? "text-primary" : "text-muted"}`}>Dados</div>
+                            <div className="d-none d-md-block extra-small text-muted">Informações básicas</div>
                         </div>
-                        <div className="mx-2 fw-medium" style={{ color: step === 1 ? COLORS.primaryDark : '#6c757d' }}>Organização</div>
-                        <div className="bg-secondary opacity-25" style={{ width: 50, height: 2 }}></div>
-                        <div className={`rounded-circle d-flex align-items-center justify-content-center mx-2 ${step === 2 ? 'bg-primary text-white' : 'bg-light text-muted border'}`} style={{ width: 32, height: 32 }}>
-                            2
+
+                        <div className="text-center position-relative bg-white px-2 px-md-3" style={{ zIndex: 1 }}>
+                            <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 ${step >= 2 ? "bg-primary text-white" : "bg-white border text-muted"}`} style={{ width: "40px", height: "40px" }}>
+                                2
+                            </div>
+                            <div className={`small fw-bold ${step >= 2 ? "text-primary" : "text-muted"}`}>Assinatura</div>
+                            <div className="d-none d-md-block extra-small text-muted">Configuração de plano</div>
                         </div>
-                        <div className="fw-medium" style={{ color: step === 2 ? COLORS.primaryDark : '#6c757d' }}>Assinatura</div>
                     </div>
-                </div>
 
-                <div className="card border-0 shadow-sm mx-auto">
-                    <div className="card-body p-4">
-                        {step === 1 ? (
-                            <form onSubmit={onSubmitStep1}>
-                                <div className="row g-3">
-                                    <div className="col-12 col-md-12">
-                                        <label className="form-label fw-bold small">Nome da Empresa</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="Ex: ACME Corp"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Documento (CNPJ/CPF)</label>
-                                        <input
-                                            inputMode="numeric"
-                                            className="form-control"
-                                            placeholder="00.000.000/0001-00"
-                                            value={formData.doc}
-                                            onChange={(e) => {
-                                                const onlyNumbers = e.target.value.replace(/\D/g, "");
-                                                setFormData(p => ({ ...p, doc: onlyNumbers }));
-                                            }}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">CEP</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="00000-000"
-                                            value={formData.zipCode}
-                                            onChange={(e) => setFormData(p => ({ ...p, zipCode: e.target.value }))}
-                                            onBlur={handleZipCodeBlur}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-9">
-                                        <label className="form-label fw-bold small">Logradouro (Rua/Avenida)</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="Rua das Flores"
-                                            value={formData.street}
-                                            onChange={(e) => setFormData(p => ({ ...p, street: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-3">
-                                        <label className="form-label fw-bold small">Número</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="123"
-                                            value={formData.number}
-                                            onChange={(e) => setFormData(p => ({ ...p, number: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Bairro</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="Centro"
-                                            value={formData.neighborhood}
-                                            onChange={(e) => setFormData(p => ({ ...p, neighborhood: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Complemento</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="Apt 101 / Bloco B"
-                                            value={formData.complement}
-                                            onChange={(e) => setFormData(p => ({ ...p, complement: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Cidade</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="Ex: São Paulo"
-                                            value={formData.city}
-                                            onChange={(e) => setFormData(p => ({ ...p, city: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-2">
-                                        <label className="form-label fw-bold small">Estado (UF)</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="SP"
-                                            maxLength={2}
-                                            value={formData.state}
-                                            onChange={(e) => setFormData(p => ({ ...p, state: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-4">
-                                        <label className="form-label fw-bold small">País</label>
-                                        <input
-                                            className="form-control"
-                                            placeholder="Brasil"
-                                            value={formData.country}
-                                            onChange={(e) => setFormData(p => ({ ...p, country: e.target.value }))}
-                                        />
-                                    </div>
+                    {step === 1 ? (
+                        <form onSubmit={onSubmitStep1}>
+                            <h5 className="mb-4 fw-bold">Informações Básicas</h5>
+                            <div className="row g-3">
+                                <div className="col-12 col-md-8">
+                                    <label className="form-label fw-semibold">Nome da Empresa *</label>
+                                    <input
+                                        className="form-control form-control-lg"
+                                        placeholder="Ex: Minha Empresa LTDA"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
+                                        required
+                                    />
+                                </div>
+                                <div className="col-12 col-md-4">
+                                    <label className="form-label fw-semibold">CNPJ/CPF</label>
+                                    <input
+                                        className="form-control form-control-lg"
+                                        placeholder="00.000.000/0000-00"
+                                        value={formData.doc}
+                                        onChange={(e) => {
+                                            const onlyNumbers = e.target.value.replace(/\D/g, "");
+                                            setFormData(p => ({ ...p, doc: onlyNumbers }));
+                                        }}
+                                    />
                                 </div>
 
-                                <div className="mt-4 d-flex justify-content-end">
-                                    <button
-                                        type="submit"
-                                        className="btn btn-primary px-5 py-2 fw-bold"
-                                        disabled={loading}
+                                <h5 className="mt-5 mb-3 fw-bold">Endereço</h5>
+                                <div className="col-12 col-md-3">
+                                    <label className="form-label">CEP</label>
+                                    <input
+                                        className="form-control"
+                                        placeholder="00000-000"
+                                        value={formData.zipCode}
+                                        onChange={(e) => setFormData(p => ({ ...p, zipCode: e.target.value }))}
+                                        onBlur={handleZipCodeBlur}
+                                    />
+                                </div>
+                                <div className="col-12 col-md-7">
+                                    <label className="form-label">Logradouro</label>
+                                    <input
+                                        className="form-control"
+                                        placeholder="Rua, Avenida, etc."
+                                        value={formData.street}
+                                        onChange={(e) => setFormData(p => ({ ...p, street: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="col-12 col-md-2">
+                                    <label className="form-label">Número</label>
+                                    <input
+                                        className="form-control"
+                                        placeholder="123"
+                                        value={formData.number}
+                                        onChange={(e) => setFormData(p => ({ ...p, number: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="col-12 col-md-4">
+                                    <label className="form-label">Bairro</label>
+                                    <input
+                                        className="form-control"
+                                        placeholder="Bairro"
+                                        value={formData.neighborhood}
+                                        onChange={(e) => setFormData(p => ({ ...p, neighborhood: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="col-12 col-md-4">
+                                    <label className="form-label">Cidade</label>
+                                    <input
+                                        className="form-control"
+                                        placeholder="Cidade"
+                                        value={formData.city}
+                                        onChange={(e) => setFormData(p => ({ ...p, city: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="col-12 col-md-2">
+                                    <label className="form-label">Estado</label>
+                                    <input
+                                        className="form-control"
+                                        placeholder="UF"
+                                        maxLength={2}
+                                        value={formData.state}
+                                        onChange={(e) => setFormData(p => ({ ...p, state: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="col-12 col-md-2">
+                                    <label className="form-label">País</label>
+                                    <input
+                                        className="form-control"
+                                        value={formData.country}
+                                        onChange={(e) => setFormData(p => ({ ...p, country: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-5 pt-3 border-top d-flex justify-content-end">
+                                <button className="btn btn-primary px-5 py-2 fw-bold" type="submit" disabled={loading}>
+                                    {loading ? "Criando..." : "Próximo Passo"}
+                                </button>
+                            </div>
+                        </form>
+                    ) : (
+                        <form onSubmit={onSubmitStep2}>
+                            <h5 className="mb-4 fw-bold">Configurar Plano e Responsável</h5>
+                            <div className="row g-4">
+                                <div className="col-12">
+                                    <label className="form-label fw-semibold">Usuário Responsável (Pagador) *</label>
+                                    <AsyncSelect
+                                        cacheOptions
+                                        loadOptions={loadPayerOptions}
+                                        defaultOptions
+                                        placeholder="Digite o nome ou e-mail do usuário..."
+                                        noOptionsMessage={() => "Nenhum usuário encontrado"}
+                                        loadingMessage={() => "Buscando..."}
+                                        onChange={(option: any) => {
+                                            setSubscriptionData(p => ({ 
+                                                ...p, 
+                                                payerUserId: option ? option.value : "" 
+                                            }));
+                                        }}
+                                        isClearable
+                                        styles={{
+                                            control: (base) => ({
+                                                ...base,
+                                                padding: "5px",
+                                                borderRadius: "8px"
+                                            })
+                                        }}
+                                    />
+                                    <div className="form-text mt-2">Este usuário será o responsável financeiro pela empresa.</div>
+                                </div>
+
+                                <div className="col-12 col-md-6">
+                                    <label className="form-label fw-semibold">Plano *</label>
+                                    <select
+                                        className="form-select form-select-lg"
+                                        value={subscriptionData.planCode}
+                                        onChange={(e) => setSubscriptionData(p => ({ ...p, planCode: e.target.value as Plan }))}
+                                        required
                                     >
-                                        {loading ? "Salvando..." : "Próximo Passo →"}
-                                    </button>
-                                </div>
-                            </form>
-                        ) : (
-                            <form onSubmit={onSubmitStep2}>
-                                <div className="alert alert-info border-0 shadow-sm mb-4">
-                                    <h6 className="alert-heading fw-bold mb-1">Configuração de Assinatura</h6>
-                                    <p className="small mb-0">A empresa foi criada. Agora, defina quem será o pagador e qual o plano inicial.</p>
+                                        <option value="STARTER">STARTER - 1 Empresa</option>
+                                        <option value="BUSINESS">BUSINESS - 5 Empresas</option>
+                                        <option value="ENTERPRISE">ENTERPRISE - 15 Empresas</option>
+                                    </select>
                                 </div>
 
-                                <div className="row g-3">
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Usuário Pagador (Nome)</label>
-                                        <AsyncSelect
-                                            cacheOptions
-                                            loadOptions={loadPayerOptions}
-                                            defaultOptions
-                                            placeholder="Digite o nome para buscar..."
-                                            noOptionsMessage={() => "Nenhum usuário encontrado"}
-                                            loadingMessage={() => "Buscando..."}
-                                            onChange={(option: any) => {
-                                                setSubscriptionData(p => ({ 
-                                                    ...p, 
-                                                    payerUserId: option ? option.value : "" 
-                                                }));
-                                            }}
-                                            isClearable
-                                            classNamePrefix="react-select"
-                                        />
-                                        {subscriptionData.payerUserId && (
-                                            <div className="small text-success mt-1">
-                                                ID do Usuário Selecionado: {subscriptionData.payerUserId}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Plano</label>
-                                        <select
-                                            className="form-select"
-                                            value={subscriptionData.planCode}
-                                            onChange={(e) => setSubscriptionData(p => ({ ...p, planCode: e.target.value as Plan }))}
-                                            required
-                                        >
-                                            <option value="STARTER">STARTER</option>
-                                            <option value="BUSINESS">BUSINESS</option>
-                                            <option value="ENTERPRISE">ENTERPRISE</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Status</label>
-                                        <select
-                                            className="form-select"
-                                            value={subscriptionData.status}
-                                            onChange={(e) => setSubscriptionData(p => ({ ...p, status: e.target.value }))}
-                                            required
-                                        >
-                                            <option value="ACTIVE">ATIVO</option>
-                                            <option value="PAST_DUE">EM ATRASO</option>
-                                            <option value="CANCELED">CANCELADO</option>
-                                            <option value="TRIALING">EM TESTE</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Início do Período</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            value={subscriptionData.currentPeriodStart}
-                                            onChange={(e) => setSubscriptionData(p => ({ ...p, currentPeriodStart: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Fim do Período</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            value={subscriptionData.currentPeriodEnd}
-                                            onChange={(e) => setSubscriptionData(p => ({ ...p, currentPeriodEnd: e.target.value }))}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 d-flex justify-content-between">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-secondary px-4 py-2"
-                                        onClick={() => router.push("/private/organizations")}
+                                <div className="col-12 col-md-6">
+                                    <label className="form-label fw-semibold">Status *</label>
+                                    <select
+                                        className="form-select form-select-lg"
+                                        value={subscriptionData.status}
+                                        onChange={(e) => setSubscriptionData(p => ({ ...p, status: e.target.value }))}
+                                        required
                                     >
-                                        Pular (Configurar depois)
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="btn btn-success px-5 py-2 fw-bold"
-                                        disabled={loading}
-                                    >
-                                        {loading ? "Salvando..." : "Finalizar Cadastro ✓"}
-                                    </button>
+                                        <option value="ACTIVE">Ativo</option>
+                                        <option value="PAST_DUE">Em atraso</option>
+                                        <option value="CANCELED">Cancelado</option>
+                                        <option value="TRIALING">Degustação (Trial)</option>
+                                    </select>
                                 </div>
-                            </form>
-                        )}
-                    </div>
+
+                                <div className="col-12 col-md-6">
+                                    <label className="form-label fw-semibold">Início do Período</label>
+                                    <input
+                                        type="date"
+                                        className="form-control"
+                                        value={subscriptionData.currentPeriodStart}
+                                        onChange={(e) => setSubscriptionData(p => ({ ...p, currentPeriodStart: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="col-12 col-md-6">
+                                    <label className="form-label fw-semibold">Fim do Período</label>
+                                    <input
+                                        type="date"
+                                        className="form-control"
+                                        value={subscriptionData.currentPeriodEnd}
+                                        onChange={(e) => setSubscriptionData(p => ({ ...p, currentPeriodEnd: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-5 pt-3 border-top d-flex justify-content-between">
+                                <button className="btn btn-outline-secondary px-4 py-2" type="button" onClick={() => setStep(1)} disabled={loading}>
+                                    Voltar
+                                </button>
+                                <button className="btn btn-success px-5 py-2 fw-bold" type="submit" disabled={loading}>
+                                    {loading ? "Finalizando..." : "Concluir e Criar Empresa"}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </div>
         </section>

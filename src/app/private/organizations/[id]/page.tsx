@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import AsyncSelect from "react-select/async";
 
 type Plan = "STARTER" | "PRO" | "BUSINESS" | "ENTERPRISE";
 
@@ -21,21 +20,8 @@ type Organization = {
     state?: string;
     neighborhood?: string;
     complement?: string;
-    responsibleUser?: {
-        id: number;
-        email: string;
-        name: string;
-        role: string;
-        status: string;
-    };
-};
-
-type User = {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    status: string;
+    companyType?: string;
+    billingSubscriptionItem?: string;
 };
 
 const COLORS = {
@@ -48,29 +34,21 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     const { id } = use(params);
     const [loading, setLoading] = useState(true);
     const [org, setOrg] = useState<Organization | null>(null);
-    const [currentStep, setCurrentStep] = useState(1);
-    const [stepOneCompleted, setStepOneCompleted] = useState(false);
-    const [payerLabel, setPayerLabel] = useState("");
-    const [subscriptionForm, setSubscriptionForm] = useState({
-        payerUserId: "",
-        payerEmail: "",
-        status: "ACTIVE",
-        planCode: "",
-        currentPeriodEnd: "",
-        currentPeriodStart: ""
-    });
 
     // Form states
     const [detailsForm, setDetailsForm] = useState({ 
-        name: "", 
-        doc: "", 
+        id: "",
+        name: "",
+        doc: "",
         city: "",
         street: "",
         number: "",
         neighborhood: "",
         zipCode: "",
         state: "",
-        complement: ""
+        complement: "",
+        companyType: "",
+        billingSubscriptionItem: ""
     });
     const [planForm, setPlanForm] = useState<Plan>("STARTER");
 
@@ -86,7 +64,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                 headers: { "X-Admin-Token": adminToken },
             });
             setOrg(data);
-            setDetailsForm({ 
+            setDetailsForm({
+                id: data.id,
                 name: data.name, 
                 doc: data.doc || "", 
                 city: data.city || "",
@@ -96,31 +75,11 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                 zipCode: data.zipCode || "",
                 state: data.state || "",
                 complement: data.complement || "",
+                companyType: data.companyType || "",
+                billingSubscriptionItem: data.billingSubscriptionItem || ""
             });
             setPlanForm(data.plan);
-            setStepOneCompleted(true);
 
-            // Fetch subscription details
-            try {
-                const subRes = await api.get(`/private/admin/billing/organizations/${data.code}/subscription`);
-                if (subRes.data) {
-                    setSubscriptionForm({
-                        payerEmail: subRes.data.payerEmail ? String(subRes.data.payerEmail) : "",
-                        payerUserId: subRes.data.payerUserId ? String(subRes.data.payerUserId) : "",
-                        status: subRes.data.status || "ACTIVE",
-                        planCode: subRes.data.planCode || "STARTER",
-                        currentPeriodStart: subRes.data.currentPeriodStart ? subRes.data.currentPeriodStart.split("T")[0] : "",
-                        currentPeriodEnd: subRes.data.currentPeriodEnd ? subRes.data.currentPeriodEnd.split("T")[0] : ""
-                    });
-                    if (subRes.data.payerName) {
-                        setPayerLabel(subRes.data.payerName);
-                    } else if (subRes.data.payerUserId) {
-                        setPayerLabel(String(subRes.data.payerUserId));
-                    }
-                }
-            } catch (subErr) {
-                console.warn("Could not fetch subscription details", subErr);
-            }
         } catch (err) {
             console.error(err);
             toast.error("Erro ao carregar detalhes da organização.");
@@ -137,30 +96,10 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                 headers: { "X-Admin-Token": adminToken },
             });
             toast.success("Informações atualizadas.");
-            setStepOneCompleted(true);
-            setCurrentStep(2);
             fetchOrg();
         } catch (err) {
+            console.log(err)
             toast.error("Erro ao atualizar informações.");
-        }
-    }
-
-    async function loadPayerOptions(inputValue: string) {
-        if (!inputValue || inputValue.length < 2) return [];
-
-        try {
-            const adminToken = window.localStorage.getItem("adminToken");
-            const { data } = await api.get(`/private/admin/users?name=${encodeURIComponent(inputValue)}`, {
-                headers: { "X-Admin-Token": adminToken },
-            });
-
-            return (data.content || []).map((user: any) => ({
-                value: String(user.id),
-                label: `${user.name} (${user.email})`
-            }));
-        } catch (err) {
-            console.error(err);
-            return [];
         }
     }
 
@@ -181,27 +120,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                 </Link>
             </div>
 
-            {/* Stepper horizontal */}
-            <div className="mb-4">
-                <div className="d-flex justify-content-center align-items-center">
-                    <button 
-                        className={`btn ${currentStep === 1 ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4 mx-2`}
-                        onClick={() => setCurrentStep(1)}
-                    >
-                        1. Dados da Organização
-                    </button>
-                    <div style={{ width: '50px', height: '2px', backgroundColor: '#dee2e6' }}></div>
-                    <button 
-                        className={`btn ${currentStep === 2 ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4 mx-2`}
-                        disabled={!stepOneCompleted}
-                        onClick={() => setCurrentStep(2)}
-                    >
-                        2. Dados da Assinatura
-                    </button>
-                </div>
-            </div>
 
-            {currentStep === 1 && (
                 <div className="card border-0 shadow-sm overflow-hidden mb-4">
                     <div className="card-body p-4">
                         <form onSubmit={handleUpdateDetails}>
@@ -285,113 +204,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                         </form>
                     </div>
                 </div>
-            )}
-
-            {currentStep === 2 && (
-                <div className="card border-0 shadow-sm overflow-hidden mb-4">
-                    <div className="card-header bg-white border-0 pt-4 px-4">
-                        <h5 className="mb-0 fw-bold" style={{ color: COLORS.primaryDark }}>Assinatura e Faturamento</h5>
-                        <p className="text-muted small mb-0">Gerencie o plano e o pagador desta organização.</p>
-                    </div>
-                    <div className="card-body p-4">
-                        <form onSubmit={async (e) => {
-                            e.preventDefault();
-                            try {
-                                setLoading(true);
-                                const toTimestamp = (dateStr: string) => {
-                                    if (!dateStr) return undefined;
-                                    return Math.floor(new Date(dateStr).getTime() / 1000);
-                                };
-
-                                const payload = {
-                                    payerUserId: Number(subscriptionForm.payerUserId),
-                                    planCode: subscriptionForm.planCode,
-                                    status: subscriptionForm.status,
-                                    currentPeriodStart: toTimestamp(subscriptionForm.currentPeriodStart),
-                                    currentPeriodEnd: toTimestamp(subscriptionForm.currentPeriodEnd)
-                                };
-
-                                await api.put(`/private/admin/billing/organizations/${org.code}/subscription`, payload);
-                                toast.success("Assinatura atualizada com sucesso!");
-                            } catch (err) {
-                                console.error(err);
-                                toast.error("Erro ao atualizar assinatura.");
-                            } finally {
-                                setLoading(false);
-                            }
-                        }}>
-                            <div className="row g-3">
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label small fw-medium">Usuário Pagador (Nome)</label>
-                                    <AsyncSelect
-                                        cacheOptions
-                                        loadOptions={loadPayerOptions}
-                                        defaultOptions
-                                        placeholder="Digite o nome para buscar..."
-                                        noOptionsMessage={() => "Nenhum usuário encontrado"}
-                                        loadingMessage={() => "Buscando..."}
-                                        value={subscriptionForm.payerEmail ? { value: subscriptionForm.payerEmail, label: payerLabel } : null}
-                                        onChange={(option: any) => {
-                                            setSubscriptionForm(p => ({...p, payerEmail: option ? option.value : ""}));
-                                            setPayerLabel(option ? option.label : "");
-                                        }}
-                                        isClearable
-                                        classNamePrefix="react-select"
-                                    />
-                                </div>
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label small fw-medium">Plano</label>
-                                    <select
-                                        className="form-select"
-                                        value={subscriptionForm.planCode}
-                                        onChange={(e) => setSubscriptionForm(p => ({ ...p, planCode: e.target.value }))}
-                                        required
-                                    >
-                                        <option value="STARTER">STARTER</option>
-                                        <option value="BUSINESS">BUSINESS</option>
-                                        <option value="ENTERPRISE">ENTERPRISE</option>
-                                    </select>
-                                </div>
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label small fw-medium">Status</label>
-                                    <select
-                                        className="form-select"
-                                        value={subscriptionForm.status}
-                                        onChange={(e) => setSubscriptionForm(p => ({ ...p, status: e.target.value }))}
-                                        required
-                                    >
-                                        <option value="ACTIVE">ACTIVE</option>
-                                        <option value="PAST_DUE">PAST_DUE</option>
-                                        <option value="CANCELED">CANCELED</option>
-                                        <option value="TRIALING">TRIALING</option>
-                                    </select>
-                                </div>
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label fw-bold small">Início do Período</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={subscriptionForm.currentPeriodStart}
-                                        onChange={(e) => setSubscriptionForm(p => ({ ...p, currentPeriodStart: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label small fw-medium">Fim do Período Atual</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={subscriptionForm.currentPeriodEnd}
-                                        onChange={(e) => setSubscriptionForm(p => ({ ...p, currentPeriodEnd: e.target.value }))}
-                                    />
-                                </div>
-                            </div>
-                            <button className="btn btn-primary mt-4 px-4" type="submit" disabled={loading}>
-                                {loading ? "Salvando..." : "Atualizar Assinatura"}
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
 
         </section>
     );
