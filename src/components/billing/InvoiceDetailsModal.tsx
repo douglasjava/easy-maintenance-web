@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/apiClient";
 import { formatMoney, formatDate } from "@/lib/formatters";
+import {billingCycleLabelMap, paymentStatusMap} from "@/lib/enums/labels";
 
 type InvoiceItem = {
   organizationCode: string;
@@ -80,16 +81,12 @@ export default function InvoiceDetailsModal({ invoiceId }: InvoiceDetailsModalPr
               <>
                 <div className="row mb-4 g-3">
                   <div className="col-6 col-md-3">
-                    <div className="small text-muted">ID Pagador</div>
-                    <div className="fw-semibold">{invoice.payerUserId}</div>
-                  </div>
-                  <div className="col-6 col-md-3">
                     <div className="small text-muted">Status</div>
                     <span className={`badge ${invoice.status === 'PAID' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                      {invoice.status}
+                      {paymentStatusMap[invoice.status]}
                     </span>
                   </div>
-                  <div className="col-6 col-md-3">
+                  <div className="col-6 col-md-6">
                     <div className="small text-muted">Período</div>
                     <div className="fw-semibold">
                       {formatDate(invoice.periodStart)} - {formatDate(invoice.periodEnd)}
@@ -107,7 +104,6 @@ export default function InvoiceDetailsModal({ invoiceId }: InvoiceDetailsModalPr
                     <thead className="table-light">
                       <tr>
                         <th>Descrição</th>
-                        <th>Plano</th>
                         <th className="text-end">Valor</th>
                       </tr>
                     </thead>
@@ -115,7 +111,6 @@ export default function InvoiceDetailsModal({ invoiceId }: InvoiceDetailsModalPr
                       {invoice.items.map((item, idx) => (
                         <tr key={idx}>
                           <td>{item.description}</td>
-                          <td>{item.planCode}</td>
                           <td className="text-end">{formatMoney(item.amountCents)}</td>
                         </tr>
                       ))}

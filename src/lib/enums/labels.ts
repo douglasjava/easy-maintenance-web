@@ -48,3 +48,15 @@ export const billingCycleLabelMap: Record<string, string> = {
     MONTHLY: "Mensal",
     YEARLY: "Anual"
 }
+
+export const paymentStatusMap: Record<string, string> = {
+    PENDING: "Pagamento pendente",
+    PAID: "Pago",
+    FAILED: "Pagamento falhou",
+    CANCELED: "Cancelado",
+    REFUNDED: "Reembolsado",
+    OVERDUE: "Atrasado",
+    RECEIVED: "Recebido",
+    CHECKOUT_PAID: "Pago via checkout",
+    EXPIRED: "Expirado"
+};

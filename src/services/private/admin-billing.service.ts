@@ -49,5 +49,10 @@ export const adminBillingService = {
     async generateInvoices(payload: any) {
         const { data } = await api.post("/private/admin/billing/invoices/generate", payload);
         return data;
+    },
+
+    async listAccounts(params: any) {
+        const { data } = await api.get("/private/admin/billing/accounts", { params });
+        return data;
     }
 };

@@ -224,28 +224,34 @@ export default function SubscriptionsPage() {
                   <td>{formatMoney(sub.totalCents)}</td>
                   <td>{formatDateTime(sub.periodStart)}</td>
                   <td>{formatDateTime(sub.periodEnd)}</td>
-                  <td className="text-end">
-                    <div className="d-flex justify-content-end gap-2">
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
-                      >
-                        Upgrade
-                      </button>
-                      <button
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
-                      >
-                        Downgrade
-                      </button>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => setItemToCancel({ id: sub.itemId, idUser: sub.idUser })}
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </td>
+                    <td className="text-end">
+                        {sub.status === "ACTIVE" ? (
+                            <div className="d-flex justify-content-end gap-2">
+                                <button
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
+                                >
+                                    Upgrade
+                                </button>
+
+                                <button
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
+                                >
+                                    Downgrade
+                                </button>
+
+                                <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => setItemToCancel({ id: sub.itemId, idUser: sub.idUser })}
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        ) : (
+                            <span className="text-muted small">Sem ações disponíveis</span>
+                        )}
+                    </td>
                 </tr>
               ))
             )}
@@ -264,7 +270,7 @@ export default function SubscriptionsPage() {
           itemId={selectedItem.id}
           currentPlanCode={selectedItem.planCode}
           isAdmin={true}
-          payerAccountId={selectedItem.payerAccountId}
+          idUser={selectedItem.idUser}
         />
       )}
 

@@ -8,6 +8,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import AsyncCreatableSelect from "react-select/async-creatable";
 import { AxiosError } from "axios";
 import toast from "react-hot-toast";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { PagePermissionGuard } from "@/components/access/PagePermissionGuard";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -56,6 +58,11 @@ function NewItemContent() {
     const origin = searchParams.get("origin");
     const editId = searchParams.get("id");
     const backHref = origin === "dashboard" ? "/" : "/items";
+
+    const { permissions, isLoading: accessLoading } = useCurrentOrganizationAccess();
+    
+    // Se for edição, usa canEditItem. Se for criação, usa canCreateItem.
+    const isAllowed = editId ? permissions?.canEditItem : permissions?.canCreateItem;
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState(EMPTY_FORM);
@@ -199,7 +206,8 @@ function NewItemContent() {
     }
 
     return (
-        <section style={{ backgroundColor: COLORS.bg }} className="p-3">
+        <PagePermissionGuard allowed={isAllowed} redirectHref={backHref}>
+            <section style={{ backgroundColor: COLORS.bg }} className="p-3">
             {/* 
                 PATTERN: Top + Footer
                 WHY: Although it's a single-step form, it involves significant data entry and selection 
@@ -442,6 +450,7 @@ function NewItemContent() {
                 </div>
             </div>
         </section>
+        </PagePermissionGuard>
     );
 }
 

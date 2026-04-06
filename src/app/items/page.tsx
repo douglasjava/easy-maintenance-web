@@ -10,6 +10,9 @@ import Pagination from "@/components/Pagination";
 import { categoryLabelMap } from "@/lib/enums/labels";
 import toast from "react-hot-toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { GuardedButton } from "@/components/access/GuardedButton";
+import { FeatureGuard } from "@/components/access/FeatureGuard";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -49,6 +52,8 @@ function ItemsContent() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
     const [deleting, setDeleting] = useState(false);
+
+    const { permissions, message: orgMessage } = useCurrentOrganizationAccess();
 
     const { data, isLoading, error, refetch } = useQuery({
         queryKey: ["items", { status, itemType, categoria, page, size }],
@@ -151,9 +156,15 @@ function ItemsContent() {
                 </div>
 
                 <div className="col-4 text-end">
-                    <Link className="btn btn-primary" href="/items/new?origin=items">
+                    <GuardedButton 
+                        className="btn btn-primary" 
+                        allowed={!!permissions?.canCreateItem}
+                        mode="hide"
+                        blockedMessage={orgMessage}
+                        onClick={() => window.location.href = "/items/new?origin=items"}
+                    >
                         + Novo Item
-                    </Link>
+                    </GuardedButton>
                 </div>
             </div>
 
@@ -256,33 +267,23 @@ function ItemsContent() {
                                                 >
                                                     Abrir
                                                 </Link>
-                                                {it.canUpdate ? (
-                                                    <Link
-                                                        className="btn btn-sm btn-outline-primary me-2"
-                                                        href={`/items/new?id=${it.id}&origin=items`}
-                                                    >
-                                                        Editar
-                                                    </Link>
-                                                ) : (
-                                                    <span
-                                                        title="Edição indisponível: este item possui manutenções registradas. Crie um novo item."
-                                                        style={{ display: "inline-block", cursor: "not-allowed" }}
-                                                      >
-                                                      <button
-                                                          className="btn btn-sm btn-outline-secondary me-2"
-                                                          disabled
-                                                          style={{ pointerEvents: "none" }}
-                                                      >
-                                                        Editar
-                                                      </button>
-                                                    </span>
-                                                )}
-                                                <button
+                                                <GuardedButton
+                                                    className="btn btn-sm btn-outline-primary me-2"
+                                                    allowed={!!it.canUpdate && !!permissions?.canEditItem}
+                                                    blockedMessage={!permissions?.canEditItem ? (orgMessage || "Seu plano não permite editar itens.") : (it.reason || "Edição indisponível.")}
+                                                    onClick={() => window.location.href = `/items/new?id=${it.id}&origin=items`}
+                                                >
+                                                    Editar
+                                                </GuardedButton>
+
+                                                <GuardedButton
                                                     className="btn btn-sm btn-outline-danger"
+                                                    allowed={!!permissions?.canDeleteItem}
+                                                    blockedMessage={orgMessage}
                                                     onClick={() => openDeleteModal(it)}
                                                 >
                                                     Remover
-                                                </button>
+                                                </GuardedButton>
                                             </td>
                                         </tr>
                                     ))}

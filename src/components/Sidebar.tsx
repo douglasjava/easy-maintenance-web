@@ -5,6 +5,7 @@ import Logo from "./Logo";
 import {useRouter, usePathname} from "next/navigation";
 import {useState, useEffect} from "react";
 import {useAuth} from "@/contexts/AuthContext";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -25,6 +26,7 @@ export default function Sidebar() {
     const router = useRouter();
     const pathname = usePathname();
     const { isBlocked } = useAuth();
+    const { permissions } = useCurrentOrganizationAccess();
 
     function closeOffcanvas() {
         try {
@@ -169,6 +171,11 @@ export default function Sidebar() {
                                     <nav className="nav flex-column gap-1">
                                         {currentItems
                                             .filter((i) => i.section === "actions")
+                                            .filter((i) => {
+                                                if (i.href === "/items/new") return permissions?.canCreateItem;
+                                                if (i.href === "/maintenances/new") return permissions?.canRegisterMaintenance;
+                                                return true;
+                                            })
                                             .map((i) => (
                                                 <NavLink key={i.href} href={i.href} label={i.label}/>
                                             ))}

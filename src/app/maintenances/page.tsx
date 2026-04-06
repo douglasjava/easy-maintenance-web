@@ -7,6 +7,8 @@ import { api } from "@/lib/apiClient";
 import Pagination from "@/components/Pagination";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { GuardedButton } from "@/components/access/GuardedButton";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -52,6 +54,8 @@ function MaintenancesListContent() {
     const searchParams = useSearchParams();
     const origin = searchParams.get("origin");
     const backHref = origin === "dashboard" ? "/" : "/";
+
+    const { permissions, message: orgMessage } = useCurrentOrganizationAccess();
 
     // filtros do combo de itens
     const [itemsPage, setItemsPage] = useState(0);
@@ -205,16 +209,20 @@ function MaintenancesListContent() {
                 </div>
 
                 <div className="col-4 text-end">
-                    <Link
+                    <GuardedButton
                         className="btn btn-primary"
-                        href={
-                            selectedItemId
+                        allowed={!!permissions?.canRegisterMaintenance}
+                        mode="hide"
+                        blockedMessage={orgMessage}
+                        onClick={() => {
+                            const url = selectedItemId
                                 ? `/maintenances/new?itemId=${selectedItemId}&origin=maintenances`
-                                : "/maintenances/new?origin=maintenances"
-                        }
+                                : "/maintenances/new?origin=maintenances";
+                            window.location.href = url;
+                        }}
                     >
                         + Registrar
-                    </Link>
+                    </GuardedButton>
                 </div>
             </div>
 

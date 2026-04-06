@@ -13,9 +13,10 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
                 return { className: "bg-success-subtle text-success border-success-subtle", label: "Ativo" };
             case "INACTIVE":
             case "INATIVO":
+                return { className: "bg-danger-subtle text-danger border-danger-subtle", label: "Inativo" };
             case "CANCELED":
             case "CANCELADO":
-                return { className: "bg-danger-subtle text-danger border-danger-subtle", label: "Inativo" };
+                return { className: "bg-danger-subtle text-danger border-danger-subtle", label: "Cancelado" };
             case "PENDING":
             case "PENDENTE":
                 return { className: "bg-warning-subtle text-warning border-warning-subtle", label: "Pendente" };

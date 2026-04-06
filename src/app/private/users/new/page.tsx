@@ -40,7 +40,7 @@ export default function CreateUserPage() {
             status: "ACTIVE",
         };
 
-        if (!payload.name || !payload.email || !payload.password || !payload.role) {
+        if (!payload.name || !payload.email || !payload.role) {
             toast.error("Por favor, preencha todos os campos obrigatórios.");
             return;
         }
@@ -74,7 +74,7 @@ export default function CreateUserPage() {
                 <div className="card-body p-4 p-md-5">
                     <form onSubmit={onSubmitStep1}>
                         <div className="row g-4">
-                            <div className="col-12 col-md-6">
+                            <div className="col-12 col-md-12">
                                 <label className="form-label fw-semibold">Nome Completo *</label>
                                 <input
                                     className="form-control"
@@ -85,7 +85,7 @@ export default function CreateUserPage() {
                                 />
                             </div>
 
-                            <div className="col-12 col-md-6">
+                            <div className="col-12 col-md-12">
                                 <label className="form-label fw-semibold">E-mail *</label>
                                 <input
                                     type="email"
@@ -97,20 +97,7 @@ export default function CreateUserPage() {
                                 />
                             </div>
 
-                            <div className="col-12 col-md-6">
-                                <label className="form-label fw-semibold">Senha Inicial *</label>
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
-                                    required
-                                />
-                                <div className="form-text small">Mínimo de 6 caracteres.</div>
-                            </div>
-
-                            <div className="col-12 col-md-6">
+                            <div className="col-12 col-md-12">
                                 <label className="form-label fw-semibold">Perfil de Acesso *</label>
                                 <select
                                     className="form-select"

@@ -8,10 +8,13 @@ import { formatMoney, formatDate } from "@/lib/formatters";
 import Pagination from "@/components/Pagination";
 import GenerateInvoicesModal from "@/components/billing/GenerateInvoicesModal";
 import InvoiceDetailsModal from "@/components/billing/InvoiceDetailsModal";
+import AsyncSelect from "react-select/async";
+import { adminBillingService } from "@/services/private/admin-billing.service";
 
 type Invoice = {
   id: string;
   payerUserId: string;
+  payerUserName?: string;
   periodStart: string;
   periodEnd: string;
   totalCents: number;
@@ -28,11 +31,14 @@ export default function InvoicesPage() {
   const [size, setSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [filters, setFilters] = useState({
-    status: "",
-    periodStart: "",
-    periodEnd: "",
-    payerUserId: "",
+      status: "",
+      periodStart: "",
+      periodEnd: "",
+      dueDateStart: "",
+      dueDateEnd: "",
+      payerUserId: "",
   });
+  const [payerFilter, setPayerFilter] = useState<{ value: string; label: string } | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
@@ -53,9 +59,17 @@ export default function InvoicesPage() {
     try {
       setLoading(true);
       const res = await api.get("/private/admin/billing/invoices", {
-        params: { ...filters, page, size },
+        params: { 
+          ...filters, 
+          payerUserId: filters.payerUserId || undefined,
+          page, 
+          size 
+        },
       });
-      setInvoices(res.data.content || []);
+      
+      const content = res.data.content || [];
+      
+      setInvoices(content);
       setTotalPages(res.data.totalPages || 0);
     } catch (err) {
       console.error("Error fetching invoices", err);
@@ -75,8 +89,26 @@ export default function InvoicesPage() {
       status: "",
       periodStart: "",
       periodEnd: "",
+      dueDateStart: "",
+      dueDateEnd: "",
       payerUserId: "",
     });
+    setPayerFilter(null);
+  }
+
+  async function loadPayerOptions(inputValue: string) {
+    if (!inputValue || inputValue.length < 3) return [];
+
+    try {
+      const data = await adminBillingService.listAccounts({ name: inputValue });
+      return (data.content || []).map((account: any) => ({
+        value: String(account.userId),
+        label: account.name,
+      }));
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
   }
 
   return (
@@ -102,37 +134,53 @@ export default function InvoicesPage() {
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             >
               <option value="">Todos</option>
-              <option value="PAID">Paga</option>
-              <option value="PENDING">Pendente</option>
-              <option value="OVERDUE">Atrasada</option>
-              <option value="VOID">Cancelada</option>
+              <option value="OPEN">Aberto</option>
+              <option value="PAID">Pago</option>
+              <option value="CANCELED">Cancelado</option>
+              <option value="OVERDUE">Vencido</option>
             </select>
           </div>
           <div className="col-12 col-sm-6 col-md-2">
-            <label className="form-label small fw-medium">Data Início</label>
+            <label className="form-label small fw-medium">Data Vencimento Início</label>
             <input
               type="date"
               className="form-control"
-              value={filters.periodStart}
-              onChange={(e) => setFilters({ ...filters, periodStart: e.target.value })}
+              value={filters.dueDateStart}
+              onChange={(e) => setFilters({ ...filters, dueDateStart: e.target.value })}
             />
           </div>
           <div className="col-12 col-sm-6 col-md-2">
-            <label className="form-label small fw-medium">Data Fim</label>
+            <label className="form-label small fw-medium">Data Vencimento Fim</label>
             <input
               type="date"
               className="form-control"
-              value={filters.periodEnd}
-              onChange={(e) => setFilters({ ...filters, periodEnd: e.target.value })}
+              value={filters.dueDateEnd}
+              onChange={(e) => setFilters({ ...filters, dueDateEnd: e.target.value })}
             />
           </div>
           <div className="col-12 col-md-3">
-            <label className="form-label small fw-medium">ID Pagador</label>
-            <input
-              type="number"
-              className="form-control"
-              value={filters.payerUserId}
-              onChange={(e) => setFilters({ ...filters, payerUserId: e.target.value })}
+            <label className="form-label small fw-medium">Pagador</label>
+            <AsyncSelect
+              cacheOptions
+              loadOptions={loadPayerOptions}
+              defaultOptions
+              value={payerFilter}
+              onChange={(option) => {
+                setPayerFilter(option);
+                setFilters({ ...filters, payerUserId: option ? option.value : "" });
+              }}
+              placeholder="Buscar por nome..."
+              noOptionsMessage={() => "Nenhum pagador encontrado"}
+              loadingMessage={() => "Buscando..."}
+              isClearable
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  minHeight: "38px",
+                  borderRadius: "0.375rem",
+                  borderColor: "#dee2e6",
+                }),
+              }}
             />
           </div>
           <div className="col-12 col-md-2 d-flex align-items-end gap-2">
@@ -177,7 +225,9 @@ export default function InvoicesPage() {
                   <td>
                     {formatDate(inv.periodStart)} - {formatDate(inv.periodEnd)}
                   </td>
-                  <td>{inv.payerUserId}</td>
+                  <td>
+                    {inv.payerUserName || inv.payerUserId}
+                  </td>
                   <td className="fw-semibold">{formatMoney(inv.totalCents)}</td>
                   <td>
                     <StatusBadge status={inv.status} />

@@ -5,6 +5,8 @@ import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import { Building, Plus, Search, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useAccessContext } from "@/providers/AccessContextProvider";
+import { GuardedButton } from "@/components/access/GuardedButton";
 
 type OrganizationItem = {
   organization: {
@@ -43,6 +45,7 @@ export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const { accessContext, isLoading: accessLoading } = useAccessContext();
 
   useEffect(() => {
     async function fetchOrganizations() {
@@ -75,10 +78,15 @@ export default function OrganizationsPage() {
           <h2 className="mb-1 fw-bold">Minhas Empresas</h2>
           <p className="text-muted mb-0">Gerencie e alterne entre as organizações que você tem acesso</p>
         </div>
-        <Link href="/organizations/new" className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm">
+        <GuardedButton 
+          className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
+          allowed={!!accessContext?.accountAccess.permissions.canCreateOrganization}
+          blockedMessage={accessContext?.accountAccess.message}
+          onClick={() => window.location.href = "/organizations/new"}
+        >
           <Plus size={20} />
           Nova Empresa
-        </Link>
+        </GuardedButton>
       </div>
 
       <div className="card border-0 shadow-sm rounded-4 mb-4">

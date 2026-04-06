@@ -1,10 +1,13 @@
 "use client";
 
 import Sidebar from "./Sidebar";
-import TopBar from "./TopBar";
+import PrivateTopBar from "./layout/private/PrivateTopBar";
+import UserTopBar from "./layout/app/UserTopBar";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { AccessContextProvider } from "@/providers/AccessContextProvider";
+import { ReadOnlyBanner } from "@/components/access/ReadOnlyBanner";
 
 const ChatWidget = dynamic(() => import("@/ia/ChatWidget"), { ssr: false });
 
@@ -48,11 +51,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div>
-      <TopBar />
-      <Sidebar />
-      <main className="container my-3">{children}</main>
-      <ChatWidget />
-    </div>
+    <AccessContextProvider>
+      <div>
+        {isPrivate ? <PrivateTopBar /> : <UserTopBar />}
+        <Sidebar />
+        <ReadOnlyBanner />
+        <main className="container my-3">{children}</main>
+        <ChatWidget />
+      </div>
+    </AccessContextProvider>
   );
 }

@@ -256,17 +256,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3 border-top">
-                    <label className="text-muted small d-block mb-1">Pagador</label>
-                    <div className="fw-medium">{sub.payerEmail}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <div className="text-muted x-small mt-2">
-                  Criado em: {formatDate(sub.createdAt)}<br />
-                  Atualizado em: {formatDate(sub.updatedAt)}
                 </div>
               </div>
             </div>

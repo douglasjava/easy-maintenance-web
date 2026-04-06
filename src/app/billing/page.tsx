@@ -7,17 +7,14 @@ import PlanChangeDialog from "@/components/billing/PlanChangeDialog";
 import InvoiceList from "@/components/billing/InvoiceList";
 import ConfirmModal from "@/components/ConfirmModal";
 import {
-    Calendar,
     CreditCard,
     AlertCircle,
     CheckCircle,
-    RefreshCw,
     User,
     Building,
     ArrowRight,
     ChevronRight,
     Clock,
-    ExternalLink
 } from "lucide-react";
 import {useAuth} from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
@@ -77,33 +74,6 @@ type BillingSummary = {
 };
 
 // --- Components ---
-
-const StatusBadge = ({status}: { status: string }) => {
-    const getBadgeStyles = (s: string) => {
-        switch (s.toUpperCase()) {
-            case "ACTIVE":
-            case "PAID":
-                return "bg-success-subtle text-success border-success-subtle";
-            case "PAST_DUE":
-            case "OVERDUE":
-            case "DEBT":
-                return "bg-danger-subtle text-danger border-danger-subtle";
-            case "OPEN":
-            case "PENDING":
-                return "bg-warning-subtle text-warning-emphasis border-warning-subtle";
-            case "CANCELED":
-                return "bg-secondary-subtle text-secondary border-secondary-subtle";
-            default:
-                return "bg-light text-dark border-light";
-        }
-    };
-
-    return (
-        <span className={`badge rounded-pill border px-2 py-1 ${getBadgeStyles(status)}`}>
-      {status}
-    </span>
-    );
-};
 
 const SubscriptionItemCard = ({
                                   item,
@@ -191,9 +161,6 @@ const PaymentMethodCard = ({account}: { account: BillingAccount }) => {
                         {account.paymentMethod}
                     </div>
                 </div>
-                <button className="btn btn-link btn-sm w-100 text-decoration-none mt-2 text-muted">
-                    Gerenciar no portal de pagamento
-                </button>
             </div>
         </div>
     );
@@ -205,7 +172,6 @@ export default function BillingPage() {
     const {isBlocked} = useAuth();
     const [summary, setSummary] = useState<BillingSummary | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isMounted, setIsMounted] = useState(false);
 
     // Plan Change Modal State
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -216,16 +182,8 @@ export default function BillingPage() {
     const [cancelLoading, setCancelLoading] = useState(false);
 
     useEffect(() => {
-        setIsMounted(true);
+        fetchSummary();
     }, []);
-
-    useEffect(() => {
-        if (isMounted) {
-            fetchSummary();
-        }
-    }, [isMounted]);
-
-    if (!isMounted) return null;
 
     async function fetchSummary() {
         try {
@@ -239,16 +197,6 @@ export default function BillingPage() {
             setLoading(false);
         }
     }
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    useEffect(() => {
-        if (isMounted) {
-            fetchSummary();
-        }
-    }, [isMounted]);
 
     async function handleChangePlan(itemId: number) {
         const item = summary?.items.find(i => i.id === itemId);
@@ -273,6 +221,10 @@ export default function BillingPage() {
         }
     }
 
+    const hasSubscription = !!summary?.subscription;
+    const hasItems = (summary?.items?.length || 0) > 0;
+    const hasBillingAccount = !!summary?.billingAccount;
+
     if (loading) {
         return (
             <div className="container py-5">
@@ -285,10 +237,6 @@ export default function BillingPage() {
             </div>
         );
     }
-
-    const hasSubscription = !!summary?.subscription;
-    const hasItems = (summary?.items?.length || 0) > 0;
-    const hasBillingAccount = !!summary?.billingAccount;
 
     return (
         <div className="container py-4">
@@ -339,7 +287,6 @@ export default function BillingPage() {
                                         </div>
                                         <div>
                                             <div className="d-flex align-items-center gap-2 mb-1">
-                                                <span className="h4 mb-0 fw-bold">Plano Ativo</span>
                                                 <span className="badge bg-white text-primary rounded-pill px-2 py-1"
                                                       style={{fontSize: '0.75rem'}}>
                           {summary.subscription?.status}

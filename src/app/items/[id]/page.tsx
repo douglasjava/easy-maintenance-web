@@ -7,6 +7,8 @@ import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
 import { categoryLabelMap } from "@/lib/enums/labels";
 import toast from "react-hot-toast";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { GuardedButton } from "@/components/access/GuardedButton";
 import { useState } from "react";
 import ConfirmModal from "@/components/ConfirmModal";
 
@@ -22,6 +24,7 @@ export default function ItemDetailPage() {
     const { id } = useParams<{ id: string }>();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { permissions, message: orgMessage } = useCurrentOrganizationAccess();
 
     const origin = searchParams.get("origin");
     let backHref = "/items";
@@ -112,35 +115,32 @@ export default function ItemDetailPage() {
                 </div>
 
                 <div className="col-4 text-end">
-                    {data?.canUpdate ? (
-                        <Link
-                            className="btn btn-outline-primary me-2"
-                            href={`/items/new?id=${id}&origin=item-detail`}
-                        >
-                            Editar
-                        </Link>
-                    ) : (
-                        <button
-                            className="btn btn-outline-secondary me-2"
-                            disabled
-                            title="Edição indisponível: este item possui manutenções registradas. Crie um novo item."
-                        >
-                            Editar
-                        </button>
-                    )}
-                    <button
+                    <GuardedButton
+                        className="btn btn-outline-primary me-2"
+                        allowed={!!data?.canUpdate && !!permissions?.canEditItem}
+                        blockedMessage={!permissions?.canEditItem ? (orgMessage || "Seu plano não permite editar itens.") : "Edição indisponível: este item possui manutenções registradas."}
+                        onClick={() => router.push(`/items/new?id=${id}&origin=item-detail`)}
+                    >
+                        Editar
+                    </GuardedButton>
+
+                    <GuardedButton
                         className="btn btn-outline-danger me-2"
+                        allowed={!!permissions?.canDeleteItem}
+                        blockedMessage={orgMessage}
                         onClick={handleDelete}
                     >
                         Remover
-                    </button>
+                    </GuardedButton>
 
-                    <Link
+                    <GuardedButton
                         className="btn btn-primary"
-                        href={`/maintenances/new?itemId=${id}&origin=item-detail`}
+                        allowed={!!permissions?.canRegisterMaintenance}
+                        blockedMessage={orgMessage}
+                        onClick={() => router.push(`/maintenances/new?itemId=${id}&origin=item-detail`)}
                     >
                         Registrar Manutenção
-                    </Link>
+                    </GuardedButton>
                 </div>
             </div>
 

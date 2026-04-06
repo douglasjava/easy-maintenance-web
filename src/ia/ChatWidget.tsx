@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import styles from "./ChatWidget.module.css";
 import { api } from "@/lib/apiClient";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 
 interface Message {
     role: "user" | "assistant";
@@ -23,6 +24,8 @@ export default function ChatWidget() {
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const bodyRef = useRef<HTMLDivElement | null>(null);
+
+    const { features, isLoading } = useCurrentOrganizationAccess();
 
     useEffect(() => {
         if (open && bodyRef.current) {
@@ -68,6 +71,10 @@ export default function ChatWidget() {
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (canSend) void sendQuestion();
+    }
+
+    if (isLoading || !features?.aiEnabled) {
+        return null;
     }
 
     return (

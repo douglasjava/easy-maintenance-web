@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
+import { useAccessContext } from "@/providers/AccessContextProvider";
+import { PagePermissionGuard } from "@/components/access/PagePermissionGuard";
 
 type Plan = "STARTER" | "BUSINESS" | "ENTERPRISE";
 
@@ -36,6 +38,9 @@ const EMPTY_SUBSCRIPTION = {
 };
 
 export default function NewOrganizationPage() {
+    const { accessContext } = useAccessContext();
+    const canCreate = accessContext?.accountAccess.permissions.canCreateOrganization;
+
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState(EMPTY_FORM);
@@ -163,7 +168,8 @@ export default function NewOrganizationPage() {
     }
 
     return (
-        <section style={{ backgroundColor: COLORS.bg, minHeight: "100vh" }} className="p-3">
+        <PagePermissionGuard allowed={canCreate} redirectHref="/organizations">
+            <section style={{ backgroundColor: COLORS.bg, minHeight: "100vh" }} className="p-3">
             <div className="container-fluid" style={{ maxWidth: "1200px" }}>
                 {/* TOPO */}
                 <div className="d-flex align-items-center justify-content-between mb-4">
@@ -425,7 +431,8 @@ export default function NewOrganizationPage() {
                         )}
                     </div>
                 </div>
-            </div>
-        </section>
+                </div>
+            </section>
+        </PagePermissionGuard>
     );
 }

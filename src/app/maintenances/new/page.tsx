@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { PagePermissionGuard } from "@/components/access/PagePermissionGuard";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -55,6 +57,8 @@ function NewMaintenanceContent() {
     let backHref = "/maintenances";
     if (origin === "dashboard") backHref = "/";
     if (origin === "item-detail") backHref = `/items/${searchParams.get("itemId")}`;
+
+    const { permissions } = useCurrentOrganizationAccess();
 
     // seleção do item
     const [itemId, setItemId] = useState(searchParams.get("itemId") || "");
@@ -287,7 +291,8 @@ function NewMaintenanceContent() {
     }
 
     return (
-        <section style={{ backgroundColor: COLORS.bg }} className="p-3">
+        <PagePermissionGuard allowed={permissions?.canRegisterMaintenance} redirectHref={backHref}>
+            <section style={{ backgroundColor: COLORS.bg }} className="p-3">
             {/* 
                 PATTERN: Top + Footer
                 WHY: This is a multi-step flow (selecting item then registering maintenance). 
@@ -674,6 +679,7 @@ function NewMaintenanceContent() {
         }
       `}</style>
         </section>
+        </PagePermissionGuard>
     );
 }
 

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { ENV } from "./env";
+import toast from "react-hot-toast";
 
 function buildApiBaseURL() {
   const rawBase = (ENV.API_BASE_URL || "").replace(/\/+$/, ""); // remove barras ao fim
@@ -76,7 +77,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
-    if (status === 401 || status === 403) {
+    const detail = error?.response?.data?.detail;
+
+    if (status === 403 && detail) {
+      toast.error(detail);
+    }
+
+    if (status === 401 || (status === 403 && !detail)) {
       if (typeof window !== "undefined") {
         const currentPath = window.location.pathname || "";
         const isPrivate = currentPath.startsWith("/private");
