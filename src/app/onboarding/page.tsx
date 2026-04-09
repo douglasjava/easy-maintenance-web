@@ -5,6 +5,7 @@ import {useRouter} from "next/navigation";
 import {api} from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import {fetchViaCep} from "@/lib/viaCep";
+import { mapError } from "@/lib/errorMapper";
 
 // Declaração do SDK ASAAS no TypeScript
 declare global {
@@ -21,6 +22,8 @@ export default function OnboardingPage() {
     // Estados do Wizard
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [retryableError, setRetryableError] = useState<string | null>(null);
 
     // IDs retornados pelas APIs
     const [payerUserId, setPayerUserId] = useState<string>("");
@@ -132,6 +135,8 @@ export default function OnboardingPage() {
     // Envia Dados de usuário
     const handleStep1 = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFieldErrors({});
+        setRetryableError(null);
         setLoading(true);
 
         try {
@@ -158,9 +163,15 @@ export default function OnboardingPage() {
 
             setStep(2);
 
-        } catch (error: any) {
-            console.error(error);
-            toast.error(error?.response?.data?.message || "Erro ao salvar dados de faturamento.");
+        } catch (error: unknown) {
+            const mapped = mapError(error);
+            if (Object.keys(mapped.fields).length > 0) {
+                setFieldErrors(mapped.fields);
+            } else if (mapped.retryable && mapped.global) {
+                setRetryableError(mapped.global);
+            } else if (mapped.global) {
+                toast.error(mapped.global);
+            }
         } finally {
             setLoading(false);
         }
@@ -169,6 +180,8 @@ export default function OnboardingPage() {
     // Envia dados de organização
     const handleStep2 = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFieldErrors({});
+        setRetryableError(null);
         setLoading(true);
 
         try {
@@ -214,9 +227,15 @@ export default function OnboardingPage() {
             // Em alguns casos o reload é necessário se o estado global não reagir ao localStorage
             setTimeout(() => window.location.reload(), 100);
 
-        } catch (error: any) {
-            console.error(error);
-            toast.error(error?.response?.data?.message || "Erro ao criar organização.");
+        } catch (error: unknown) {
+            const mapped = mapError(error);
+            if (Object.keys(mapped.fields).length > 0) {
+                setFieldErrors(mapped.fields);
+            } else if (mapped.retryable && mapped.global) {
+                setRetryableError(mapped.global);
+            } else if (mapped.global) {
+                toast.error(mapped.global);
+            }
         } finally {
             setLoading(false);
         }
@@ -278,24 +297,26 @@ export default function OnboardingPage() {
                                     <div className="col-md-5">
                                         <label className="form-label">Nome do Responsável</label>
                                         <input
-                                            type="text" className="form-control" required
+                                            type="text" className={`form-control ${fieldErrors.name ? "is-invalid" : ""}`} required
                                             value={billingData.name}
                                             onChange={e => setBillingData({
                                                 ...billingData,
                                                 name: e.target.value
                                             })}
                                         />
+                                        {fieldErrors.name && <div className="invalid-feedback">{fieldErrors.name}</div>}
                                     </div>
                                     <div className="col-md-5">
                                         <label className="form-label">E-mail de Faturamento</label>
                                         <input
-                                            type="email" className="form-control" required
+                                            type="email" className={`form-control ${fieldErrors.billingEmail ? "is-invalid" : ""}`} required
                                             value={billingData.billingEmail}
                                             onChange={e => setBillingData({
                                                 ...billingData,
                                                 billingEmail: e.target.value
                                             })}
                                         />
+                                        {fieldErrors.billingEmail && <div className="invalid-feedback">{fieldErrors.billingEmail}</div>}
                                     </div>
                                     <div className="col-md-2">
                                         <label className="form-label">Método</label>
@@ -315,10 +336,11 @@ export default function OnboardingPage() {
                                     <div className="col-md-6">
                                         <label className="form-label">CPF (Documento)</label>
                                         <input
-                                            type="text" className="form-control" required
+                                            type="text" className={`form-control ${fieldErrors.doc ? "is-invalid" : ""}`} required
                                             value={billingData.doc}
                                             onChange={e => setBillingData({...billingData, doc: e.target.value})}
                                         />
+                                        {fieldErrors.doc && <div className="invalid-feedback">{fieldErrors.doc}</div>}
                                     </div>
                                     <div className="col-md-6">
                                         <label className="form-label">Telefone</label>
@@ -332,11 +354,12 @@ export default function OnboardingPage() {
                                     <div className="col-md-2">
                                         <label className="form-label">CEP</label>
                                         <input
-                                            type="text" className="form-control" required
+                                            type="text" className={`form-control ${fieldErrors.zipCode ? "is-invalid" : ""}`} required
                                             value={billingData.zipCode}
                                             onChange={e => setBillingData({...billingData, zipCode: e.target.value})}
                                             onBlur={handleBillingCepBlur}
                                         />
+                                        {fieldErrors.zipCode && <div className="invalid-feedback">{fieldErrors.zipCode}</div>}
                                     </div>
                                     <div className="col-md-8">
                                         <label className="form-label">Logradouro (Rua/Av)</label>
@@ -428,6 +451,15 @@ export default function OnboardingPage() {
 
                                 </div>
 
+                                {retryableError && (
+                                    <div className="alert alert-danger d-flex align-items-center justify-content-between mt-4" role="alert">
+                                        <span>{retryableError}</span>
+                                        <button type="submit" className="btn btn-sm btn-outline-danger ms-3">
+                                            Tentar novamente
+                                        </button>
+                                    </div>
+                                )}
+
                                 <div className="d-flex justify-content-end mt-5">
                                     <button
                                         type="submit"
@@ -435,7 +467,14 @@ export default function OnboardingPage() {
                                         disabled={loading}
                                         style={{backgroundColor: "#0B5ED7"}}
                                     >
-                                        {loading ? "Processando..." : "Próximo →"}
+                                        {loading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Processando...
+                                            </>
+                                        ) : (
+                                            "Próximo →"
+                                        )}
                                     </button>
                                 </div>
                             </form>
@@ -449,10 +488,11 @@ export default function OnboardingPage() {
                                     <div className="col-md-9">
                                         <label className="form-label">Nome da Organização</label>
                                         <input
-                                            type="text" className="form-control" required
+                                            type="text" className={`form-control ${fieldErrors.name ? "is-invalid" : ""}`} required
                                             value={orgData.orgName}
                                             onChange={e => setOrgData({...orgData, orgName: e.target.value})}
                                         />
+                                        {fieldErrors.name && <div className="invalid-feedback">{fieldErrors.name}</div>}
                                     </div>
                                     <div className="col-md-3">
                                         <label className="form-label">Tipo da Organização</label>
@@ -481,11 +521,12 @@ export default function OnboardingPage() {
                                     <div className="col-md-6">
                                         <label className="form-label">CEP</label>
                                         <input
-                                            type="text" className="form-control" required
+                                            type="text" className={`form-control ${fieldErrors.zipCode ? "is-invalid" : ""}`} required
                                             value={orgData.orgZipCode}
                                             onChange={e => setOrgData({...orgData, orgZipCode: e.target.value})}
                                             onBlur={handleOrgCepBlur}
                                         />
+                                        {fieldErrors.zipCode && <div className="invalid-feedback">{fieldErrors.zipCode}</div>}
                                     </div>
                                     <div className="col-md-9">
                                         <label className="form-label">Rua</label>
@@ -580,6 +621,15 @@ export default function OnboardingPage() {
 
                                 </div>
 
+                                {retryableError && (
+                                    <div className="alert alert-danger d-flex align-items-center justify-content-between mt-4" role="alert">
+                                        <span>{retryableError}</span>
+                                        <button type="submit" className="btn btn-sm btn-outline-danger ms-3">
+                                            Tentar novamente
+                                        </button>
+                                    </div>
+                                )}
+
                                 <div className="d-flex justify-content-between mt-5">
                                     <button
                                         type="button"
@@ -594,7 +644,14 @@ export default function OnboardingPage() {
                                         disabled={loading}
                                         style={{backgroundColor: "#0B5ED7"}}
                                     >
-                                        {loading ? "Criando..." : "Próximo →"}
+                                        {loading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Criando...
+                                            </>
+                                        ) : (
+                                            "Próximo →"
+                                        )}
                                     </button>
                                 </div>
                             </form>
