@@ -2,5 +2,12 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testMatch: ['**/*.test.ts'],
+  testMatch: ['<rootDir>/src/**/*.test.ts'],
+  globals: {
+    'ts-jest': {
+      tsconfig: {
+        moduleResolution: 'node',
+      },
+    },
+  },
 };
