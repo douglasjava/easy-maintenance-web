@@ -62,6 +62,7 @@ export default function AiOnboardingPage() {
             setItems(itemsWithMeta);
             setStep(2);
         } catch (err: unknown) {
+            // AI endpoints don't return field-level validation errors, so mapped.global is always set
             const mapped = mapError(err);
             toast.error(mapped.global ?? "Falha ao gerar pré-cadastros. Tente novamente.");
         } finally {
@@ -118,6 +119,7 @@ export default function AiOnboardingPage() {
             toast.success("Organização configurada com sucesso!");
             router.push("/items");
         } catch (err: unknown) {
+            // AI endpoints don't return field-level validation errors, so mapped.global is always set
             const mapped = mapError(err);
             toast.error(mapped.global ?? "Falha ao aplicar configurações. Tente novamente.");
         } finally {
