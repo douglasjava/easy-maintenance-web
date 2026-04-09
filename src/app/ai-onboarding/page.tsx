@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import { 
-    CompanyType, 
-    COMPANY_TYPE_MAP, 
-    AiItemPreview, 
-    AiBootstrapPreviewResponse 
+import { mapError } from "@/lib/errorMapper";
+import {
+    CompanyType,
+    COMPANY_TYPE_MAP,
+    AiItemPreview,
+    AiBootstrapPreviewResponse
 } from "@/types/ai-onboarding";
 
 const COLORS = {
@@ -60,9 +61,9 @@ export default function AiOnboardingPage() {
 
             setItems(itemsWithMeta);
             setStep(2);
-        } catch (err: any) {
-            toast.error("Falha ao gerar pré-cadastros. Tente novamente.");
-            console.error(err);
+        } catch (err: unknown) {
+            const mapped = mapError(err);
+            toast.error(mapped.global ?? "Falha ao gerar pré-cadastros. Tente novamente.");
         } finally {
             setLoading(false);
         }
@@ -116,9 +117,9 @@ export default function AiOnboardingPage() {
             
             toast.success("Organização configurada com sucesso!");
             router.push("/items");
-        } catch (err: any) {
-            toast.error("Falha ao aplicar configurações. Tente novamente.");
-            console.error(err);
+        } catch (err: unknown) {
+            const mapped = mapError(err);
+            toast.error(mapped.global ?? "Falha ao aplicar configurações. Tente novamente.");
         } finally {
             setLoading(false);
         }
