@@ -1,3 +1,5 @@
+import { isAxiosError } from "axios";
+
 export interface MappedError {
   global: string | null;
   fields: Record<string, string>;
@@ -22,17 +24,17 @@ function extractSlug(type: string | undefined): string {
 }
 
 export function mapError(error: unknown): MappedError {
-  const axiosError = error as {
-    response?: {
-      data?: {
-        type?: string;
-        violations?: Array<{ field: string; message: string }>;
-      };
+  // Not an axios error — treat as unexpected (e.g. programming error thrown in try block)
+  if (!isAxiosError(error)) {
+    return {
+      global: "Erro inesperado. Tente novamente.",
+      fields: {},
+      retryable: true,
     };
-  };
+  }
 
   // Sem resposta da API — erro de rede
-  if (!axiosError?.response) {
+  if (!error.response) {
     return {
       global: "Sem conexão. Verifique sua internet e tente novamente.",
       fields: {},
@@ -40,7 +42,10 @@ export function mapError(error: unknown): MappedError {
     };
   }
 
-  const data = axiosError.response.data ?? {};
+  const data = (error.response.data ?? {}) as {
+    type?: string;
+    violations?: Array<{ field: string; message: string }>;
+  };
   const slug = extractSlug(data.type);
 
   if (slug === "validation-error") {
@@ -72,6 +77,14 @@ export function mapError(error: unknown): MappedError {
       global: "Muitas tentativas. Aguarde e tente novamente.",
       fields: {},
       retryable: true,
+    };
+  }
+
+  if (slug === "subscription-denied") {
+    return {
+      global: "Seu plano não permite esta operação. Verifique sua assinatura.",
+      fields: {},
+      retryable: false,
     };
   }
 
