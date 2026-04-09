@@ -14,7 +14,7 @@ function buildApiBaseURL() {
   return `${rawBase}${rawPath}`;
 }
 
-export const api = axios.create({ baseURL: buildApiBaseURL() });
+export const api = axios.create({ baseURL: buildApiBaseURL(), withCredentials: true });
 
 api.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
@@ -26,21 +26,10 @@ api.interceptors.request.use((config) => {
 
   // Tenta ler o organizationCode salvo após login
   let orgFromLogin: string | undefined;
-  let accessToken: string | undefined;
-  let tokenType: string | undefined;
   if (typeof window !== "undefined") {
     try {
-      const ls = window.localStorage;
-      const ss = window.sessionStorage;
-
-      const storedOrg = ls.getItem("organizationCode") || ss.getItem("organizationCode");
+      const storedOrg = window.localStorage.getItem("organizationCode") || window.sessionStorage.getItem("organizationCode");
       if (storedOrg) orgFromLogin = storedOrg;
-
-      const storedToken = ls.getItem("accessToken") || ss.getItem("accessToken");
-      if (storedToken) accessToken = storedToken;
-
-      const storedType = ls.getItem("tokenType") || ss.getItem("tokenType");
-      if (storedType) tokenType = storedType;
     } catch {
       // ignore erros de acesso ao storage
     }
@@ -50,7 +39,6 @@ api.interceptors.request.use((config) => {
   if (orgId) {
     config.headers["X-Org-Id"] = orgId;
   } else {
-    // Se não houver orgId, remove o header para evitar envio de valores undefined/antigos se necessário
     delete config.headers["X-Org-Id"];
   }
 
@@ -63,11 +51,6 @@ api.interceptors.request.use((config) => {
   }
 
   delete config.headers["X-Skip-Interceptor-Admin-Token"];
-
-  if (accessToken) {
-    const type = tokenType || "Bearer";
-    (config.headers as any)["Authorization"] = `${type} ${accessToken}`;
-  }
 
   return config;
 });
@@ -98,16 +81,15 @@ api.interceptors.response.use(
             window.location.href = "/private/login";
           }
         } else {
-          // Aplicação convencional: limpar tokens de sessão do app e redirecionar para /login
+          // Aplicação convencional: limpar flags de sessão e redirecionar para /login
           try {
-            // limpa Local Storage
-            window.localStorage.removeItem("organizationCode");
-            window.localStorage.removeItem("accessToken");
-            window.localStorage.removeItem("tokenType");
-            // limpa Session Storage
-            window.sessionStorage.removeItem("organizationCode");
-            window.sessionStorage.removeItem("accessToken");
-            window.sessionStorage.removeItem("tokenType");
+            ["localStorage", "sessionStorage"].forEach(storeName => {
+              const s = (window as any)[storeName];
+              s.removeItem("isLoggedIn");
+              s.removeItem("organizationCode");
+              s.removeItem("userId");
+              s.removeItem("userName");
+            });
           } catch {}
 
           if (!currentPath.endsWith("/login")) {

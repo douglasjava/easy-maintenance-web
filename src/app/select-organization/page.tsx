@@ -53,7 +53,7 @@ function SelectOrganizationContent() {
 
     function handleSelect(item: OrganizationItem) {
         if (typeof window !== "undefined") {
-            const remember = !!window.localStorage.getItem("accessToken");
+            const remember = !!window.localStorage.getItem("isLoggedIn");
             const storage = remember ? window.localStorage : window.sessionStorage;
             
             storage.setItem("organizationCode", item.organization.code);
@@ -105,15 +105,13 @@ function SelectOrganizationContent() {
                         if (typeof window !== "undefined") {
                             window.localStorage.removeItem("organizationCode");
                             window.localStorage.removeItem("organizationName");
-                            window.localStorage.removeItem("accessToken");
-                            window.localStorage.removeItem("tokenType");
+                            window.localStorage.removeItem("isLoggedIn");
                             window.localStorage.removeItem("userId");
                             window.localStorage.removeItem("userName");
 
                             window.sessionStorage.removeItem("organizationCode");
                             window.sessionStorage.removeItem("organizationName");
-                            window.sessionStorage.removeItem("accessToken");
-                            window.sessionStorage.removeItem("tokenType");
+                            window.sessionStorage.removeItem("isLoggedIn");
                             window.sessionStorage.removeItem("userId");
                             window.sessionStorage.removeItem("userName");
                         }

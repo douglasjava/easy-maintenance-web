@@ -55,7 +55,7 @@ export default function UserTopBar() {
     setLoading(true);
 
     try {
-      const remember = !!window.localStorage.getItem("accessToken");
+      const remember = !!window.localStorage.getItem("isLoggedIn");
       const storage = remember ? window.localStorage : window.sessionStorage;
 
       storage.setItem("organizationCode", item.organization.code);

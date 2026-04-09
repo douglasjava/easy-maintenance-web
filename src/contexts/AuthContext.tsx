@@ -16,9 +16,13 @@ interface AuthContextType {
   loading: boolean;
 }
 
+const AUTH_FLAG = "isLoggedIn";
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // "token" is used as an auth-presence flag by consumers (PrivateRoute, AccessContextProvider).
+  // With HttpOnly cookies the real JWT is not accessible in JS; we use "cookie" as a sentinel.
   const [token, setToken] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>("UNKNOWN");
   const [loading, setLoading] = useState(true);
@@ -26,22 +30,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isBlocked = subscriptionStatus === "TRIAL_EXPIRED";
 
-  const logout = useCallback(() => {
+  const clearLocalState = useCallback(() => {
     setToken(null);
     setSubscriptionStatus("UNKNOWN");
     if (typeof window !== "undefined") {
       const storages = [window.localStorage, window.sessionStorage];
       storages.forEach(storage => {
-        storage.removeItem("accessToken");
-        storage.removeItem("tokenType");
+        storage.removeItem(AUTH_FLAG);
         storage.removeItem("userId");
         storage.removeItem("userName");
         storage.removeItem("organizationCode");
         storage.removeItem("organizationName");
       });
     }
+  }, []);
+
+  const logout = useCallback(() => {
+    clearLocalState();
+    // Clear the HttpOnly cookie server-side (best-effort)
+    api.post("/auth/logout").catch(() => {});
     router.push("/login");
-  }, [router]);
+  }, [clearLocalState, router]);
 
   const checkSubscription = useCallback(async (): Promise<SubscriptionStatus> => {
     try {
@@ -53,25 +62,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSubscriptionStatus("TRIAL_EXPIRED");
         return "TRIAL_EXPIRED";
       }
-      // Outros erros não alteram o status de bloqueio por enquanto, 
-      // mas poderíamos tratar 401 aqui se o interceptor não o fizesse.
       return "UNKNOWN";
     }
   }, []);
 
   const login = useCallback(async (data: any, remember: boolean) => {
     if (typeof window !== "undefined") {
+      // Token is in the HttpOnly cookie set by the server — do NOT store it in JS storage.
+      // Only persist non-sensitive identifiers needed for UX.
       const storage = remember ? window.localStorage : window.sessionStorage;
-      
-      if (data?.accessToken) {
-        setToken(data.accessToken);
-        storage.setItem("accessToken", String(data.accessToken));
-      }
-      if (data?.tokenType) storage.setItem("tokenType", String(data.tokenType));
+      storage.setItem(AUTH_FLAG, "1");
       if (data?.id) storage.setItem("userId", String(data.id));
       if (data?.name) storage.setItem("userName", String(data.name));
-      
-      // Valida subscription IMEDIATAMENTE após login
+
+      // Reset trial banner dismiss so it shows again on each new login
+      sessionStorage.removeItem("trialBannerDismissed");
+
+      setToken("cookie");
       await checkSubscription();
     }
   }, [checkSubscription]);
@@ -79,26 +86,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       if (typeof window !== "undefined") {
-        const storedToken = window.localStorage.getItem("accessToken") || window.sessionStorage.getItem("accessToken");
-        if (storedToken) {
-          setToken(storedToken);
-          await checkSubscription();
+        const hasFlag =
+          window.localStorage.getItem(AUTH_FLAG) ||
+          window.sessionStorage.getItem(AUTH_FLAG);
+
+        if (hasFlag) {
+          // Verify the HttpOnly cookie is still valid via a lightweight API call
+          const status = await checkSubscription();
+          if (status !== "UNKNOWN") {
+            setToken("cookie");
+          } else {
+            // Cookie likely expired — clean up the stale flag
+            clearLocalState();
+          }
         }
       }
       setLoading(false);
     };
     initAuth();
-  }, [checkSubscription]);
+  }, [checkSubscription, clearLocalState]);
 
   return (
-    <AuthContext.Provider value={{ 
-      token, 
-      subscriptionStatus, 
-      isBlocked, 
-      login, 
-      logout, 
+    <AuthContext.Provider value={{
+      token,
+      subscriptionStatus,
+      isBlocked,
+      login,
+      logout,
       checkSubscription,
-      loading 
+      loading
     }}>
       {children}
     </AuthContext.Provider>

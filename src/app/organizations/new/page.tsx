@@ -151,7 +151,7 @@ export default function NewOrganizationPage() {
             
             // Se o usuário não tinha organização selecionada, seleciona a recém criada
             if (typeof window !== "undefined") {
-                const storage = window.localStorage.getItem("accessToken") ? window.localStorage : window.sessionStorage;
+                const storage = window.localStorage.getItem("isLoggedIn") ? window.localStorage : window.sessionStorage;
                 if (!storage.getItem("organizationCode")) {
                     storage.setItem("organizationCode", createdOrgCode);
                     storage.setItem("organizationName", formData.name);
@@ -408,7 +408,7 @@ export default function NewOrganizationPage() {
                                         className="btn btn-outline-secondary px-4 py-2"
                                         onClick={() => {
                                             if (typeof window !== "undefined") {
-                                                const storage = window.localStorage.getItem("accessToken") ? window.localStorage : window.sessionStorage;
+                                                const storage = window.localStorage.getItem("isLoggedIn") ? window.localStorage : window.sessionStorage;
                                                 if (!storage.getItem("organizationCode")) {
                                                     storage.setItem("organizationCode", createdOrgCode);
                                                     storage.setItem("organizationName", formData.name);

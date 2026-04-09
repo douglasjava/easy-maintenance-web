@@ -40,6 +40,8 @@ export interface AccountAccess {
   plan: PlanSummary;
   permissions: AccountPermissions;
   features: BillingPlanFeatures;
+  /** ISO-8601 string. Present only when subscriptionStatus === "TRIAL". */
+  trialExpiresAt?: string;
 }
 
 export interface OrganizationAccess {

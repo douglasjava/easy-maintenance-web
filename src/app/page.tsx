@@ -5,6 +5,7 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { useAccessContext } from "@/providers/AccessContextProvider";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { DashboardLoadingState } from "@/components/dashboard/states/DashboardLoadingState";
 import { DashboardNoOrganizationState } from "@/components/dashboard/states/DashboardNoOrganizationState";
@@ -12,10 +13,14 @@ import { DashboardAccessDeniedState } from "@/components/dashboard/states/Dashbo
 import { DashboardErrorState } from "@/components/dashboard/states/DashboardErrorState";
 import { DashboardBlockedBanner } from "@/components/dashboard/states/DashboardBlockedBanner";
 import { DashboardContent } from "@/components/dashboard/states/DashboardContent";
+import { TrialBanner } from "@/components/dashboard/TrialBanner";
 
 export default function DashboardPage() {
   const { isBlocked, token, loading: authLoading } = useAuth();
   const { isLoading: accessLoading } = useCurrentOrganizationAccess();
+  const { accessContext } = useAccessContext();
+  const accountAccess = accessContext?.accountAccess;
+  const isTrial = accountAccess?.subscriptionStatus === "TRIAL";
 
   // parâmetros
   const [daysAhead] = useState(30);
@@ -83,6 +88,10 @@ export default function DashboardPage() {
           />
 
           {isBlocked && <DashboardBlockedBanner />}
+
+          {!isBlocked && isTrial && (
+            <TrialBanner trialExpiresAt={accountAccess?.trialExpiresAt} />
+          )}
 
           {dataLoading && !data && <DashboardLoadingState />}
 
