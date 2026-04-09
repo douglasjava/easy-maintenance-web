@@ -162,6 +162,7 @@ export default function OnboardingPage() {
             toast.success("Dados de faturamento salvos!");
 
             setStep(2);
+            setFieldErrors({});
 
         } catch (error: unknown) {
             const mapped = mapError(error);
@@ -634,7 +635,11 @@ export default function OnboardingPage() {
                                     <button
                                         type="button"
                                         className="btn btn-link text-muted"
-                                        onClick={() => setStep(1)}
+                                        onClick={() => {
+                                            setStep(1);
+                                            setFieldErrors({});
+                                            setRetryableError(null);
+                                        }}
                                         disabled={loading}
                                     >
                                     </button>
