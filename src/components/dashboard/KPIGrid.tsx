@@ -9,7 +9,7 @@ interface KPIGridProps {
 
 export function KPIGrid({ kpis }: KPIGridProps) {
   return (
-    <div className="row g-4 mb-5">
+    <div className="row g-4 mb-5" data-tour="kpi-grid">
       <div className="col-12 col-md-6 col-xl-3">
         <KPICard 
           label="Items Total" 

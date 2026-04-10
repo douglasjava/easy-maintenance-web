@@ -5,6 +5,9 @@ import {api} from "@/lib/apiClient";
 import {formatMoney, formatDate} from "@/lib/formatters";
 import PlanChangeDialog from "@/components/billing/PlanChangeDialog";
 import InvoiceList from "@/components/billing/InvoiceList";
+import PlanComparisonSection from "@/components/billing/PlanComparisonSection";
+import BillingFaq from "@/components/billing/BillingFaq";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import ConfirmModal from "@/components/ConfirmModal";
 import {
     CreditCard,
@@ -172,6 +175,8 @@ export default function BillingPage() {
     const {isBlocked} = useAuth();
     const [summary, setSummary] = useState<BillingSummary | null>(null);
     const [loading, setLoading] = useState(true);
+    const { organization } = useCurrentOrganizationAccess();
+    const currentPlanCode = organization?.plan?.code ?? null;
 
     // Plan Change Modal State
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -364,6 +369,19 @@ export default function BillingPage() {
                     </div>
                 </>
             )}
+
+            {/* Plan Comparison + FAQ */}
+            <PlanComparisonSection
+                currentPlanCode={currentPlanCode}
+                onUpgradeClick={() => {
+                    const firstItem = summary?.items?.[0];
+                    if (firstItem) {
+                        setSelectedItem({ id: firstItem.id, planCode: firstItem.plan.code });
+                        setIsPlanModalOpen(true);
+                    }
+                }}
+            />
+            <BillingFaq />
 
             {isPlanModalOpen && selectedItem && (
                 <PlanChangeDialog

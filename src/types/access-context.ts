@@ -44,6 +44,11 @@ export interface AccountAccess {
   trialExpiresAt?: string;
 }
 
+export interface OrganizationUsage {
+  currentItems: number;
+  currentUsers: number;
+}
+
 export interface OrganizationAccess {
   organizationCode: string;
   organizationName: string;
@@ -53,6 +58,8 @@ export interface OrganizationAccess {
   plan: PlanSummary;
   permissions: OrganizationPermissions;
   features: BillingPlanFeatures;
+  /** Present only for the organization matching the current X-Org-Id. Null for others. */
+  currentUsage: OrganizationUsage | null;
 }
 
 export interface AccessContextResponse {

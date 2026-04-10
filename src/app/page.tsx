@@ -14,6 +14,8 @@ import { DashboardErrorState } from "@/components/dashboard/states/DashboardErro
 import { DashboardBlockedBanner } from "@/components/dashboard/states/DashboardBlockedBanner";
 import { DashboardContent } from "@/components/dashboard/states/DashboardContent";
 import { TrialBanner } from "@/components/dashboard/TrialBanner";
+import GuidedTour from "@/components/dashboard/GuidedTour";
+import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
 
 export default function DashboardPage() {
   const { isBlocked, token, loading: authLoading } = useAuth();
@@ -93,11 +95,15 @@ export default function DashboardPage() {
             <TrialBanner trialExpiresAt={accountAccess?.trialExpiresAt} />
           )}
 
+          <OnboardingChecklist />
+
           {dataLoading && !data && <DashboardLoadingState />}
 
           {error && <DashboardErrorState message={error} />}
 
           {data && <DashboardContent data={data} />}
+
+          <GuidedTour />
         </div>
       </section>
     </PrivateRoute>

@@ -13,6 +13,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import { GuardedButton } from "@/components/access/GuardedButton";
 import { FeatureGuard } from "@/components/access/FeatureGuard";
+import UsageMeter from "@/components/UsageMeter";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -53,7 +54,7 @@ function ItemsContent() {
     const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
     const [deleting, setDeleting] = useState(false);
 
-    const { permissions, message: orgMessage } = useCurrentOrganizationAccess();
+    const { permissions, features, organization, message: orgMessage } = useCurrentOrganizationAccess();
 
     const { data, isLoading, error, refetch } = useQuery({
         queryKey: ["items", { status, itemType, categoria, page, size }],
@@ -155,9 +156,9 @@ function ItemsContent() {
                     </p>
                 </div>
 
-                <div className="col-4 text-end">
-                    <GuardedButton 
-                        className="btn btn-primary" 
+                <div className="col-4 text-end d-flex flex-column align-items-end gap-2">
+                    <GuardedButton
+                        className="btn btn-primary"
                         allowed={!!permissions?.canCreateItem}
                         mode="hide"
                         blockedMessage={orgMessage}
@@ -165,6 +166,14 @@ function ItemsContent() {
                     >
                         + Novo Item
                     </GuardedButton>
+                    {features && organization?.currentUsage != null && (
+                        <UsageMeter
+                            label="Itens"
+                            current={organization.currentUsage.currentItems}
+                            max={features.maxItems}
+                            upgradeHref="/billing"
+                        />
+                    )}
                 </div>
             </div>
 

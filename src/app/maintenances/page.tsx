@@ -55,7 +55,39 @@ function MaintenancesListContent() {
     const origin = searchParams.get("origin");
     const backHref = origin === "dashboard" ? "/" : "/";
 
-    const { permissions, message: orgMessage } = useCurrentOrganizationAccess();
+    const { permissions, features, message: orgMessage } = useCurrentOrganizationAccess();
+    const [exporting, setExporting] = useState(false);
+
+    async function handleExportCsv() {
+        try {
+            setExporting(true);
+            const params: Record<string, any> = {};
+            if (selectedItemId) params.itemId = selectedItemId;
+            if (performedAt) {
+                params.startDate = performedAt;
+                params.endDate = performedAt;
+            }
+
+            const res = await api.get("/items/maintenances/export", {
+                params,
+                responseType: "blob",
+            });
+
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", `manutencoes_${new Date().toISOString().split("T")[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success("Relatório exportado com sucesso.");
+        } catch {
+            toast.error("Erro ao exportar relatório. Verifique seu plano ou tente novamente.");
+        } finally {
+            setExporting(false);
+        }
+    }
 
     // filtros do combo de itens
     const [itemsPage, setItemsPage] = useState(0);
@@ -208,7 +240,7 @@ function MaintenancesListContent() {
                     </p>
                 </div>
 
-                <div className="col-4 text-end">
+                <div className="col-4 text-end d-flex flex-column align-items-end gap-2">
                     <GuardedButton
                         className="btn btn-primary"
                         allowed={!!permissions?.canRegisterMaintenance}
@@ -222,6 +254,15 @@ function MaintenancesListContent() {
                         }}
                     >
                         + Registrar
+                    </GuardedButton>
+                    <GuardedButton
+                        className="btn btn-outline-secondary btn-sm"
+                        allowed={!!features?.reportsEnabled}
+                        blockedMessage="Faça upgrade do seu plano para exportar relatórios"
+                        onClick={handleExportCsv}
+                        disabled={exporting}
+                    >
+                        {exporting ? "Exportando..." : "⬇ Exportar CSV"}
                     </GuardedButton>
                 </div>
             </div>

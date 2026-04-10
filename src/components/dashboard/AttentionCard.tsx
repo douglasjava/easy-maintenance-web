@@ -24,7 +24,7 @@ export function AttentionCard({ items }: AttentionCardProps) {
   }
 
   return (
-    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: "12px" }}>
+    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: "12px" }} data-tour="attention-card">
       <div className="card-body p-4">
         <h3 className="h6 fw-bold mb-4 text-dark text-uppercase tracking-wide">Atenção Agora</h3>
         

@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
-import { User, Building, CreditCard, LogOut } from "lucide-react";
+import { User, Building, CreditCard, LogOut, HelpCircle } from "lucide-react";
 import TopBarShell from "../shared/TopBarShell";
 import TopBarBrand from "../shared/TopBarBrand";
 import TopBarUserMenu from "../shared/TopBarUserMenu";
+import NotificationBell from "@/components/NotificationBell";
 
 type OrganizationItem = {
   organization: {
@@ -77,6 +78,8 @@ export default function UserTopBar() {
       <TopBarBrand label="Painel" />
 
       <div className="d-flex align-items-center gap-2">
+        <NotificationBell />
+
         {organizations.length > 0 && (
           <div className="dropdown">
             <button 
@@ -149,6 +152,12 @@ export default function UserTopBar() {
             <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/billing")}>
               <CreditCard size={18} className="text-muted" />
               Faturamento
+            </button>
+          </li>
+          <li>
+            <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/help")} disabled={isBlocked}>
+              <HelpCircle size={18} className="text-muted" />
+              Ajuda / FAQ
             </button>
           </li>
           <li><hr className="dropdown-divider" /></li>

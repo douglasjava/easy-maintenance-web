@@ -5,6 +5,8 @@ import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import { ENV } from "@/lib/env";
 import toast from "react-hot-toast";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import UsageMeter from "@/components/UsageMeter";
 
 type Status = "ACTIVE" | "INACTIVE";
 
@@ -18,6 +20,7 @@ const COLORS = {
 export default function NewUserPage() {
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<Status>("ACTIVE");
+    const { features, organization } = useCurrentOrganizationAccess();
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -63,9 +66,19 @@ export default function NewUserPage() {
                     </p>
                 </div>
 
-                <Link className="btn btn-outline-secondary" href="/">
-                    ← Voltar
-                </Link>
+                <div className="d-flex flex-column align-items-end gap-2">
+                    <Link className="btn btn-outline-secondary" href="/">
+                        ← Voltar
+                    </Link>
+                    {features && organization?.currentUsage != null && (
+                        <UsageMeter
+                            label="Usuários"
+                            current={organization.currentUsage.currentUsers}
+                            max={features.maxUsers}
+                            upgradeHref="/billing"
+                        />
+                    )}
+                </div>
             </div>
 
             {/* CARD */}

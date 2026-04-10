@@ -34,7 +34,7 @@ export function QuickActions() {
                 Ações Rápidas
             </h3>
 
-            <div className="d-flex flex-wrap justify-content-center gap-3">
+            <div className="d-flex flex-wrap justify-content-center gap-3" data-tour="quick-actions">
                 {actions.map((action, idx) => (
                     <Link
                         key={idx}
