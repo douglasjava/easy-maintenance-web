@@ -7,6 +7,7 @@ import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import { useAccessContext } from "@/providers/AccessContextProvider";
 import { PagePermissionGuard } from "@/components/access/PagePermissionGuard";
+import {COMPANY_TYPE_MAP, CompanyType} from "@/types/ai-onboarding";
 
 type Plan = "STARTER" | "BUSINESS" | "ENTERPRISE";
 
@@ -26,6 +27,7 @@ const EMPTY_FORM = {
     complement: "",
     neighborhood: "",
     doc: "",
+    companyType: ""
 };
 
 const EMPTY_SUBSCRIPTION = {
@@ -87,6 +89,7 @@ export default function NewOrganizationPage() {
         if (loading) return;
 
         const orgCode = crypto.randomUUID();
+
         const payload = {
             code: orgCode,
             name: formData.name.trim(),
@@ -98,6 +101,7 @@ export default function NewOrganizationPage() {
             state: formData.state?.trim() || undefined,
             complement: formData.complement?.trim() || undefined,
             neighborhood: formData.neighborhood?.trim() || undefined,
+            companyType: formData.companyType?.trim() || undefined,
             doc: formData.doc?.replace(/\D/g, "") || undefined,
         };
 
@@ -217,7 +221,7 @@ export default function NewOrganizationPage() {
                                 {/* BLOCO: DADOS DA ORGANIZAÇÃO */}
                                 <div className="mb-4">
                                     <div className="row g-3">
-                                        <div className="col-12 col-md-12">
+                                        <div className="col-12 col-md-6">
                                             <label className="form-label fw-bold small">Nome da Empresa</label>
                                             <input
                                                 className="form-control"
@@ -229,7 +233,20 @@ export default function NewOrganizationPage() {
                                         </div>
 
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label fw-bold small">Documento (CNPJ/CPF)</label>
+                                            <label className="form-label fw-bold small">Tipo da Empresa</label>
+                                            <select
+                                                className="form-select"
+                                                value={formData.companyType}
+                                                onChange={(e) => setFormData(p => ({ ...p, companyType: e.target.value }))}
+                                            >
+                                                {Object.entries(COMPANY_TYPE_MAP).map(([key, label]) => (
+                                                    <option key={key} value={key}>{label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label fw-bold small">Documento (CNPJ/OUTROS)</label>
                                             <input
                                                 inputMode="numeric"
                                                 className="form-control"

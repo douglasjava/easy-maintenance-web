@@ -5,8 +5,10 @@ import {api} from "@/lib/apiClient";
 import {formatMoney, formatDate} from "@/lib/formatters";
 import PlanChangeDialog from "@/components/billing/PlanChangeDialog";
 import InvoiceList from "@/components/billing/InvoiceList";
+import PendingPixPaymentCard from "@/components/billing/PendingPixPaymentCard";
 import PlanComparisonSection from "@/components/billing/PlanComparisonSection";
 import BillingFaq from "@/components/billing/BillingFaq";
+import { usePendingPayment } from "@/hooks/usePendingPayment";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import ConfirmModal from "@/components/ConfirmModal";
 import {
@@ -177,6 +179,7 @@ export default function BillingPage() {
     const [loading, setLoading] = useState(true);
     const { organization } = useCurrentOrganizationAccess();
     const currentPlanCode = organization?.plan?.code ?? null;
+    const { pendingPayment } = usePendingPayment();
 
     // Plan Change Modal State
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -343,6 +346,11 @@ export default function BillingPage() {
                         {/* Sections 3 & 4: Sidebar */}
                         <div className="col-12 col-lg-4">
                             <div className="d-flex flex-column gap-4">
+                                {/* PIX Pending Payment Card */}
+                                {pendingPayment && pendingPayment.methodType === "PIX" && (
+                                    <PendingPixPaymentCard payment={pendingPayment} />
+                                )}
+
                                 {/* Section 3: Invoices */}
                                 <InvoiceList invoices={summary.invoices} />
 

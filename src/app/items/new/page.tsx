@@ -195,7 +195,10 @@ function NewItemContent() {
             }
         } catch (err: any) {
             const status = err?.response?.status;
-            if (status === 400) {
+            const backendDetail = err?.response?.data?.detail;
+            if (status === 400 && backendDetail) {
+                toast.error(backendDetail);
+            } else if (status === 400) {
                 toast.error("Verifique os campos e tente novamente.");
             } else {
                 toast.error(`Não foi possível ${editId ? 'atualizar' : 'criar'} o item. Tente novamente.`);

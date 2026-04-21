@@ -1,4 +1,4 @@
-export type AccessMode = "READ_ONLY" | "READ_WRITE";
+export type AccessMode = "FULL_ACCESS" | "READ_ONLY" | "READ_WRITE" | "NO_ACCESS";
 
 export interface PlanSummary {
   code: string;

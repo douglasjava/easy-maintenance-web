@@ -64,42 +64,21 @@ function ItemsContent() {
             if (categoria) params.categoria = categoria;
             if (itemType) params.itemType = itemType;
 
+            // canUpdate and reason are now embedded in each item by the backend
+            // (batch-resolved in a single IN query). No per-item calls needed.
             const res = await api.get("/items", { params });
-
-            let items: Item[] = [];
-            if (Array.isArray(res.data)) {
-                items = res.data;
-            } else if (res.data?.content) {
-                items = res.data.content;
-            }
-
-            // Busca permissão de edição para cada item
-            const itemsWithPermission = items.length > 0 ? await Promise.all(
-                items.map(async (it) => {
-                    try {
-                        const { data: perm } = await api.get(`/items/${it.id}/can-update`);
-                        return { ...it, ...perm };
-                    } catch (e) {
-                        console.error(`Erro ao verificar can-update para item ${it.id}`, e);
-                        return { ...it, canUpdate: false };
-                    }
-                })
-            ) : [];
 
             if (Array.isArray(res.data)) {
                 return {
-                    content: itemsWithPermission,
+                    content: res.data as Item[],
                     totalPages: 1,
-                    totalElements: itemsWithPermission.length,
+                    totalElements: (res.data as Item[]).length,
                     number: 0,
-                    size: itemsWithPermission.length,
+                    size: (res.data as Item[]).length,
                 } as PageResp<Item>;
             }
 
-            return {
-                ...res.data,
-                content: itemsWithPermission
-            } as PageResp<Item>;
+            return res.data as PageResp<Item>;
         },
     });
 

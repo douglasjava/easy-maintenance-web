@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const { accessContext } = useAccessContext();
   const accountAccess = accessContext?.accountAccess;
   const isTrial = accountAccess?.subscriptionStatus === "TRIAL";
+  const isTrialExpired = accountAccess?.subscriptionStatus === "TRIAL_EXPIRED";
 
   // parâmetros
   const [daysAhead] = useState(30);
@@ -89,9 +90,9 @@ export default function DashboardPage() {
             subtitle="Visão geral de manutenções, prazos e conformidade"
           />
 
-          {isBlocked && <DashboardBlockedBanner />}
+          {isBlocked && !isTrialExpired && <DashboardBlockedBanner />}
 
-          {!isBlocked && isTrial && (
+          {(isTrial || isTrialExpired) && (
             <TrialBanner trialExpiresAt={accountAccess?.trialExpiresAt} />
           )}
 

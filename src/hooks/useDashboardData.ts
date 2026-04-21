@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
@@ -56,64 +57,55 @@ export function useDashboardData({
   const { permissions, isLoading: accessLoading } = useCurrentOrganizationAccess();
   const { currentOrganizationCode } = useAccessContext();
 
-  const [data, setData] = useState<DashboardResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const params = useMemo(
     () => ({ daysAhead, nearDueThresholdDays, limitAttention }),
     [daysAhead, nearDueThresholdDays, limitAttention]
   );
 
-  const fetchDashboard = async () => {
-    if (!currentOrganizationCode) {
-      setIsLoading(false);
-      return;
-    }
+  // All conditions must be true before a fetch is allowed.
+  // queryKey includes currentOrganizationCode so each org gets its own cache entry —
+  // switching orgs never serves data from the previous org.
+  const canFetch =
+    !!token &&
+    !authLoading &&
+    !accessLoading &&
+    !!currentOrganizationCode &&
+    !!permissions?.canReadDashboard;
 
-    setError(null);
-    setIsLoading(true);
-    try {
+  const {
+    data,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["dashboard", currentOrganizationCode, params],
+    queryFn: async () => {
       const res = await api.get<DashboardResponse>("/dashboard", { params });
-      setData(res.data);
-    } catch (e: any) {
-      setError(
-        e?.response?.data?.message ||
-          e?.message ||
-          "Falha ao carregar dashboard."
-      );
-      setData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return res.data;
+    },
+    enabled: canFetch,
+    staleTime: 1000 * 60 * 2,
+  });
 
-  useEffect(() => {
-    const canFetch =
-      !!token &&
+  // Map the Error object to a string to preserve the existing interface.
+  const error: string | null = queryError
+    ? (queryError as any)?.response?.data?.message ||
+      queryError.message ||
+      "Falha ao carregar dashboard."
+    : null;
+
+  return {
+    data: data ?? null,
+    isLoading,
+    error,
+    refresh: refetch,
+    // Auxiliary state helpers for the page component
+    hasNoOrganization: !authLoading && !accessLoading && !currentOrganizationCode,
+    isAccessDenied:
       !authLoading &&
       !accessLoading &&
       !!currentOrganizationCode &&
-      !!permissions?.canReadDashboard;
-
-    if (canFetch) {
-      fetchDashboard();
-    } else {
-      // Se parou de ter permissão ou trocou de org para uma sem permissão, limpa os dados
-      if (!authLoading && !accessLoading && (!currentOrganizationCode || !permissions?.canReadDashboard)) {
-          setData(null);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, authLoading, accessLoading, currentOrganizationCode, permissions?.canReadDashboard, params]);
-
-  return {
-    data,
-    isLoading,
-    error,
-    refresh: fetchDashboard,
-    // Auxiliares de estado para facilitar na Page
-    hasNoOrganization: !authLoading && !accessLoading && !currentOrganizationCode,
-    isAccessDenied: !authLoading && !accessLoading && !!currentOrganizationCode && permissions && !permissions.canReadDashboard,
+      permissions != null &&
+      !permissions.canReadDashboard,
   };
 }

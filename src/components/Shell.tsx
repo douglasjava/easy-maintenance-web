@@ -24,7 +24,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const isPrivate = pathname?.startsWith("/private");
 
   useEffect(() => {
-    // Validação de token da área privativa somente no cliente e após montar
+    // Validação de token da área privativa somente no cliente e após montar.
+    // Nota: middleware.ts protege as rotas regulares via cookie HttpOnly (accessToken).
+    // Para /private/*, o adminToken fica em localStorage (inacessível no Edge),
+    // por isso a validação aqui é a guarda autoritativa para a área administrativa.
     if (isPrivate && pathname !== "/private/login") {
       setCanRenderPrivate(false);
       const token = typeof window !== "undefined" ? window.localStorage.getItem("adminToken") : null;
