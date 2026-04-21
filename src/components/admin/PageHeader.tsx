@@ -2,7 +2,7 @@ import Link from "next/link";
 
 interface PageHeaderProps {
     title: string;
-    description?: string;
+    description?: React.ReactNode
     backUrl?: string;
     actions?: React.ReactNode;
 }
