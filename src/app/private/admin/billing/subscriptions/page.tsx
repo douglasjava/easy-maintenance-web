@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import BillingAdminLayout from "../BillingAdminLayout";
-import {formatMoney, formatDate, formatDateTime} from "@/lib/formatters";
-import EditSubscriptionModal from "@/components/billing/EditSubscriptionModal";
+import {formatMoney, formatDateTime} from "@/lib/formatters";
 import { sourceTypeLabelMap, subscriptionStatusLabelMap } from "@/lib/enums/labels";
 
 type Plan = {
@@ -23,8 +22,8 @@ type Subscription = {
   idUser: number;
   payerName: string;
   status: string;
-  periodStart: number;
-  periodEnd: number;
+  periodStart: string;
+  periodEnd: string;
   totalCents: number;
   organizationCode?: string; // Mantido para compatibilidade se necessário
   organizationName?: string; // Mantido para compatibilidade se necessário
