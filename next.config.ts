@@ -1,8 +1,30 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const CANONICAL_DOMAIN = "easymaintenance.com.br";
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
+
+  // Serve static images directly without the optimizer.
+  // Avoids issues with /_next/image redirects on Railway + custom domain.
+  images: {
+    unoptimized: true,
+  },
+
+  // Redirect www → apex so the Firebase Service Worker and all assets
+  // resolve at the canonical origin without any intermediate redirect.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: `www.${CANONICAL_DOMAIN}` }],
+        destination: `https://${CANONICAL_DOMAIN}/:path*`,
+        permanent: true,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
