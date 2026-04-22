@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/onboarding",
   "/ai-onboarding",
   "/select-organization",
+  "/checkout",
 ];
 
 export function middleware(request: NextRequest) {

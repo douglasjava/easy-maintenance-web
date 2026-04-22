@@ -15,12 +15,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [canRenderPrivate, setCanRenderPrivate] = useState(true);
   // Com basePath habilitado, o pathname incluirá o prefixo. Usar endsWith para detectar /login.
-  const isAuth = pathname?.endsWith("/login") || 
+  const isAuth = pathname?.endsWith("/login") ||
                  pathname?.endsWith("/auth/change-password") ||
                  pathname?.endsWith("/forgot-password") ||
                  pathname?.endsWith("/reset-password") ||
                  pathname?.endsWith("/select-organization") ||
-                 pathname?.includes("/landing"); // não exibir topbar/sidebar na tela de login, troca de senha, recuperação ou seleção de org ou landing page
+                 pathname?.includes("/landing") ||
+                 pathname?.startsWith("/checkout"); // não exibir topbar/sidebar na tela de login, troca de senha, recuperação ou seleção de org ou landing page
   const isPrivate = pathname?.startsWith("/private");
 
   useEffect(() => {
