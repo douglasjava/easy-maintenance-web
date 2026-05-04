@@ -42,11 +42,15 @@ api.interceptors.request.use((config) => {
     delete config.headers["X-Org-Id"];
   }
 
-  // Admin token para área privativa
-  if (typeof window !== "undefined" && !config.headers["X-Skip-Interceptor-Admin-Token"]) {
-    const adminToken = window.localStorage.getItem("adminToken");
-    if (adminToken) {
-      config.headers["X-Admin-Token"] = adminToken;
+  // Admin token: enviado apenas para rotas da área privativa (/private/).
+  // O interceptor anterior enviava para TODAS as rotas — vazamento corrigido.
+  if (typeof window !== "undefined") {
+    const isPrivateRoute = (config.url ?? "").startsWith("private/");
+    if (isPrivateRoute && !config.headers["X-Skip-Interceptor-Admin-Token"]) {
+      const adminToken = window.localStorage.getItem("adminToken");
+      if (adminToken) {
+        config.headers["X-Admin-Token"] = adminToken;
+      }
     }
   }
 
