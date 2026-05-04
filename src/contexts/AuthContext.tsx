@@ -84,6 +84,13 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             if (data?.id) storage.setItem("userId", String(data.id));
             if (data?.name) storage.setItem("userName", String(data.name));
 
+            // Store org code here (single org) so X-Org-Id header is present in the
+            // checkSubscription() call below. TenantFilter returns 400 when the header is
+            // missing, which causes initAuth() to clear state on the next hard navigation.
+            if (data?.organizationCodes?.length === 1) {
+                storage.setItem("organizationCode", String(data.organizationCodes[0]));
+            }
+
             // Reset trial banner dismiss so it shows again on each new login
             sessionStorage.removeItem("trialBannerDismissed");
 

@@ -1,42 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Routes that are accessible without authentication.
-// All other routes require the `accessToken` HttpOnly cookie set by the backend at login.
-const PUBLIC_PATHS = [
-  "/login",
-  "/landing",
-  "/forgot-password",
-  "/reset-password",
-  "/onboarding",
-  "/ai-onboarding",
-  "/select-organization",
-  "/checkout",
-  // Acessível sem cookie: JWT de firstAccess tem escopo limitado (ou inexistente).
-  // A página se protege via sessionStorage.getItem("tempIdUser").
-  "/auth/change-password",
-];
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Admin area (/private/*): protected by adminToken stored in localStorage,
-  // which is not accessible at the Edge. Shell.tsx handles this client-side.
-  if (pathname.startsWith("/private")) {
-    return NextResponse.next();
-  }
-
-  // Public paths are always accessible.
-  const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
-  if (isPublic) return NextResponse.next();
-
-  // All remaining routes require the HttpOnly `accessToken` cookie.
-  // This cookie is set by the Spring backend on login (TASK-002).
-  const accessToken = request.cookies.get("accessToken");
-  if (!accessToken) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
+export function middleware(_request: NextRequest) {
+  // Route protection is handled entirely client-side (Shell.tsx + AuthContext +
+  // apiClient 401/403 interceptor). A server-side cookie check is not viable here:
+  // the Spring Boot API sets the accessToken HttpOnly cookie on its own domain
+  // (railway.app), which the browser never forwards to the Next.js server on a
+  // different domain (easymaintenance.com.br). Attempting the check would redirect
+  // every authenticated user back to /login.
   return NextResponse.next();
 }
 
