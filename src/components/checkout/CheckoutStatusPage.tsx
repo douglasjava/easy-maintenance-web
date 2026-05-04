@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import BrandLogo from "@/components/ui/BrandLogo";
 
 export interface CheckoutAction {
   label: string;
@@ -29,7 +29,7 @@ export default function CheckoutStatusPage({
       className="min-vh-100 d-flex flex-column justify-content-center align-items-center bg-light px-3 py-5"
     >
       <div className="mb-4">
-        <Image src="/logo.png" alt="Easy Maintenance" width={150} height={40} priority />
+        <BrandLogo variant="horizontal" priority />
       </div>
 
       <div

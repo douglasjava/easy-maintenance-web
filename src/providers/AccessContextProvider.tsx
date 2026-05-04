@@ -40,11 +40,13 @@ export function AccessContextProvider({ children }: { children: React.ReactNode 
 
   // Ignorar área administrativa global
   const isAdminArea = pathname?.startsWith("/private");
+  // Ignorar página de troca de senha — JWT de firstAccess tem escopo limitado e retorna 403
+  const isChangePasswordFlow = pathname === "/auth/change-password";
 
   const { data: accessContext, isLoading, isError, refetch } = useQuery({
     queryKey: ["access-context", currentOrganizationCode],
     queryFn: () => accessContextService.getAccessContext(currentOrganizationCode || undefined),
-    enabled: !!token && !isAdminArea,
+    enabled: !!token && !isAdminArea && !isChangePasswordFlow,
     staleTime: 1000 * 60 * 5, // 5 minutos
   });
 

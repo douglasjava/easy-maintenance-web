@@ -12,6 +12,9 @@ const PUBLIC_PATHS = [
   "/ai-onboarding",
   "/select-organization",
   "/checkout",
+  // Acessível sem cookie: JWT de firstAccess tem escopo limitado (ou inexistente).
+  // A página se protege via sessionStorage.getItem("tempIdUser").
+  "/auth/change-password",
 ];
 
 export function middleware(request: NextRequest) {
@@ -38,9 +41,11 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Exclude Next.js internals, static assets, and the API basepath.
-  // Everything else goes through the middleware auth check.
+  // Exclude Next.js internals, the API basepath, and any path ending with a file
+  // extension (public folder assets: images, SVGs, service workers, fonts, etc.).
+  // Without the extension check, files like /assets/brand/logos/*.png and
+  // /firebase-messaging-sw.js would hit the auth check and redirect to /login.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|api/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|api/|.*\\.[a-z]{2,5}$).*)",
   ],
 };

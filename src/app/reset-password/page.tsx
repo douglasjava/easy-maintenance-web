@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
-import Image from "next/image";
+import BrandLogo from "@/components/ui/BrandLogo";
 import toast from "react-hot-toast";
 
 function ResetPasswordContent() {
@@ -113,13 +113,7 @@ export default function ResetPasswordPage() {
 
             <div className="login-card">
                 <div className="login-brand">
-                    <Image
-                        src="/logo.png"
-                        alt="Easy Maintenance"
-                        width={180}
-                        height={48}
-                        priority
-                    />
+                    <BrandLogo variant="stacked" priority />
                 </div>
 
                 <h1 className="login-title">Nova senha</h1>

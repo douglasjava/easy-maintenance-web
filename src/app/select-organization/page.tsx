@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/apiClient";
-import Image from "next/image";
+import BrandLogo from "@/components/ui/BrandLogo";
 import toast from "react-hot-toast";
 
 type OrganizationItem = {
@@ -132,13 +132,7 @@ export default function SelectOrganizationPage() {
 
             <div className="login-card">
                 <div className="login-brand">
-                    <Image
-                        src="/logo.png"
-                        alt="Easy Maintenance"
-                        width={180}
-                        height={48}
-                        priority
-                    />
+                    <BrandLogo variant="stacked" priority />
                 </div>
 
                 <h1 className="login-title">Acessar Empresa</h1>

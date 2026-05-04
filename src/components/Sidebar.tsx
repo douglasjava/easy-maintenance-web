@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Logo from "./Logo";
+import BrandLogo from "./ui/BrandLogo";
 import {useRouter, usePathname} from "next/navigation";
 import {useState, useEffect} from "react";
 import {useAuth} from "@/contexts/AuthContext";
@@ -137,7 +137,8 @@ export default function Sidebar() {
         >
             <div className="offcanvas-header border-bottom" style={{borderColor: "rgba(0,0,0,0.06)"}}>
                 <div className="d-flex align-items-center gap-2" id="appSidebarLabel">
-                    <Logo/>
+                    <BrandLogo variant="icon" width={28} height={28} />
+                    <span className="fw-semibold" style={{ fontSize: "0.95rem", color: "#111827" }}>Easy Maintenance</span>
                 </div>
 
                 <button

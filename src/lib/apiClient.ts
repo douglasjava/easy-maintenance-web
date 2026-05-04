@@ -92,7 +92,8 @@ api.interceptors.response.use(
             });
           } catch {}
 
-          if (!currentPath.endsWith("/login")) {
+          const isChangePasswordPage = currentPath.startsWith("/auth/change-password");
+          if (!currentPath.endsWith("/login") && !isChangePasswordPage) {
             window.location.href = "/login";
           }
         }

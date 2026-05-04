@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
-import Image from "next/image";
+import BrandLogo from "@/components/ui/BrandLogo";
 import toast from "react-hot-toast";
 
 export default function ForgotPasswordPage() {
@@ -39,13 +39,7 @@ export default function ForgotPasswordPage() {
 
             <div className="login-card">
                 <div className="login-brand">
-                    <Image
-                        src="/logo.png"
-                        alt="Easy Maintenance"
-                        width={180}
-                        height={48}
-                        priority
-                    />
+                    <BrandLogo variant="stacked" priority />
                 </div>
 
                 <h1 className="login-title">Recuperar senha</h1>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/apiClient";
+import { pollAiJob } from "@/lib/aiPolling";
 import toast from "react-hot-toast";
 import { mapError } from "@/lib/errorMapper";
 import {
@@ -42,11 +43,13 @@ export default function AiOnboardingPage() {
     async function handleGenerate() {
         setLoading(true);
         try {
-            const payload = {
-                companyType: companyType, // Envia a chave (ex: CONDOMINIUM)
-                description
-            };
-            const { data } = await api.post<AiBootstrapPreviewResponse>("/ai/bootstrap/preview", payload);
+            const payload = { companyType, description };
+
+            // Step 1: submit async job — returns 202 + jobId immediately
+            const { data: accepted } = await api.post<{ jobId: string }>("/ai/bootstrap/preview", payload);
+
+            // Step 2: poll until DONE or FAILED (max 90s — 45 attempts × 2s)
+            const data = await pollAiJob<AiBootstrapPreviewResponse>(accepted.jobId, 45, 2000);
 
             if (!data.usedAi) {
                 toast.error("A IA não conseguiu gerar sugestões para este contexto.");

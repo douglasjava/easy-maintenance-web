@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import styles from "./ChatWidget.module.css";
 import { api } from "@/lib/apiClient";
+import { pollAiJob } from "@/lib/aiPolling";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 
 interface Message {
@@ -47,9 +48,12 @@ export default function ChatWidget() {
         setInput("");
 
         try {
-            // ✅ usar rota com / no início
-            const res = await api.post("/ai/assistant", { question });
-            const answer: string = res?.data?.answer ?? "Sem resposta.";
+            // Step 1: submit async job — returns 202 + jobId immediately
+            const { data: accepted } = await api.post<{ jobId: string }>("/ai/assistant", { question });
+
+            // Step 2: poll until DONE or FAILED (max 60s — 30 attempts × 2s)
+            const result = await pollAiJob<{ answer?: string }>(accepted.jobId, 30, 2000);
+            const answer: string = result?.answer ?? "Sem resposta.";
             setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
         } catch (err: any) {
             const msg =

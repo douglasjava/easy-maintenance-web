@@ -1,0 +1,43 @@
+<svg viewBox="0 0 210 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .g  { fill: #2563EB; }
+    .ck { stroke: #10B981; }
+    .t1 { fill: #0F172A; }
+    .t2 { fill: #475569; }
+    @media (prefers-color-scheme: dark) {
+      .g  { fill: #3B82F6; }
+      .ck { stroke: #34D399; }
+      .t1 { fill: #F1F5F9; }
+      .t2 { fill: #94A3B8; }
+    }
+  </style>
+  <!-- Gear icon (same geometry as logo-icon.svg, offset +2,+2) -->
+  <g transform="translate(2 2)">
+    <path class="g" fill-rule="evenodd" clip-rule="evenodd"
+      d="
+        M31.28 15.9 L35.59 16.4 L35.59 23.6 L31.28 24.1
+        A12 12 0 0 1 29.19 27.72
+        L30.91 31.7 L24.67 35.3 L22.09 31.82
+        A12 12 0 0 1 17.91 31.82
+        L15.33 35.3 L9.09 31.7 L10.81 27.72
+        A12 12 0 0 1 8.72 24.1
+        L4.41 23.6 L4.41 16.4 L8.72 15.9
+        A12 12 0 0 1 10.81 12.28
+        L9.09 8.3 L15.33 4.7 L17.91 8.18
+        A12 12 0 0 1 22.09 8.18
+        L24.67 4.7 L30.91 8.3 L29.19 12.28
+        A12 12 0 0 1 31.28 15.9 Z
+        M27 20 A7 7 0 0 0 13 20 A7 7 0 0 0 27 20 Z
+      "
+    />
+    <path class="ck" d="M15 20.5L18.5 24L25 16"
+      stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- Brand name: two-line layout aligned to icon vertical center -->
+  <text class="t1" x="52" y="19"
+    font-family="'Inter','Segoe UI',system-ui,-apple-system,sans-serif"
+    font-size="15" font-weight="700" letter-spacing="1.5">EASY</text>
+  <text class="t2" x="52" y="35"
+    font-family="'Inter','Segoe UI',system-ui,-apple-system,sans-serif"
+    font-size="10.5" font-weight="500" letter-spacing="2">MAINTENANCE</text>
+</svg>

@@ -1,7 +1,6 @@
 "use client";
 
 import React, {useState} from "react";
-import {useRouter} from "next/navigation";
 import {api} from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import {fetchViaCep} from "@/lib/viaCep";
@@ -17,8 +16,6 @@ declare global {
 }
 
 export default function OnboardingPage() {
-    const router = useRouter();
-
     // Estados do Wizard
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -219,14 +216,15 @@ export default function OnboardingPage() {
             setOrganizationCode(returnedOrgCode);
             setOrganizationName(returnedOrgName);
 
-            toast.success("Organização criada!");
-
             window.localStorage.setItem("organizationCode", returnedOrgCode);
             window.localStorage.setItem("organizationName", returnedOrgName);
 
-            router.push("/");
-            // Em alguns casos o reload é necessário se o estado global não reagir ao localStorage
-            setTimeout(() => window.location.reload(), 100);
+            toast.success("Organização criada! Redirecionando para o dashboard...");
+
+            // window.location.replace faz full page navigation, garantindo que o
+            // AccessContextProvider remonte e leia o organizationCode do localStorage
+            // desde o início — eliminando a race condition do router.push + reload.
+            window.location.replace("/");
 
         } catch (error: unknown) {
             const mapped = mapError(error);

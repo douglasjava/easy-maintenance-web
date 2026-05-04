@@ -252,8 +252,7 @@ function NewMaintenanceContent() {
 
     async function handleUploadAttachments() {
         if (!maintenanceId) return;
-        
-        // Remove entradas vazias
+
         const filesToUpload = attachments.filter(a => a && a.file);
 
         if (filesToUpload.length === 0) {
@@ -265,10 +264,36 @@ function NewMaintenanceContent() {
         setUploading(true);
         try {
             for (const att of filesToUpload) {
-                const formData = new FormData();
-                formData.append("file", att.file);
-                await api.post(`/maintenances/${maintenanceId}/attachments?type=${att.type}`, formData, {
-                    headers: { "Content-Type": "multipart/form-data" }
+                const contentType = att.file.type || "application/octet-stream";
+
+                // Step 1: get presigned URL from backend
+                const { data } = await api.post<{ uploadUrl: string; s3Key: string }>(
+                    `maintenances/${maintenanceId}/attachments/upload-url`,
+                    {
+                        fileName: att.file.name,
+                        contentType,
+                        attachmentType: att.type,
+                        sizeBytes: att.file.size
+                    }
+                );
+
+                // Step 2: PUT file directly to S3 (no auth headers — presigned URL is self-contained)
+                const s3Response = await fetch(data.uploadUrl, {
+                    method: "PUT",
+                    headers: { "Content-Type": contentType },
+                    body: att.file
+                });
+                if (!s3Response.ok) {
+                    throw new Error(`Upload S3 falhou: ${s3Response.status}`);
+                }
+
+                // Step 3: confirm upload to backend
+                await api.post(`maintenances/${maintenanceId}/attachments/confirm`, {
+                    s3Key: data.s3Key,
+                    fileName: att.file.name,
+                    contentType,
+                    sizeBytes: att.file.size,
+                    attachmentType: att.type
                 });
             }
             toast.success("Anexos enviados com sucesso!");

@@ -6,7 +6,6 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import StatusPill from "@/components/StatusPill";
-import Pagination from "@/components/Pagination";
 import { categoryLabelMap } from "@/lib/enums/labels";
 import toast from "react-hot-toast";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -31,12 +30,15 @@ type Item = {
     reason?: string;
 };
 
-type PageResp<T> = {
+type CursorPageResp<T> = {
     content: T[];
-    totalPages: number;
-    totalElements: number;
-    number: number;
+    nextCursor: number | null;
+    prevCursor: number | null;
+    hasMore: boolean;
     size: number;
+    totalElements: number;
+    totalPages: number;
+    number: number;
 };
 
 function ItemsContent() {
@@ -47,8 +49,14 @@ function ItemsContent() {
     const [status, setStatus] = useState("");
     const [categoria, setCategoria] = useState("");
     const [itemType, setItemType] = useState("");
-    const [page, setPage] = useState(0);
+    const [cursorStack, setCursorStack] = useState<(number | null)[]>([null]);
+    const [stackIndex, setStackIndex] = useState(0);
     const [size, setSize] = useState(10);
+
+    function resetCursor() {
+        setCursorStack([null]);
+        setStackIndex(0);
+    }
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
@@ -57,28 +65,31 @@ function ItemsContent() {
     const { permissions, features, organization, message: orgMessage } = useCurrentOrganizationAccess();
 
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ["items", { status, itemType, categoria, page, size }],
+        queryKey: ["items", { status, itemType, categoria, cursor: cursorStack[stackIndex], size }],
         queryFn: async () => {
-            const params: Record<string, any> = { page, size };
+            const params: Record<string, any> = { size };
+            const currentCursor = cursorStack[stackIndex];
+            if (currentCursor != null) params.cursor = currentCursor;
             if (status) params.status = status;
             if (categoria) params.categoria = categoria;
             if (itemType) params.itemType = itemType;
 
-            // canUpdate and reason are now embedded in each item by the backend
-            // (batch-resolved in a single IN query). No per-item calls needed.
             const res = await api.get("/items", { params });
 
             if (Array.isArray(res.data)) {
                 return {
                     content: res.data as Item[],
+                    nextCursor: null,
+                    prevCursor: null,
+                    hasMore: false,
+                    size: (res.data as Item[]).length,
                     totalPages: 1,
                     totalElements: (res.data as Item[]).length,
                     number: 0,
-                    size: (res.data as Item[]).length,
-                } as PageResp<Item>;
+                } as CursorPageResp<Item>;
             }
 
-            return res.data as PageResp<Item>;
+            return res.data as CursorPageResp<Item>;
         },
     });
 
@@ -162,8 +173,7 @@ function ItemsContent() {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            setPage(0);
-                            refetch();
+                            resetCursor();
                         }}
                     >
                         <div className="row g-3 align-items-end">
@@ -172,7 +182,7 @@ function ItemsContent() {
                                 <select
                                     className="form-select"
                                     value={status}
-                                    onChange={(e) => setStatus(e.target.value)}
+                                    onChange={(e) => { setStatus(e.target.value); resetCursor(); }}
                                 >
                                     <option value="">Todos</option>
                                     <option value="OK">Em dia</option>
@@ -186,7 +196,7 @@ function ItemsContent() {
                                 <select
                                     className="form-select"
                                     value={categoria}
-                                    onChange={(e) => setCategoria(e.target.value)}
+                                    onChange={(e) => { setCategoria(e.target.value); resetCursor(); }}
                                 >
                                     <option value="">Todos</option>
                                     <option value="REGULATORY">Regulatório</option>
@@ -200,9 +210,10 @@ function ItemsContent() {
                                     className="form-control"
                                     placeholder="EXTINTOR / SPDA / CAIXA_DAGUA..."
                                     value={itemType}
-                                    onChange={(e) =>
-                                        setItemType(e.target.value.toUpperCase())
-                                    }
+                                    onChange={(e) => {
+                                        setItemType(e.target.value.toUpperCase());
+                                        resetCursor();
+                                    }}
                                 />
                             </div>
 
@@ -287,17 +298,47 @@ function ItemsContent() {
                                 </table>
                             </div>
 
-                            <div className="px-3 py-3 border-top">
-                                <Pagination
-                                    page={data?.number ?? 0}
-                                    size={data?.size ?? size}
-                                    totalPages={data?.totalPages ?? 1}
-                                    onChange={setPage}
-                                    onSizeChange={(newSize) => {
-                                        setSize(newSize);
-                                        setPage(0);
-                                    }}
-                                />
+                            <div className="px-3 py-3 border-top d-flex justify-content-between align-items-center">
+                                <div className="d-flex align-items-center gap-2">
+                                    <span className="text-muted small">Itens por página:</span>
+                                    <select
+                                        className="form-select form-select-sm"
+                                        style={{ width: "auto" }}
+                                        value={size}
+                                        onChange={(e) => {
+                                            setSize(Number(e.target.value));
+                                            resetCursor();
+                                        }}
+                                    >
+                                        <option value={10}>10</option>
+                                        <option value={20}>20</option>
+                                        <option value={50}>50</option>
+                                    </select>
+                                </div>
+                                <div className="d-flex gap-2 align-items-center">
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={() => setStackIndex((i) => Math.max(0, i - 1))}
+                                        disabled={stackIndex === 0}
+                                    >
+                                        « Anterior
+                                    </button>
+                                    <span className="text-muted small">Página {stackIndex + 1}</span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={() => {
+                                            const nc = data?.nextCursor;
+                                            if (!nc) return;
+                                            setCursorStack((prev) => [...prev.slice(0, stackIndex + 1), nc]);
+                                            setStackIndex((i) => i + 1);
+                                        }}
+                                        disabled={!data?.hasMore}
+                                    >
+                                        Próximo »
+                                    </button>
+                                </div>
                             </div>
                         </>
                     )}

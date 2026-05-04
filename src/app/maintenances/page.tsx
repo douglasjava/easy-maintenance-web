@@ -4,7 +4,6 @@ import { useState, useMemo, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
-import Pagination from "@/components/Pagination";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
@@ -42,12 +41,15 @@ interface MaintenanceDetail extends Maintenance {
     attachments: Attachment[];
 }
 
-interface PageResp<T> {
+interface CursorPageResp<T> {
     content: T[];
-    totalPages: number;
-    totalElements: number;
-    number: number; // 0-based
+    nextCursor: number | null;
+    prevCursor: number | null;
+    hasMore: boolean;
     size: number;
+    totalElements: number;
+    totalPages: number;
+    number: number;
 }
 
 function MaintenancesListContent() {
@@ -90,20 +92,26 @@ function MaintenancesListContent() {
     }
 
     // filtros do combo de itens
-    const [itemsPage, setItemsPage] = useState(0);
+    const [itemsCursorStack, setItemsCursorStack] = useState<(number | null)[]>([null]);
+    const [itemsStackIndex, setItemsStackIndex] = useState(0);
     const [itemsItemType, setItemsItemType] = useState("");
     const itemsSize = 20;
+
+    function resetItemsCursor() {
+        setItemsCursorStack([null]);
+        setItemsStackIndex(0);
+    }
 
     const {
         data: itemsPageData,
         isLoading: itemsLoading,
         error: itemsError,
-        refetch: refetchItems,
-        isFetching: itemsFetching,
     } = useQuery({
-        queryKey: ["items-for-combo", { itemsPage, itemsSize, itemsItemType }],
+        queryKey: ["items-for-combo", { itemsCursor: itemsCursorStack[itemsStackIndex], itemsSize, itemsItemType }],
         queryFn: async () => {
-            const params: Record<string, any> = { page: itemsPage, size: itemsSize };
+            const params: Record<string, any> = { size: itemsSize };
+            const currentCursor = itemsCursorStack[itemsStackIndex];
+            if (currentCursor != null) params.cursor = currentCursor;
             if (itemsItemType) params.itemType = itemsItemType;
 
             const res = await api.get("/items", { params });
@@ -112,13 +120,16 @@ function MaintenancesListContent() {
                 const arr = res.data as Item[];
                 return {
                     content: arr,
+                    nextCursor: null,
+                    prevCursor: null,
+                    hasMore: false,
+                    size: arr.length,
                     totalPages: 1,
                     totalElements: arr.length,
                     number: 0,
-                    size: arr.length,
-                } as PageResp<Item>;
+                } as CursorPageResp<Item>;
             }
-            return res.data as PageResp<Item>;
+            return res.data as CursorPageResp<Item>;
         },
     });
 
@@ -169,8 +180,14 @@ function MaintenancesListContent() {
     }
 
     // paginação manutenções
-    const [page, setPage] = useState(0);
+    const [maintsCursorStack, setMaintsCursorStack] = useState<(number | null)[]>([null]);
+    const [maintsStackIndex, setMaintsStackIndex] = useState(0);
     const [size, setSize] = useState(10);
+
+    function resetMaintsCursor() {
+        setMaintsCursorStack([null]);
+        setMaintsStackIndex(0);
+    }
 
     const {
         data: maints,
@@ -178,29 +195,32 @@ function MaintenancesListContent() {
         error: maintsError,
         isFetching: maintsFetching,
     } = useQuery({
-        queryKey: ["maintenances", { selectedItemId, performedAt, performedBy, page, size }],
+        queryKey: ["maintenances", { selectedItemId, performedAt, performedBy, cursor: maintsCursorStack[maintsStackIndex], size }],
         queryFn: async () => {
-            const params: Record<string, any> = { page, size };
+            const params: Record<string, any> = { size };
+            const currentCursor = maintsCursorStack[maintsStackIndex];
+            if (currentCursor != null) params.cursor = currentCursor;
             if (selectedItemId) params.itemId = selectedItemId;
             if (performedAt) params.performedAt = performedAt;
             if (performedBy) params.performedBy = performedBy;
 
-            const res = await api.get(`/items/maintenances`, {
-                params,
-            });
+            const res = await api.get(`/items/maintenances`, { params });
 
             const d = res.data;
             if (Array.isArray(d)) {
                 const arr = d as Maintenance[];
                 return {
                     content: arr,
+                    nextCursor: null,
+                    prevCursor: null,
+                    hasMore: false,
+                    size: arr.length,
                     totalPages: 1,
                     totalElements: arr.length,
                     number: 0,
-                    size: arr.length,
-                } as PageResp<Maintenance>;
+                } as CursorPageResp<Maintenance>;
             }
-            return d as PageResp<Maintenance>;
+            return d as CursorPageResp<Maintenance>;
         },
     });
 
@@ -273,7 +293,7 @@ function MaintenancesListContent() {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            setPage(0);
+                            resetMaintsCursor();
                         }}
                     >
                         <div className="row g-3 align-items-end">
@@ -284,7 +304,7 @@ function MaintenancesListContent() {
                                     value={selectedItemId}
                                     onChange={(e) => {
                                         setSelectedItemId(e.target.value);
-                                        setPage(0);
+                                        resetMaintsCursor();
                                     }}
                                 >
                                     <option value="">Todos os itens…</option>
@@ -305,7 +325,7 @@ function MaintenancesListContent() {
                                     max={today}
                                     onChange={(e) => {
                                         setPerformedAt(e.target.value);
-                                        setPage(0);
+                                        resetMaintsCursor();
                                     }}
                                 />
                             </div>
@@ -319,7 +339,7 @@ function MaintenancesListContent() {
                                     value={performedBy}
                                     onChange={(e) => {
                                         setPerformedBy(e.target.value);
-                                        setPage(0);
+                                        resetMaintsCursor();
                                     }}
                                 />
                             </div>
@@ -332,7 +352,7 @@ function MaintenancesListContent() {
                                         setSelectedItemId("");
                                         setPerformedAt("");
                                         setPerformedBy("");
-                                        setPage(0);
+                                        resetMaintsCursor();
                                     }}
                                 >
                                     Limpar Filtros
@@ -342,28 +362,29 @@ function MaintenancesListContent() {
                     </form>
 
                     {/* paginação do combo de itens */}
-                    {!!itemsPageData && itemsPageData.totalPages > 1 && (
+                    {(itemsStackIndex > 0 || itemsPageData?.hasMore) && (
                         <div className="d-flex justify-content-between align-items-center mt-3">
                             <button
                                 type="button"
                                 className="btn btn-sm btn-outline-secondary"
-                                onClick={() => setItemsPage((p) => Math.max(0, p - 1))}
-                                disabled={(itemsPageData?.number ?? 0) <= 0}
+                                onClick={() => setItemsStackIndex((i) => Math.max(0, i - 1))}
+                                disabled={itemsStackIndex === 0}
                             >
                                 « Anteriores
                             </button>
                             <span className="text-muted small">
-                Página {(itemsPageData?.number ?? 0) + 1} de{" "}
-                                {itemsPageData?.totalPages ?? 1}
-              </span>
+                                Página {itemsStackIndex + 1}
+                            </span>
                             <button
                                 type="button"
                                 className="btn btn-sm btn-outline-secondary"
-                                onClick={() => setItemsPage((p) => p + 1)}
-                                disabled={
-                                    (itemsPageData?.number ?? 0) + 1 >=
-                                    (itemsPageData?.totalPages ?? 1)
-                                }
+                                onClick={() => {
+                                    const nc = itemsPageData?.nextCursor;
+                                    if (!nc) return;
+                                    setItemsCursorStack((prev) => [...prev.slice(0, itemsStackIndex + 1), nc]);
+                                    setItemsStackIndex((i) => i + 1);
+                                }}
+                                disabled={!itemsPageData?.hasMore}
                             >
                                 Próximos »
                             </button>
@@ -447,17 +468,47 @@ function MaintenancesListContent() {
                                 </table>
                             </div>
 
-                            <div className="px-3 py-3 border-top">
-                                <Pagination
-                                    page={maints?.number ?? 0}
-                                    size={maints?.size ?? size}
-                                    totalPages={maints?.totalPages ?? 1}
-                                    onChange={(p) => setPage(p)}
-                                    onSizeChange={(newSize) => {
-                                        setSize(newSize);
-                                        setPage(0);
-                                    }}
-                                />
+                            <div className="px-3 py-3 border-top d-flex justify-content-between align-items-center">
+                                <div className="d-flex align-items-center gap-2">
+                                    <span className="text-muted small">Itens por página:</span>
+                                    <select
+                                        className="form-select form-select-sm"
+                                        style={{ width: "auto" }}
+                                        value={size}
+                                        onChange={(e) => {
+                                            setSize(Number(e.target.value));
+                                            resetMaintsCursor();
+                                        }}
+                                    >
+                                        <option value={10}>10</option>
+                                        <option value={20}>20</option>
+                                        <option value={50}>50</option>
+                                    </select>
+                                </div>
+                                <div className="d-flex gap-2 align-items-center">
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={() => setMaintsStackIndex((i) => Math.max(0, i - 1))}
+                                        disabled={maintsStackIndex === 0}
+                                    >
+                                        « Anterior
+                                    </button>
+                                    <span className="text-muted small">Página {maintsStackIndex + 1}</span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={() => {
+                                            const nc = maints?.nextCursor;
+                                            if (!nc) return;
+                                            setMaintsCursorStack((prev) => [...prev.slice(0, maintsStackIndex + 1), nc]);
+                                            setMaintsStackIndex((i) => i + 1);
+                                        }}
+                                        disabled={!maints?.hasMore}
+                                    >
+                                        Próximo »
+                                    </button>
+                                </div>
                             </div>
                         </>
                     )}

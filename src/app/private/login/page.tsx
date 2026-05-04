@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import BrandLogo from "@/components/ui/BrandLogo";
 import toast from "react-hot-toast";
 
 export default function PrivateLoginPage() {
@@ -52,13 +52,7 @@ export default function PrivateLoginPage() {
 
             <div className="login-card">
                 <div className="login-brand">
-                    <Image
-                        src="/logo.png"
-                        alt="Easy Maintenance"
-                        width={180}
-                        height={48}
-                        priority
-                    />
+                    <BrandLogo variant="stacked" priority />
                 </div>
 
                 <h1 className="login-title">Área Privativa</h1>

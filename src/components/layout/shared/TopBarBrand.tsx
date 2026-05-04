@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import BrandLogo from "@/components/ui/BrandLogo";
 
 interface TopBarBrandProps {
   label: string;
@@ -19,7 +20,9 @@ export default function TopBarBrand({ label }: TopBarBrandProps) {
       >
         <span className="navbar-toggler-icon"></span>
       </button>
-      <span className="navbar-brand ms-2 d-none d-sm-inline">{label}</span>
+      <span className="navbar-brand ms-2 d-none d-sm-flex align-items-center" aria-label={label}>
+        <BrandLogo variant="horizontal" width={140} height={36} />
+      </span>
     </div>
   );
 }

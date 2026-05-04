@@ -2,26 +2,23 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/apiClient";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
+import BrandLogo from "@/components/ui/BrandLogo";
 import toast from "react-hot-toast";
 
 export default function ChangePasswordPage() {
     const [loading, setLoading] = useState(false);
     const [idUser, setIdUser] = useState<number | null>(null);
-    const router = useRouter();
 
     useEffect(() => {
-        // Tenta recuperar o idUser do sessionStorage (definido no login)
         if (typeof window !== "undefined") {
             const storedId = window.sessionStorage.getItem("tempIdUser");
             if (storedId) {
                 setIdUser(Number(storedId));
             } else {
-                router.replace("/login");
+                window.location.replace("/login");
             }
         }
-    }, [router]);
+    }, []);
 
     async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -53,13 +50,21 @@ export default function ChangePasswordPage() {
                 newPassword: newPassword,
             });
 
-            // Limpa o ID temporário
             window.sessionStorage.removeItem("tempIdUser");
 
-            toast.success("Senha alterada com sucesso! Redirecionando para o login...");
-            
+            // Limpa o estado de autenticação parcial (JWT de firstAccess tem escopo limitado).
+            // O usuário deve fazer login novamente com a nova senha para obter um JWT completo.
+            ["localStorage", "sessionStorage"].forEach(name => {
+                const s = (window as any)[name];
+                s.removeItem("isLoggedIn");
+                s.removeItem("userId");
+                s.removeItem("userName");
+            });
+
+            toast.success("Senha alterada com sucesso! Faça login com sua nova senha.");
+
             setTimeout(() => {
-                router.replace("/login");
+                window.location.replace("/login");
             }, 2000);
         } catch (err: any) {
             toast.error(
@@ -76,13 +81,7 @@ export default function ChangePasswordPage() {
 
             <div className="login-card">
                 <div className="login-brand">
-                    <Image
-                        src="/logo.png"
-                        alt="Easy Maintenance"
-                        width={180}
-                        height={48}
-                        priority
-                    />
+                    <BrandLogo variant="stacked" priority />
                 </div>
 
                 <h1 className="login-title">Primeiro Acesso</h1>

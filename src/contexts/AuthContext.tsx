@@ -88,7 +88,12 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             sessionStorage.removeItem("trialBannerDismissed");
 
             setToken("cookie");
-            await checkSubscription();
+
+            // firstAccess users have a limited-scope JWT that returns 403 on /me/access-context.
+            // Skip checkSubscription here — it runs again after password change on initAuth.
+            if (!data?.firstAccess) {
+                await checkSubscription();
+            }
         }
     }, [checkSubscription]);
 
