@@ -31,7 +31,7 @@ export default function OnboardingPage() {
     const [billingData, setBillingData] = useState({
         name: "",
         billingEmail: "",
-        paymentMethod: "CARD", // default CARD
+        paymentMethod: "CARD",
         doc: "",
         street: "",
         number: "",
@@ -42,7 +42,6 @@ export default function OnboardingPage() {
         country: "BR",
         status: "ACTIVE",
         phone: "",
-        planCode: "STARTER",
         subscriptionStatus: "TRIAL",
         currentPeriodStart: "",
         currentPeriodEnd: "",
@@ -61,7 +60,6 @@ export default function OnboardingPage() {
         orgCity: "",
         orgState: "",
         orgComplement: "",
-        planCode: "STARTER",
         subscriptionStatus: "TRIAL",
         currentPeriodStart: "",
         currentPeriodEnd: "",
@@ -187,7 +185,6 @@ export default function OnboardingPage() {
                 code: crypto.randomUUID(),
                 name: orgData.orgName,
                 companyType: orgData.orgType,
-                plan: billingData.planCode,
                 city: orgData.orgCity,
                 street: orgData.orgStreet,
                 number: orgData.orgNumber,
@@ -409,44 +406,20 @@ export default function OnboardingPage() {
                                         />
                                     </div>
 
-                                    <h5 className="mb-4 border-bottom pb-2">Dados do plano</h5>
-
-                                    <div className="col-md-2">
-                                        <label className="form-label">Plano</label>
-                                        <select
-                                            className="form-select"
-                                            value={billingData.planCode}
-                                            onChange={e => setBillingData({...billingData, planCode: e.target.value})}
-                                            required
-                                        >
-                                            <option value="STARTER">STARTER</option>
-                                            <option value="BUSINESS">BUSINESS</option>
-                                            <option value="ENTERPRISE">ENTERPRISE</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Legenda dos planos */}
-                                    <div className="col-md-10">
-                                        <label className="form-label d-block">Legenda dos planos</label>
-
-                                        <div className="row">
-                                            <div className="col-md-3">
-                                                <strong>STARTER</strong>
-                                                <div className="text-muted small">1 empresas</div>
-                                            </div>
-
-                                            <div className="col-md-3">
-                                                <strong>BUSINESS</strong>
-                                                <div className="text-muted small">5 empresas</div>
-                                            </div>
-
-                                            <div className="col-md-3">
-                                                <strong>ENTERPRISE</strong>
-                                                <div className="text-muted small">Ilimitado</div>
+                                    <div className="col-12">
+                                        <div className="alert d-flex align-items-center gap-3 mb-0"
+                                             style={{backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: "10px"}}>
+                                            <div style={{fontSize: "1.5rem"}}>🎁</div>
+                                            <div>
+                                                <div className="fw-semibold" style={{color: "#1E40AF"}}>
+                                                    7 dias grátis com acesso completo ao plano Business
+                                                </div>
+                                                <div className="text-muted small mt-1">
+                                                    IA, uploads, múltiplas empresas e muito mais — sem cartão agora. Escolha seu plano ao final do período.
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-
 
                                 </div>
 
@@ -579,41 +552,17 @@ export default function OnboardingPage() {
                                         />
                                     </div>
 
-                                    <h5 className="mb-4 border-bottom pb-2">Dados do plano</h5>
-
-                                    <div className="col-md-2">
-                                        <label className="form-label">Plano</label>
-                                        <select
-                                            className="form-select"
-                                            value={orgData.planCode}
-                                            onChange={e => setOrgData({...orgData, planCode: e.target.value})}
-                                            required
-                                        >
-                                            <option value="STARTER">STARTER</option>
-                                            <option value="BUSINESS">BUSINESS</option>
-                                            <option value="ENTERPRISE">ENTERPRISE</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Legenda dos planos */}
-                                    <div className="col-md-10">
-                                        <label className="form-label d-block">Legenda dos planos</label>
-
-                                        <div className="row">
-
-                                            <div className="col-md-3">
-                                                <strong>STARTER</strong>
-                                                <div className="text-muted small">1 empresas</div>
-                                            </div>
-
-                                            <div className="col-md-3">
-                                                <strong>BUSINESS</strong>
-                                                <div className="text-muted small">5 empresas</div>
-                                            </div>
-
-                                            <div className="col-md-3">
-                                                <strong>ENTERPRISE</strong>
-                                                <div className="text-muted small">Ilimitado</div>
+                                    <div className="col-12">
+                                        <div className="alert d-flex align-items-center gap-3 mb-0"
+                                             style={{backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: "10px"}}>
+                                            <div style={{fontSize: "1.5rem"}}>🎁</div>
+                                            <div>
+                                                <div className="fw-semibold" style={{color: "#1E40AF"}}>
+                                                    Sua empresa entrará com acesso completo ao plano Business por 7 dias
+                                                </div>
+                                                <div className="text-muted small mt-1">
+                                                    Após o período, escolha o plano ideal para o seu time.
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
