@@ -194,7 +194,6 @@ export default function OnboardingPage() {
                 neighborhood: orgData.orgNeighborhood,
                 country: "BR",
                 doc: onlyNumbers(orgData.orgDoc),
-                planCode: orgData.planCode,
                 status: orgData.subscriptionStatus,
                 currentPeriodStart: toTimestamp(nowISO),
                 currentPeriodEnd: toTimestamp(plus7DaysISO),
