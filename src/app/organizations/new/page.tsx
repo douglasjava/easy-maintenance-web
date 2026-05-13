@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
@@ -48,7 +47,6 @@ export default function NewOrganizationPage() {
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [subscriptionData, setSubscriptionData] = useState(EMPTY_SUBSCRIPTION);
     const [createdOrgCode, setCreatedOrgCode] = useState("");
-    const router = useRouter();
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -152,7 +150,7 @@ export default function NewOrganizationPage() {
             setLoading(true);
             await api.put(`/organizations/${createdOrgCode}/subscription`, payload);
             toast.success("Assinatura configurada com sucesso.");
-            
+
             // Se o usuário não tinha organização selecionada, seleciona a recém criada
             if (typeof window !== "undefined") {
                 const storage = window.localStorage.getItem("isLoggedIn") ? window.localStorage : window.sessionStorage;
@@ -160,9 +158,9 @@ export default function NewOrganizationPage() {
                     storage.setItem("organizationCode", createdOrgCode);
                     storage.setItem("organizationName", formData.name);
                 }
+                // Full reload garante que o TopBar re-busca a lista atualizada de empresas
+                window.location.href = "/";
             }
-
-            router.push("/");
         } catch (err: any) {
             console.error("Error configuring subscription", err);
             toast.error("Erro ao configurar assinatura.");
@@ -364,9 +362,6 @@ export default function NewOrganizationPage() {
                                             disabled
                                             readOnly
                                         />
-                                        <div className="small text-muted mt-1">
-                                            ID do Usuário: {subscriptionData.payerUserId}
-                                        </div>
                                     </div>
 
                                     <div className="col-12 col-md-6">
@@ -383,59 +378,10 @@ export default function NewOrganizationPage() {
                                         </select>
                                     </div>
 
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Status</label>
-                                        <select
-                                            className="form-select"
-                                            value={subscriptionData.status}
-                                            onChange={(e) => setSubscriptionData(p => ({ ...p, status: e.target.value }))}
-                                            required
-                                        >
-                                            <option value="ACTIVE">ATIVO</option>
-                                            <option value="PAST_DUE">VENCIDO</option>
-                                            <option value="CANCELED">CANCELADO</option>
-                                            <option value="TRIALING">EM TESTE</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Início do Período</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            value={subscriptionData.currentPeriodStart}
-                                            onChange={(e) => setSubscriptionData(p => ({ ...p, currentPeriodStart: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Fim do Período</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            value={subscriptionData.currentPeriodEnd}
-                                            onChange={(e) => setSubscriptionData(p => ({ ...p, currentPeriodEnd: e.target.value }))}
-                                        />
-                                    </div>
                                 </div>
 
                                 <div className="mt-4 d-flex justify-content-between">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-secondary px-4 py-2"
-                                        onClick={() => {
-                                            if (typeof window !== "undefined") {
-                                                const storage = window.localStorage.getItem("isLoggedIn") ? window.localStorage : window.sessionStorage;
-                                                if (!storage.getItem("organizationCode")) {
-                                                    storage.setItem("organizationCode", createdOrgCode);
-                                                    storage.setItem("organizationName", formData.name);
-                                                }
-                                            }
-                                            router.push("/");
-                                        }}
-                                    >
-                                        Pular (Configurar depois)
-                                    </button>
+
                                     <button
                                         type="submit"
                                         className="btn btn-success px-5 py-2 fw-bold"
@@ -443,6 +389,7 @@ export default function NewOrganizationPage() {
                                     >
                                         {loading ? "Salvando..." : "Finalizar Cadastro ✓"}
                                     </button>
+
                                 </div>
                             </form>
                         )}

@@ -91,7 +91,6 @@ export default function OnboardingPage() {
         }
         const addr = await fetchViaCep(cep);
         if (!addr) {
-            //toast.error("CEP não encontrado no ViaCEP.");
             return;
         }
         setBillingData({
@@ -112,7 +111,6 @@ export default function OnboardingPage() {
         }
         const addr = await fetchViaCep(cep);
         if (!addr) {
-            //toast.error("CEP não encontrado no ViaCEP.");
             return;
         }
         setOrgData({
