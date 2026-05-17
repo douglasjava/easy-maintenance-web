@@ -19,7 +19,7 @@ interface AuthContextType {
     loading: boolean;
     login: (data: any, remember: boolean) => Promise<void>;
     logout: () => Promise<void>;
-    checkSubscription: () => Promise<SubscriptionStatus>;
+    checkSubscription: (tempOrgCode?: string) => Promise<SubscriptionStatus>;
 }
 
 const AUTH_FLAG = "isLoggedIn";
@@ -58,14 +58,19 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         });
     }, []);
 
-    const checkSubscription = useCallback(async (): Promise<SubscriptionStatus> => {
+    const checkSubscription = useCallback(async (tempOrgCode?: string): Promise<SubscriptionStatus> => {
         try {
+            const headers: Record<string, string> = {};
+            if (tempOrgCode) {
+                headers["X-Org-Id"] = tempOrgCode;
+            }
+
             const {data} = await api.get<{
                 accountAccess?: {
                     subscriptionStatus?: string;
                     accessMode?: string;
                 };
-            }>("/me/access-context");
+            }>("/me/access-context", { headers });
 
             const status = data.accountAccess?.subscriptionStatus;
             const mode = data.accountAccess?.accessMode;
@@ -119,13 +124,20 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             }
 
             /**
-             * Se o usuário possui apenas uma organização, já salvamos o organizationCode
-             * antes de chamar /me/access-context.
+             * Determina o orgCode disponível para validar /me/access-context.
              *
-             * Isso garante que o interceptor consiga enviar o header X-Org-Id.
+             * - 1 org: salva no storage imediatamente e usa na validação.
+             * - Múltiplas orgs: não salva ainda (usuário ainda vai escolher),
+             *   mas injeta a primeira diretamente no header da requisição
+             *   para que o backend não retorne 403 por ausência de X-Org-Id.
              */
+            let orgCodeForValidation: string | undefined;
+
             if (data?.organizationCodes?.length === 1) {
                 storage.setItem("organizationCode", String(data.organizationCodes[0]));
+                orgCodeForValidation = String(data.organizationCodes[0]);
+            } else if (data?.organizationCodes?.length > 1) {
+                orgCodeForValidation = String(data.organizationCodes[0]);
             }
 
             sessionStorage.removeItem("trialBannerDismissed");
@@ -144,10 +156,10 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
              * Ordem correta:
              * 1. Backend grava cookie
              * 2. Front salva dados básicos
-             * 3. Front valida /me/access-context
+             * 3. Front valida /me/access-context com o orgCode correto
              * 4. Só depois libera a aplicação com setToken("cookie")
              */
-            const status = await checkSubscription();
+            const status = await checkSubscription(orgCodeForValidation);
 
             if (status === "UNKNOWN") {
                 clearLocalState();

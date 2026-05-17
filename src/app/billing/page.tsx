@@ -8,6 +8,7 @@ import InvoiceList from "@/components/billing/InvoiceList";
 import PendingPixPaymentCard from "@/components/billing/PendingPixPaymentCard";
 import PlanComparisonSection from "@/components/billing/PlanComparisonSection";
 import BillingFaq from "@/components/billing/BillingFaq";
+import PaymentMethodSelectionModal from "@/components/billing/PaymentMethodSelectionModal";
 import { usePendingPayment } from "@/hooks/usePendingPayment";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -151,11 +152,28 @@ const SubscriptionItemCard = ({
 };
 
 
-const PaymentMethodCard = ({account}: { account: BillingAccount }) => {
+const METHOD_LABELS: Record<string, string> = {
+    CARD: "Cartão de Crédito",
+    PIX: "PIX — cobrança mensal",
+};
+
+const PaymentMethodCard = ({
+    account,
+    onChangeMethod,
+}: {
+    account: BillingAccount;
+    onChangeMethod: () => void;
+}) => {
     return (
         <div className="card border shadow-sm rounded-4">
-            <div className="card-header bg-white border-0 py-3 px-4">
+            <div className="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
                 <h6 className="mb-0 fw-bold">Método de Pagamento</h6>
+                <button
+                    className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-medium"
+                    onClick={onChangeMethod}
+                >
+                    Alterar
+                </button>
             </div>
             <div className="card-body px-4 pb-4 pt-0">
                 <div className="d-flex align-items-center gap-3 p-3 border rounded-4 bg-light bg-opacity-50">
@@ -163,7 +181,7 @@ const PaymentMethodCard = ({account}: { account: BillingAccount }) => {
                         <CreditCard size={24} className="text-primary"/>
                     </div>
                     <div className="text-muted small fw-medium">
-                        {account.paymentMethod}
+                        {METHOD_LABELS[account.paymentMethod] ?? account.paymentMethod}
                     </div>
                 </div>
             </div>
@@ -188,6 +206,9 @@ export default function BillingPage() {
     // Cancellation Modal State
     const [itemToCancel, setItemToCancel] = useState<number | null>(null);
     const [cancelLoading, setCancelLoading] = useState(false);
+
+    // Payment Method Modal State
+    const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
 
     useEffect(() => {
         fetchSummary();
@@ -356,7 +377,10 @@ export default function BillingPage() {
 
                                 {/* Section 4: Payment Method */}
                                 {hasBillingAccount ? (
-                                    <PaymentMethodCard account={summary.billingAccount!}/>
+                                    <PaymentMethodCard
+                                        account={summary.billingAccount!}
+                                        onChangeMethod={() => setIsPaymentMethodModalOpen(true)}
+                                    />
                                 ) : (
                                     <div className="card border shadow-sm rounded-4">
                                         <div className="card-header bg-white border-0 py-3 px-4">
@@ -366,8 +390,11 @@ export default function BillingPage() {
                                             <div className="alert alert-info border-0 rounded-4 mb-3 small">
                                                 Nenhum método de pagamento cadastrado.
                                             </div>
-                                            <button className="btn btn-outline-primary w-100 rounded-pill fw-bold">
-                                                Cadastrar um método de pagamento
+                                            <button
+                                                className="btn btn-primary w-100 rounded-pill fw-bold"
+                                                onClick={() => setIsPaymentMethodModalOpen(true)}
+                                            >
+                                                Confirmar forma de pagamento
                                             </button>
                                         </div>
                                     </div>
@@ -403,6 +430,13 @@ export default function BillingPage() {
                     currentPlanCode={selectedItem.planCode}
                 />
             )}
+
+            <PaymentMethodSelectionModal
+                show={isPaymentMethodModalOpen}
+                onClose={() => setIsPaymentMethodModalOpen(false)}
+                onSuccess={fetchSummary}
+                currentMethod={summary?.billingAccount?.paymentMethod as "CARD" | "PIX" | null ?? null}
+            />
 
             <ConfirmModal
                 show={!!itemToCancel}

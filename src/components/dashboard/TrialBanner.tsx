@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import PaymentMethodSelectionModal from "@/components/billing/PaymentMethodSelectionModal";
 
 interface TrialBannerProps {
   trialExpiresAt?: string;
@@ -36,6 +37,7 @@ const DISMISS_KEY = "trialBannerDismissed";
 
 export function TrialBanner({ trialExpiresAt }: TrialBannerProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(DISMISS_KEY);
@@ -58,12 +60,12 @@ export function TrialBanner({ trialExpiresAt }: TrialBannerProps) {
       return "Seu período de trial expirou. Ative um plano para continuar usando todos os recursos.";
     }
     if (daysRemaining === 0) {
-      return "Seu trial expira hoje! Ative um plano para não perder o acesso.";
+      return "Seu trial expira hoje! Confirme seu método de pagamento para não perder o acesso.";
     }
     if (daysRemaining === 1) {
-      return "Seu trial expira amanhã! Ative um plano para continuar com acesso completo.";
+      return "Seu trial expira amanhã! Confirme seu método de pagamento para continuar com acesso completo.";
     }
-    return `Seu trial expira em ${daysRemaining} dias. Ative um plano para continuar com acesso completo.`;
+    return `Seu trial expira em ${daysRemaining} dias. Confirme sua forma de pagamento para não ser surpreendido.`;
   };
 
   const bannerTitle = () => {
@@ -73,36 +75,64 @@ export function TrialBanner({ trialExpiresAt }: TrialBannerProps) {
     return "Você está no período de trial";
   };
 
+  const primaryBtnClass =
+    styles.badge === "bg-warning text-dark"
+      ? "btn-warning"
+      : urgency === "info"
+      ? "btn-info"
+      : "btn-danger";
+
   return (
-    <div
-      className={`alert ${styles.alert} border-start border-3 shadow-sm mb-4 rounded-3 p-3 d-flex align-items-center justify-content-between`}
-      role="alert"
-    >
-      <div className="d-flex align-items-center gap-3">
-        <span className={`${styles.icon} flex-shrink-0`}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-        </span>
-        <div>
-          <div className="fw-semibold">{bannerTitle()}</div>
-          <div className="small mb-0">{bannerText()}</div>
+    <>
+      <div
+        className={`alert ${styles.alert} border-start border-3 shadow-sm mb-4 rounded-3 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2`}
+        role="alert"
+      >
+        <div className="d-flex align-items-center gap-3">
+          <span className={`${styles.icon} flex-shrink-0`}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </span>
+          <div>
+            <div className="fw-semibold">{bannerTitle()}</div>
+            <div className="small mb-0">{bannerText()}</div>
+          </div>
+        </div>
+
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            className={`btn btn-sm fw-semibold px-3 ${primaryBtnClass}`}
+            onClick={() => setShowPaymentModal(true)}
+          >
+            Confirmar forma de pagamento
+          </button>
+          <Link
+            href="/billing"
+            className="btn btn-sm btn-outline-secondary fw-medium px-3"
+          >
+            Ver planos
+          </Link>
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Fechar"
+            onClick={handleDismiss}
+          />
         </div>
       </div>
 
-      <div className="d-flex align-items-center gap-2 ms-3 flex-shrink-0">
-        <Link href="/billing" className={`btn btn-sm fw-semibold px-3 ${styles.badge === "bg-warning text-dark" ? "btn-warning" : urgency === "info" ? "btn-outline-info" : "btn-danger"}`}>
-          Ver planos
-        </Link>
-        <button
-          type="button"
-          className="btn-close"
-          aria-label="Fechar"
-          onClick={handleDismiss}
-        />
-      </div>
-    </div>
+      <PaymentMethodSelectionModal
+        show={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={() => {
+          sessionStorage.setItem(DISMISS_KEY, "1");
+          setDismissed(true);
+        }}
+      />
+    </>
   );
 }

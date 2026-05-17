@@ -14,6 +14,7 @@ import { DashboardErrorState } from "@/components/dashboard/states/DashboardErro
 import { DashboardBlockedBanner } from "@/components/dashboard/states/DashboardBlockedBanner";
 import { DashboardContent } from "@/components/dashboard/states/DashboardContent";
 import { TrialBanner } from "@/components/dashboard/TrialBanner";
+import { PastDueBanner } from "@/components/billing/PastDueBanner";
 import GuidedTour from "@/components/dashboard/GuidedTour";
 import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
 
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const accountAccess = accessContext?.accountAccess;
   const isTrial = accountAccess?.subscriptionStatus === "TRIAL";
   const isTrialExpired = accountAccess?.subscriptionStatus === "TRIAL_EXPIRED";
+  const isPastDue = accountAccess?.subscriptionStatus === "PAST_DUE";
 
   // parâmetros
   const [daysAhead] = useState(30);
@@ -91,6 +93,8 @@ export default function DashboardPage() {
           />
 
           {isBlocked && !isTrialExpired && <DashboardBlockedBanner />}
+
+          {isPastDue && <PastDueBanner />}
 
           {(isTrial || isTrialExpired) && (
             <TrialBanner trialExpiresAt={accountAccess?.trialExpiresAt} />

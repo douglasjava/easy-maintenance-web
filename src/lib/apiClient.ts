@@ -3,106 +3,115 @@ import { ENV } from "./env";
 import toast from "react-hot-toast";
 
 function buildApiBaseURL() {
-  const rawBase = (ENV.API_BASE_URL || "").replace(/\/+$/, ""); // remove barras ao fim
-  let rawPath = (ENV.API_BASE_PATH || "").trim();
-  if (!rawPath) rawPath = "/";
-  // garante exatamente uma barra no início e nenhuma no fim
-  rawPath = `/${rawPath.replace(/^\/+/, "").replace(/\/+$/, "")}`;
+    const rawBase = (ENV.API_BASE_URL || "").replace(/\/+$/, ""); // remove barras ao fim
+    let rawPath = (ENV.API_BASE_PATH || "").trim();
+    if (!rawPath) rawPath = "/";
+    // garante exatamente uma barra no início e nenhuma no fim
+    rawPath = `/${rawPath.replace(/^\/+/, "").replace(/\/+$/, "")}`;
 
-  // Se não houver domínio configurado, use apenas o path (servirá relativo ao origin atual)
-  if (!rawBase) return rawPath;
-  return `${rawBase}${rawPath}`;
+    // Se não houver domínio configurado, use apenas o path (servirá relativo ao origin atual)
+    if (!rawBase) return rawPath;
+    return `${rawBase}${rawPath}`;
 }
 
 export const api = axios.create({ baseURL: buildApiBaseURL(), withCredentials: true });
 
 api.interceptors.request.use((config) => {
-  config.headers = config.headers ?? {};
+    config.headers = config.headers ?? {};
 
-  // Normaliza URLs para preservar o basePath: remove barra inicial de URLs relativas
-  if (config.url && !/^https?:\/\//i.test(config.url)) {
-    config.url = config.url.replace(/^\/+/, "");
-  }
-
-  // Tenta ler o organizationCode salvo após login
-  let orgFromLogin: string | undefined;
-  if (typeof window !== "undefined") {
-    try {
-      const storedOrg = window.localStorage.getItem("organizationCode") || window.sessionStorage.getItem("organizationCode");
-      if (storedOrg) orgFromLogin = storedOrg;
-    } catch {
-      // ignore erros de acesso ao storage
+    // Normaliza URLs para preservar o basePath: remove barra inicial de URLs relativas
+    if (config.url && !/^https?:\/\//i.test(config.url)) {
+        config.url = config.url.replace(/^\/+/, "");
     }
-  }
 
-  const orgId = orgFromLogin || ENV.ORG_ID;
-  if (orgId) {
-    config.headers["X-Org-Id"] = orgId;
-  } else {
-    delete config.headers["X-Org-Id"];
-  }
-
-  // Admin token: enviado apenas para rotas da área privativa (/private/).
-  // O interceptor anterior enviava para TODAS as rotas — vazamento corrigido.
-  if (typeof window !== "undefined") {
-    const isPrivateRoute = (config.url ?? "").startsWith("private/");
-    if (isPrivateRoute && !config.headers["X-Skip-Interceptor-Admin-Token"]) {
-      const adminToken = window.localStorage.getItem("adminToken");
-      if (adminToken) {
-        config.headers["X-Admin-Token"] = adminToken;
-      }
+    // Tenta ler o organizationCode salvo após login
+    let orgFromLogin: string | undefined;
+    if (typeof window !== "undefined") {
+        try {
+            const storedOrg = window.localStorage.getItem("organizationCode") || window.sessionStorage.getItem("organizationCode");
+            if (storedOrg) orgFromLogin = storedOrg;
+        } catch {
+            // ignore erros de acesso ao storage
+        }
     }
-  }
 
-  delete config.headers["X-Skip-Interceptor-Admin-Token"];
+    const orgId = orgFromLogin || ENV.ORG_ID;
+    if (orgId) {
+        config.headers["X-Org-Id"] = orgId;
+    } else {
+        delete config.headers["X-Org-Id"];
+    }
 
-  return config;
+    // Admin token: enviado apenas para rotas da área privativa (/private/).
+    // O interceptor anterior enviava para TODAS as rotas — vazamento corrigido.
+    if (typeof window !== "undefined") {
+        const isPrivateRoute = (config.url ?? "").startsWith("private/");
+        if (isPrivateRoute && !config.headers["X-Skip-Interceptor-Admin-Token"]) {
+            const adminToken = window.localStorage.getItem("adminToken");
+            if (adminToken) {
+                config.headers["X-Admin-Token"] = adminToken;
+            }
+        }
+    }
+
+    delete config.headers["X-Skip-Interceptor-Admin-Token"];
+
+    return config;
 });
 
 // Interceptor de resposta para lidar com sessão expirada ou falta de permissão (401/403)
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const status = error?.response?.status;
-    const detail = error?.response?.data?.detail;
-
-    if (status === 403 && detail) {
-      toast.error(detail);
-    }
-
-    if (status === 401 || (status === 403 && !detail)) {
-      if (typeof window !== "undefined") {
-        const currentPath = window.location.pathname || "";
-        const isPrivate = currentPath.startsWith("/private");
-
-        if (isPrivate) {
-          // Área privativa: limpar apenas o token de admin e redirecionar para /private/login
-          try {
-            window.localStorage.removeItem("adminToken");
-          } catch {}
-
-          if (!currentPath.endsWith("/private/login")) {
-            window.location.href = "/private/login";
-          }
-        } else {
-          // Aplicação convencional: limpar flags de sessão e redirecionar para /login
-          try {
-            ["localStorage", "sessionStorage"].forEach(storeName => {
-              const s = (window as any)[storeName];
-              s.removeItem("isLoggedIn");
-              s.removeItem("organizationCode");
-              s.removeItem("userId");
-              s.removeItem("userName");
-            });
-          } catch {}
-
-          const isChangePasswordPage = currentPath.startsWith("/auth/change-password");
-          if (!currentPath.endsWith("/login") && !isChangePasswordPage) {
-            window.location.href = "/login";
-          }
+    (response) => response,
+    (error) => {
+        // A rota /me/access-context é usada pelo AuthContext para validar a sessão.
+        // O interceptor não deve redirecionar quando o erro vem dela — o AuthContext
+        // já trata corretamente. Sem essa exclusão, o login entra em loop infinito.
+        const requestUrl = error?.config?.url ?? "";
+        const isAccessContextRoute = requestUrl.includes("me/access-context");
+        if (isAccessContextRoute) {
+            return Promise.reject(error);
         }
-      }
+
+        const status = error?.response?.status;
+        const detail = error?.response?.data?.detail;
+
+        if (status === 403 && detail) {
+            toast.error(detail);
+        }
+
+        if (status === 401 || (status === 403 && !detail)) {
+            if (typeof window !== "undefined") {
+                const currentPath = window.location.pathname || "";
+                const isPrivate = currentPath.startsWith("/private");
+
+                if (isPrivate) {
+                    // Área privativa: limpar apenas o token de admin e redirecionar para /private/login
+                    try {
+                        window.localStorage.removeItem("adminToken");
+                    } catch {}
+
+                    if (!currentPath.endsWith("/private/login")) {
+                        window.location.href = "/private/login";
+                    }
+                } else {
+                    // Aplicação convencional: limpar flags de sessão e redirecionar para /login
+                    try {
+                        ["localStorage", "sessionStorage"].forEach(storeName => {
+                            const s = (window as any)[storeName];
+                            s.removeItem("isLoggedIn");
+                            s.removeItem("organizationCode");
+                            s.removeItem("userId");
+                            s.removeItem("userName");
+                        });
+                    } catch {}
+
+                    const isChangePasswordPage = currentPath.startsWith("/auth/change-password");
+                    if (!currentPath.endsWith("/login") && !isChangePasswordPage) {
+                        window.location.href = "/login";
+                    }
+                }
+            }
+        }
+        return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
 );
