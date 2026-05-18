@@ -56,7 +56,7 @@ export function TrialBanner({ trialExpiresAt }: TrialBannerProps) {
   };
 
   const bannerText = () => {
-    if (urgency === "expired") {
+    if (urgency === "expired" || daysRemaining == null) {
       return "Seu período de trial expirou. Ative um plano para continuar usando todos os recursos.";
     }
     if (daysRemaining === 0) {
