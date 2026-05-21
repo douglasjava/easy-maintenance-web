@@ -69,7 +69,7 @@ export function TrialBanner({ trialExpiresAt }: TrialBannerProps) {
   };
 
   const bannerTitle = () => {
-    if (urgency === "expired") return "Trial expirado";
+    if (urgency === "expired" || daysRemaining == null) return "Trial expirado";
     if (urgency === "danger") return "Trial expirando em breve!";
     if (urgency === "warning") return "Seu trial está acabando";
     return "Você está no período de trial";
