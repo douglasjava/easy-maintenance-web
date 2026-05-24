@@ -12,9 +12,14 @@ interface DashboardContentProps {
 export function DashboardContent({ data }: DashboardContentProps) {
   return (
     <>
+      {/* KPIs — 2 colunas no mobile, 4 no desktop */}
       <KPIGrid kpis={data.kpis} />
 
-      <div className="row g-4">
+      {/* Ações rápidas — visíveis antes do scroll no mobile */}
+      <QuickActions />
+
+      {/* Conteúdo principal */}
+      <div className="row g-4 mt-1">
         <div className="col-12 col-lg-7">
           <AttentionCard items={data.attentionNow} />
         </div>
@@ -26,8 +31,6 @@ export function DashboardContent({ data }: DashboardContentProps) {
           />
         </div>
       </div>
-
-      <QuickActions />
     </>
   );
 }

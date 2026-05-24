@@ -62,7 +62,7 @@ export default function DashboardPage() {
           style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}
           className="pb-5"
         >
-          <div className="container">
+          <div className="container px-3 px-md-4">
             <DashboardHeader
               title="Dashboard"
               subtitle="Visão geral de manutenções, prazos e conformidade"
@@ -86,7 +86,7 @@ export default function DashboardPage() {
         style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}
         className="pb-5"
       >
-        <div className="container">
+        <div className="container px-3 px-md-4">
           <DashboardHeader
             title="Dashboard"
             subtitle="Visão geral de manutenções, prazos e conformidade"
