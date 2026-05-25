@@ -12,6 +12,7 @@ type NotificationItem = {
   body: string | null;
   type: "ITEM_DUE" | "MAINTENANCE_DUE" | "SUBSCRIPTION_BLOCKED";
   referenceId: number | null;
+  referenceLabel: string | null;
   read: boolean;
   createdAt: string;
 };
@@ -69,6 +70,13 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  function resolveNavigationPath(n: NotificationItem): string | null {
+    if (n.type === "ITEM_DUE" && n.referenceId) return `/items/${n.referenceId}`;
+    if (n.type === "MAINTENANCE_DUE") return "/maintenances";
+    if (n.type === "SUBSCRIPTION_BLOCKED") return "/billing";
+    return null;
+  }
+
   async function handleClickNotification(n: NotificationItem) {
     if (!n.read) {
       try {
@@ -82,6 +90,8 @@ export default function NotificationBell() {
       }
     }
     setOpen(false);
+    const path = resolveNavigationPath(n);
+    if (path) router.push(path);
   }
 
   async function handleMarkAllRead() {
@@ -157,10 +167,35 @@ export default function NotificationBell() {
                       />
                     )}
                   </div>
+                  {n.referenceLabel && (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        fontSize: "0.7rem",
+                        fontWeight: 600,
+                        color: "#1d4ed8",
+                        backgroundColor: "#eff6ff",
+                        borderRadius: 4,
+                        padding: "1px 6px",
+                        marginBottom: 2,
+                        maxWidth: "100%",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {n.referenceLabel}
+                    </span>
+                  )}
                   {n.body && <p className="mb-0 text-muted" style={{ fontSize: "0.78rem" }}>{n.body}</p>}
-                  <small className="text-muted" style={{ fontSize: "0.72rem" }}>
-                    {formatRelative(n.createdAt)}
-                  </small>
+                  <div className="d-flex align-items-center justify-content-between mt-1">
+                    <small className="text-muted" style={{ fontSize: "0.72rem" }}>
+                      {formatRelative(n.createdAt)}
+                    </small>
+                    {resolveNavigationPath(n) && (
+                      <small style={{ fontSize: "0.7rem", color: "#2563eb" }}>Ver →</small>
+                    )}
+                  </div>
                 </div>
               </button>
             ))
