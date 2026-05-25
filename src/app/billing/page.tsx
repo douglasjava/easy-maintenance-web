@@ -1,8 +1,8 @@
 "use client";
 
-import {useEffect, useState} from "react";
-import {api} from "@/lib/apiClient";
-import {formatMoney, formatDate} from "@/lib/formatters";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/apiClient";
+import { formatMoney, formatDate } from "@/lib/formatters";
 import PlanChangeDialog from "@/components/billing/PlanChangeDialog";
 import InvoiceList from "@/components/billing/InvoiceList";
 import PendingPixPaymentCard from "@/components/billing/PendingPixPaymentCard";
@@ -12,476 +12,558 @@ import PaymentMethodSelectionModal from "@/components/billing/PaymentMethodSelec
 import { usePendingPayment } from "@/hooks/usePendingPayment";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import ConfirmModal from "@/components/ConfirmModal";
-import {
-    CreditCard,
-    AlertCircle,
-    CheckCircle,
-    User,
-    Building,
-    ArrowRight,
-    ChevronRight,
-    Clock,
-} from "lucide-react";
-import {useAuth} from "@/contexts/AuthContext";
+import { CreditCard, AlertCircle, CheckCircle, User, Building, ArrowRight, ChevronRight, Clock } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
 
-// --- Types ---
+// ── Types ────────────────────────────────────────────────────────────────────
 
-type Plan = {
-    code: string;
-    name: string;
-    priceCents: number;
-};
+type Plan = { code: string; name: string; priceCents: number };
 
-type PendingChange = {
-    nextPlan: Plan;
-    effectiveAt: string;
-};
+type PendingChange = { nextPlan: Plan; effectiveAt: string };
 
 type SubscriptionItem = {
-    id: number;
-    type: "USER" | "ORGANIZATION";
-    name: string;
-    reference: string;
-    plan: Plan;
-    valueCents: number;
-    pendingChange: PendingChange | null;
+  id: number;
+  type: "USER" | "ORGANIZATION";
+  name: string;
+  reference: string;
+  plan: Plan;
+  valueCents: number;
+  pendingChange: PendingChange | null;
 };
 
 type Subscription = {
-    id: number;
-    status: string;
-    cycle: string;
-    totalCents: number;
-    nextDueDate: string;
+  id: number;
+  status: string;
+  cycle: string;
+  totalCents: number;
+  nextDueDate: string;
 };
 
 type Invoice = {
-    id: number;
-    status: string;
-    amountCents: number;
-    periodStart: string;
-    periodEnd: string;
-    paymentLink?: string | null;
+  id: number;
+  status: string;
+  amountCents: number;
+  periodStart: string;
+  periodEnd: string;
+  paymentLink?: string | null;
 };
 
 type BillingAccount = {
-    email: string;
-    paymentMethod: string;
-    cardLast4: string;
-    cardBrand: string;
+  email: string;
+  paymentMethod: string;
+  cardLast4: string;
+  cardBrand: string;
 };
 
 type BillingSummary = {
-    subscription: Subscription | null;
-    items: SubscriptionItem[];
-    invoices: Invoice[];
-    billingAccount: BillingAccount | null;
+  subscription: Subscription | null;
+  items: SubscriptionItem[];
+  invoices: Invoice[];
+  billingAccount: BillingAccount | null;
 };
 
-// --- Components ---
+// ── Design tokens ─────────────────────────────────────────────────────────────
 
-const SubscriptionItemCard = ({
-                                  item,
-                                  onChangePlan,
-                                  onCancel
-                              }: {
-    item: SubscriptionItem;
-    onChangePlan: (id: number) => void;
-    onCancel: (id: number) => void;
-}) => {
-    return (
-        <div className="card border shadow-sm rounded-4 mb-3 overflow-hidden">
-            <div className="card-body p-4">
-                <div className="d-flex justify-content-between align-items-start mb-3">
-                    <div className="d-flex align-items-center gap-3">
-                        <div
-                            className={`p-2 rounded-3 ${item.type === "USER" ? "bg-primary-subtle text-primary" : "bg-info-subtle text-info-emphasis"}`}>
-                            {item.type === "USER" ? <User size={20}/> : <Building size={20}/>}
-                        </div>
-                        <div>
-                            <div className="d-flex align-items-center gap-2">
-                                <h6 className="mb-0 fw-bold">{item.name}</h6>
-                                <span
-                                    className={`badge rounded-pill small ${item.type === "USER" ? "bg-primary-subtle text-primary" : "bg-info-subtle text-info-emphasis"}`}
-                                    style={{fontSize: '0.7rem'}}>
-                                  {item.type}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="text-end">
-                        <div className="fw-bold">{formatMoney(item.valueCents)}</div>
-                        <div className="text-muted small">Plano: {item.plan.name}</div>
-                    </div>
-                </div>
-
-                {item.pendingChange && (
-                    <div className="alert alert-warning border-0 bg-warning-subtle rounded-3 p-3 mb-3">
-                        <div className="d-flex gap-2">
-                            <Clock size={18} className="text-warning-emphasis"/>
-                            <div>
-                                <div className="fw-bold small text-warning-emphasis">Mudança agendada</div>
-                                <p className="mb-0 small text-warning-emphasis">
-                                    Atual: <strong>{item.plan.name}</strong> <ArrowRight size={12}
-                                                                                         className="mx-1"/> Novo: <strong>{item.pendingChange.nextPlan.name}</strong> a
-                                    partir de {formatDate(item.pendingChange.effectiveAt)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div className="d-flex justify-content-end gap-2">
-                    <button
-                        className="btn btn-sm btn-outline-danger rounded-pill px-3 fw-medium d-flex align-items-center gap-1"
-                        onClick={() => onCancel(item.id)}
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-medium d-flex align-items-center gap-1"
-                        onClick={() => onChangePlan(item.id)}
-                    >
-                        Alterar Plano <ChevronRight size={14}/>
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+const TYPE_STYLE: Record<string, { bg: string; color: string }> = {
+  USER:         { bg: "#eff6ff", color: "#1d4ed8" },
+  ORGANIZATION: { bg: "#f0f9ff", color: "#0369a1" },
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  ACTIVE:         "Ativa",
+  TRIAL:          "Trial",
+  TRIAL_EXPIRED:  "Trial expirado",
+  PAST_DUE:       "Em atraso",
+  CANCELED:       "Cancelada",
+};
 
 const METHOD_LABELS: Record<string, string> = {
-    CARD: "Cartão de Crédito",
-    PIX: "PIX — cobrança mensal",
+  CARD: "Cartão de Crédito",
+  PIX:  "PIX — cobrança mensal",
 };
 
-const PaymentMethodCard = ({
-    account,
-    onChangeMethod,
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function SubscriptionItemCard({
+  item,
+  onChangePlan,
+  onCancel,
 }: {
-    account: BillingAccount;
-    onChangeMethod: () => void;
-}) => {
-    return (
-        <div className="card border shadow-sm rounded-4">
-            <div className="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
-                <h6 className="mb-0 fw-bold">Método de Pagamento</h6>
-                <button
-                    className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-medium"
-                    onClick={onChangeMethod}
-                >
-                    Alterar
-                </button>
-            </div>
-            <div className="card-body px-4 pb-4 pt-0">
-                <div className="d-flex align-items-center gap-3 p-3 border rounded-4 bg-light bg-opacity-50">
-                    <div className="bg-white p-2 rounded-3 border shadow-sm">
-                        <CreditCard size={24} className="text-primary"/>
-                    </div>
-                    <div className="text-muted small fw-medium">
-                        {METHOD_LABELS[account.paymentMethod] ?? account.paymentMethod}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+  item: SubscriptionItem;
+  onChangePlan: (id: number) => void;
+  onCancel: (id: number) => void;
+}) {
+  const typeStyle = TYPE_STYLE[item.type] ?? { bg: "#f3f4f6", color: "#374151" };
 
-// --- Page ---
+  return (
+    <div
+      className="card border-0 shadow-sm mb-3"
+      style={{ borderRadius: 12, overflow: "hidden" }}
+    >
+      <div className="card-body p-4">
+        {/* Header row */}
+        <div className="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: typeStyle.bg }}
+            >
+              {item.type === "USER"
+                ? <User size={18} style={{ color: typeStyle.color }} />
+                : <Building size={18} style={{ color: typeStyle.color }} />}
+            </div>
+            <div>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <span className="fw-bold text-dark" style={{ fontSize: "0.9rem" }}>{item.name}</span>
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "1px 8px",
+                    borderRadius: 20,
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                    backgroundColor: typeStyle.bg,
+                    color: typeStyle.color,
+                  }}
+                >
+                  {item.type}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-end flex-shrink-0">
+            <div className="fw-bold text-dark">{formatMoney(item.valueCents)}</div>
+            <div className="text-muted" style={{ fontSize: "0.78rem" }}>Plano: {item.plan.name}</div>
+          </div>
+        </div>
+
+        {/* Pending change */}
+        {item.pendingChange && (
+          <div
+            className="rounded-3 p-3 mb-3 d-flex align-items-start gap-2"
+            style={{ backgroundColor: "#fffbeb", border: "1px solid #fde68a" }}
+          >
+            <Clock size={16} style={{ color: "#92400e", flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <div className="fw-semibold" style={{ fontSize: "0.8rem", color: "#92400e" }}>Mudança agendada</div>
+              <div style={{ fontSize: "0.78rem", color: "#78350f" }}>
+                <strong>{item.plan.name}</strong>
+                <ArrowRight size={11} className="mx-1" />
+                <strong>{item.pendingChange.nextPlan.name}</strong>
+                {" "}a partir de {formatDate(item.pendingChange.effectiveAt)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="d-flex justify-content-end gap-2">
+          <button
+            className="btn btn-sm"
+            style={{ border: "1px solid #fecaca", color: "#dc2626", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
+            onClick={() => onCancel(item.id)}
+          >
+            Cancelar
+          </button>
+          <button
+            className="btn btn-sm d-flex align-items-center gap-1"
+            style={{ border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
+            onClick={() => onChangePlan(item.id)}
+          >
+            Alterar Plano <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PaymentMethodCard({ account, onChangeMethod }: { account: BillingAccount; onChangeMethod: () => void }) {
+  return (
+    <div className="card border-0 shadow-sm" style={{ borderRadius: 12 }}>
+      <div className="card-body p-4">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <div
+            style={{ fontSize: "0.68rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}
+          >
+            Método de Pagamento
+          </div>
+          <button
+            className="btn btn-sm"
+            style={{ border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 20, padding: "2px 10px", fontSize: "0.78rem" }}
+            onClick={onChangeMethod}
+          >
+            Alterar
+          </button>
+        </div>
+
+        <div
+          className="d-flex align-items-center gap-3 p-3 rounded-3"
+          style={{ backgroundColor: "#f8f9fa", border: "1px solid #e5e7eb" }}
+        >
+          <div
+            className="d-flex align-items-center justify-content-center flex-shrink-0"
+            style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: "#fff", border: "1px solid #e5e7eb" }}
+          >
+            <CreditCard size={20} style={{ color: "#2563eb" }} />
+          </div>
+          <div className="text-dark" style={{ fontSize: "0.875rem", fontWeight: 500 }}>
+            {METHOD_LABELS[account.paymentMethod] ?? account.paymentMethod}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function BillingSkeleton() {
+  return (
+    <section style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }} className="pb-5">
+      <div className="container px-3 px-md-4">
+        <div className="pt-4 pb-3 placeholder-glow">
+          <span className="placeholder rounded d-block mb-2" style={{ height: 26, width: 120 }} />
+          <span className="placeholder rounded d-block" style={{ height: 14, width: 260 }} />
+        </div>
+
+        {/* summary card skeleton */}
+        <div className="placeholder-glow mb-4">
+          <span className="placeholder rounded-3 d-block w-100" style={{ height: 100 }} />
+        </div>
+
+        <div className="row g-4 placeholder-glow">
+          <div className="col-12 col-lg-8">
+            <span className="placeholder rounded-3 d-block w-100 mb-3" style={{ height: 100 }} />
+            <span className="placeholder rounded-3 d-block w-100" style={{ height: 100 }} />
+          </div>
+          <div className="col-12 col-lg-4">
+            <span className="placeholder rounded-3 d-block w-100 mb-3" style={{ height: 140 }} />
+            <span className="placeholder rounded-3 d-block w-100" style={{ height: 100 }} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
-    const {isBlocked} = useAuth();
-    const [summary, setSummary] = useState<BillingSummary | null>(null);
-    const [loading, setLoading] = useState(true);
-    const { organization } = useCurrentOrganizationAccess();
-    const currentPlanCode = organization?.plan?.code ?? null;
-    const { pendingPayment } = usePendingPayment();
+  const { isBlocked } = useAuth();
+  const [summary, setSummary] = useState<BillingSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { organization } = useCurrentOrganizationAccess();
+  const currentPlanCode = organization?.plan?.code ?? null;
+  const { pendingPayment } = usePendingPayment();
 
-    // Plan Change Modal State
-    const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
-    const [selectedItem, setSelectedItem] = useState<{ id: number; planCode: string } | null>(null);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<{ id: number; planCode: string } | null>(null);
+  const [itemToCancel, setItemToCancel] = useState<number | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
 
-    // Cancellation Modal State
-    const [itemToCancel, setItemToCancel] = useState<number | null>(null);
-    const [cancelLoading, setCancelLoading] = useState(false);
+  useEffect(() => { fetchSummary(); }, []);
 
-    // Payment Method Modal State
-    const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
-
-    useEffect(() => {
-        fetchSummary();
-    }, []);
-
-    async function fetchSummary() {
-        try {
-            setLoading(true);
-            const {data} = await api.get("/me/billing/summary");
-            setSummary(data);
-        } catch (err) {
-            console.error("Erro ao carregar faturamento", err);
-            toast.error("Não foi possível carregar os dados de faturamento.");
-        } finally {
-            setLoading(false);
-        }
+  async function fetchSummary() {
+    try {
+      setLoading(true);
+      const { data } = await api.get("/me/billing/summary");
+      setSummary(data);
+    } catch {
+      toast.error("Não foi possível carregar os dados de faturamento.");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    async function handleChangePlan(itemId: number) {
-        const item = summary?.items.find(i => i.id === itemId);
-        if (item) {
-            setSelectedItem({ id: item.id, planCode: item.plan.code });
-            setIsPlanModalOpen(true);
-        }
+  function handleChangePlan(itemId: number) {
+    const item = summary?.items.find((i) => i.id === itemId);
+    if (item) {
+      setSelectedItem({ id: item.id, planCode: item.plan.code });
+      setIsPlanModalOpen(true);
     }
+  }
 
-    async function handleCancelItem(itemId: number) {
-        try {
-            setCancelLoading(true);
-            await api.post(`/billing/subscription-items/${itemId}/cancel`);
-            toast.success("Item da assinatura cancelado com sucesso!");
-            setItemToCancel(null);
-            fetchSummary();
-        } catch (err) {
-            console.error("Erro ao cancelar item", err);
-            toast.error("Erro ao cancelar item da assinatura.");
-        } finally {
-            setCancelLoading(false);
-        }
+  async function handleCancelItem(itemId: number) {
+    try {
+      setCancelLoading(true);
+      await api.post(`/billing/subscription-items/${itemId}/cancel`);
+      toast.success("Item da assinatura cancelado com sucesso!");
+      setItemToCancel(null);
+      fetchSummary();
+    } catch {
+      toast.error("Erro ao cancelar item da assinatura.");
+    } finally {
+      setCancelLoading(false);
     }
+  }
 
-    const hasSubscription = !!summary?.subscription;
-    const hasItems = (summary?.items?.length || 0) > 0;
-    const hasBillingAccount = !!summary?.billingAccount;
+  if (loading) return <BillingSkeleton />;
 
-    if (loading) {
-        return (
-            <div className="container py-5">
-                <div className="text-center py-5">
-                    <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Carregando...</span>
-                    </div>
-                    <p className="mt-3 text-muted">Carregando informações de faturamento...</p>
-                </div>
-            </div>
-        );
-    }
+  const hasSubscription = !!summary?.subscription;
+  const hasItems = (summary?.items?.length || 0) > 0;
+  const hasBillingAccount = !!summary?.billingAccount;
 
-    return (
-        <div className="container py-4">
-            <div className="mb-4 d-flex justify-content-between align-items-end">
-                <div>
-                    <h2 className="mb-1 fw-bold">Faturamento</h2>
-                    <p className="text-muted mb-0">Gerencie sua assinatura, itens e pagamentos</p>
-                </div>
-            </div>
+  return (
+    <section style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }} className="pb-5">
+      <div className="container px-3 px-md-4">
 
-            {isBlocked && (
-                <div className="alert alert-danger border-0 shadow-sm mb-4 rounded-4 p-4 d-flex align-items-center">
-                    <div className="me-3 bg-danger bg-opacity-10 p-3 rounded-circle text-danger">
-                        <AlertCircle size={24}/>
-                    </div>
-                    <div>
-                        <h5 className="fw-bold mb-1">Acesso Bloqueado</h5>
-                        <p className="mb-0 text-muted">Seu período de avaliação terminou ou há faturas pendentes.
-                            Regularize sua situação para retomar o uso completo do sistema.</p>
-                    </div>
-                </div>
-            )}
-
-            {!hasSubscription ? (
-                <div className="card border-0 shadow-sm rounded-4 p-5 text-center">
-                    <div className="mb-4 text-primary bg-primary-subtle d-inline-flex p-4 rounded-circle mx-auto">
-                        <CreditCard size={48}/>
-                    </div>
-                    <h4 className="fw-bold mb-2">Você ainda não possui uma assinatura ativa</h4>
-                    <p className="text-muted mb-4 mx-auto" style={{maxWidth: '400px'}}>
-                        Escolha um plano para começar a aproveitar todos os recursos do Easy Maintenance.
-                    </p>
-                    <button className="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm">
-                        Escolher plano
-                    </button>
-                </div>
-            ) : (
-                <>
-                    {/* Section 1: Subscription Summary */}
-                    <div className="row g-4 mb-5">
-                        <div className="col-12">
-                            <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-primary text-white">
-                                <div
-                                    className="card-body p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
-                                    <div className="d-flex align-items-center gap-4">
-                                        <div className="bg-white bg-opacity-20 p-3 rounded-4">
-                                            <CheckCircle size={32}/>
-                                        </div>
-                                        <div>
-                                            <div className="d-flex align-items-center gap-2 mb-1">
-                                                <span className="badge bg-white text-primary rounded-pill px-2 py-1"
-                                                      style={{fontSize: '0.75rem'}}>
-                          {summary.subscription?.status}
-                        </span>
-                                            </div>
-                                            <div className="opacity-75 h5 mb-0">
-                                                {formatMoney(summary.subscription?.totalCents || 0)} / {summary.subscription?.cycle === 'MONTHLY' ? 'mês' : 'ano'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="bg-white bg-opacity-10 p-3 rounded-4 border border-white border-opacity-10 text-center text-md-end min-w-md-200">
-                                        <div className="small opacity-75 mb-1">Próxima cobrança</div>
-                                        <div className="h5 mb-0 fw-bold">
-                                            {formatDate(summary.subscription?.nextDueDate || "")}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="row g-4">
-                        {/* Section 2: Subscription Items (Main) */}
-                        <div className="col-12 col-lg-8">
-                            <div className="mb-3 d-flex justify-content-between align-items-center">
-                                <h5 className="fw-bold mb-0">Itens da Assinatura</h5>
-                                <span className="badge bg-light text-dark border rounded-pill">
-                  {summary.items.length} {summary.items.length === 1 ? 'item' : 'itens'}
-                </span>
-                            </div>
-
-                            {!hasItems ? (
-                                <div className="card border shadow-sm rounded-4 p-5 text-center bg-light bg-opacity-50">
-                                    <p className="text-muted mb-0">Nenhum item ativo na sua assinatura.</p>
-                                </div>
-                            ) : (
-                                summary.items.map(item => (
-                                    <SubscriptionItemCard
-                                        key={item.id}
-                                        item={item}
-                                        onChangePlan={handleChangePlan}
-                                        onCancel={(id) => setItemToCancel(id)}
-                                    />
-                                ))
-                            )}
-                        </div>
-
-                        {/* Sections 3 & 4: Sidebar */}
-                        <div className="col-12 col-lg-4">
-                            <div className="d-flex flex-column gap-4">
-                                {/* PIX Pending Payment Card */}
-                                {pendingPayment && pendingPayment.methodType === "PIX" && (
-                                    <PendingPixPaymentCard payment={pendingPayment} />
-                                )}
-
-                                {/* Section 3: Invoices */}
-                                <InvoiceList invoices={summary.invoices} />
-
-                                {/* Section 4: Payment Method */}
-                                {hasBillingAccount ? (
-                                    <PaymentMethodCard
-                                        account={summary.billingAccount!}
-                                        onChangeMethod={() => setIsPaymentMethodModalOpen(true)}
-                                    />
-                                ) : (
-                                    <div className="card border shadow-sm rounded-4">
-                                        <div className="card-header bg-white border-0 py-3 px-4">
-                                            <h6 className="mb-0 fw-bold">Método de Pagamento</h6>
-                                        </div>
-                                        <div className="card-body p-4 pt-0">
-                                            <div className="alert alert-info border-0 rounded-4 mb-3 small">
-                                                Nenhum método de pagamento cadastrado.
-                                            </div>
-                                            <button
-                                                className="btn btn-primary w-100 rounded-pill fw-bold"
-                                                onClick={() => setIsPaymentMethodModalOpen(true)}
-                                            >
-                                                Confirmar forma de pagamento
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* Plan Comparison + FAQ */}
-            <PlanComparisonSection
-                currentPlanCode={currentPlanCode}
-                onUpgradeClick={() => {
-                    const firstItem = summary?.items?.[0];
-                    if (firstItem) {
-                        setSelectedItem({ id: firstItem.id, planCode: firstItem.plan.code });
-                        setIsPlanModalOpen(true);
-                    }
-                }}
-            />
-            <BillingFaq />
-
-            {isPlanModalOpen && selectedItem && (
-                <PlanChangeDialog
-                    show={isPlanModalOpen}
-                    onClose={() => {
-                        setIsPlanModalOpen(false);
-                        setSelectedItem(null);
-                    }}
-                    onSuccess={fetchSummary}
-                    itemId={selectedItem.id}
-                    currentPlanCode={selectedItem.planCode}
-                />
-            )}
-
-            <PaymentMethodSelectionModal
-                show={isPaymentMethodModalOpen}
-                onClose={() => setIsPaymentMethodModalOpen(false)}
-                onSuccess={fetchSummary}
-                currentMethod={summary?.billingAccount?.paymentMethod as "CARD" | "PIX" | null ?? null}
-            />
-
-            <ConfirmModal
-                show={!!itemToCancel}
-                title="Cancelar Item da Assinatura"
-                message="Tem certeza que deseja cancelar este item da assinatura? Esta ação removerá o acesso aos recursos relacionados a este item ao final do período vigente."
-                confirmLabel="Confirmar Cancelamento"
-                cancelLabel="Manter Item"
-                loading={cancelLoading}
-                onConfirm={() => itemToCancel && handleCancelItem(itemToCancel)}
-                onCancel={() => !cancelLoading && setItemToCancel(null)}
-            />
-
-            <style jsx>{`
-                .bg-success-subtle {
-                    background-color: #d1e7dd;
-                }
-
-                .bg-danger-subtle {
-                    background-color: #f8d7da;
-                }
-
-                .bg-warning-subtle {
-                    background-color: #fff3cd;
-                }
-
-                .bg-info-subtle {
-                    background-color: #cff4fc;
-                }
-
-                .bg-primary-subtle {
-                    background-color: #cfe2ff;
-                }
-
-                .bg-secondary-subtle {
-                    background-color: #e2e3e5;
-                }
-
-                .fw-mono {
-                    font-family: var(--bs-font-monospace);
-                }
-
-                .min-w-md-200 {
-                    min-width: 200px;
-                }
-            `}</style>
+        {/* ── HEADER ── */}
+        <div className="pt-4 pb-3">
+          <h1
+            style={{
+              fontSize: "clamp(1.25rem, 3vw, 1.6rem)",
+              fontWeight: 700,
+              color: "#0f172a",
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            Faturamento
+          </h1>
+          <p className="text-muted mb-0 mt-1" style={{ fontSize: "0.85rem" }}>
+            Gerencie sua assinatura, itens e pagamentos
+          </p>
         </div>
-    );
+
+        {/* ── BLOCKED BANNER ── */}
+        {isBlocked && (
+          <div
+            className="d-flex align-items-start gap-3 rounded-3 p-4 mb-4"
+            style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca" }}
+          >
+            <div
+              className="d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: "#fee2e2" }}
+            >
+              <AlertCircle size={20} style={{ color: "#dc2626" }} />
+            </div>
+            <div>
+              <div className="fw-bold text-dark mb-1" style={{ fontSize: "0.9rem" }}>Acesso Bloqueado</div>
+              <p className="mb-0 text-muted" style={{ fontSize: "0.82rem" }}>
+                Seu período de avaliação terminou ou há faturas pendentes.
+                Regularize sua situação para retomar o uso completo do sistema.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── NO SUBSCRIPTION ── */}
+        {!hasSubscription ? (
+          <div
+            className="card border-0 shadow-sm text-center"
+            style={{ borderRadius: 12, padding: "3rem 2rem" }}
+          >
+            <div
+              className="d-flex align-items-center justify-content-center mx-auto mb-4"
+              style={{ width: 80, height: 80, borderRadius: "50%", backgroundColor: "#eff6ff" }}
+            >
+              <CreditCard size={40} style={{ color: "#2563eb" }} />
+            </div>
+            <h4 className="fw-bold mb-2 text-dark">Você ainda não possui uma assinatura ativa</h4>
+            <p className="text-muted mb-4 mx-auto" style={{ maxWidth: 400, fontSize: "0.875rem" }}>
+              Escolha um plano para começar a aproveitar todos os recursos do Easy Maintenance.
+            </p>
+            <button
+              className="btn btn-primary mx-auto"
+              style={{ borderRadius: 20, padding: "8px 32px", fontWeight: 600 }}
+            >
+              Escolher plano
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* ── SUBSCRIPTION SUMMARY CARD ── */}
+            <div className="mb-4">
+              <div
+                className="rounded-3 p-4 text-white d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3"
+                style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)" }}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    className="d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.15)" }}
+                  >
+                    <CheckCircle size={28} />
+                  </div>
+                  <div>
+                    <div className="mb-1">
+                      <span
+                        style={{
+                          display: "inline-block",
+                          backgroundColor: "rgba(255,255,255,0.25)",
+                          padding: "1px 10px",
+                          borderRadius: 20,
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {STATUS_LABEL[summary.subscription?.status ?? ""] ?? summary.subscription?.status}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "clamp(1.1rem, 3vw, 1.4rem)", fontWeight: 700, opacity: 0.95 }}>
+                      {formatMoney(summary.subscription?.totalCents || 0)}
+                      <span style={{ fontSize: "0.8rem", fontWeight: 400, opacity: 0.75 }}>
+                        {" "}/ {summary.subscription?.cycle === "MONTHLY" ? "mês" : "ano"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  className="rounded-3 p-3 text-center text-md-end"
+                  style={{ backgroundColor: "rgba(255,255,255,0.12)", minWidth: 0 }}
+                >
+                  <div style={{ fontSize: "0.72rem", opacity: 0.75, marginBottom: 2 }}>Próxima cobrança</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>
+                    {formatDate(summary.subscription?.nextDueDate || "")}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── MAIN CONTENT ── */}
+            <div className="row g-4">
+
+              {/* Subscription items — main column */}
+              <div className="col-12 col-lg-8">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <div
+                    style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}
+                  >
+                    Itens da Assinatura
+                  </div>
+                  <span
+                    style={{
+                      padding: "2px 10px",
+                      borderRadius: 20,
+                      fontSize: "0.72rem",
+                      fontWeight: 600,
+                      backgroundColor: "#f3f4f6",
+                      color: "#6b7280",
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    {summary.items.length} {summary.items.length === 1 ? "item" : "itens"}
+                  </span>
+                </div>
+
+                {!hasItems ? (
+                  <div
+                    className="card border-0 text-center py-5"
+                    style={{ borderRadius: 12, backgroundColor: "#f8f9fa", border: "1px dashed #e5e7eb" }}
+                  >
+                    <p className="text-muted mb-0" style={{ fontSize: "0.875rem" }}>
+                      Nenhum item ativo na sua assinatura.
+                    </p>
+                  </div>
+                ) : (
+                  summary.items.map((item) => (
+                    <SubscriptionItemCard
+                      key={item.id}
+                      item={item}
+                      onChangePlan={handleChangePlan}
+                      onCancel={(id) => setItemToCancel(id)}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Sidebar */}
+              <div className="col-12 col-lg-4">
+                <div className="d-flex flex-column gap-4">
+
+                  {/* PIX pending payment */}
+                  {pendingPayment && pendingPayment.methodType === "PIX" && (
+                    <PendingPixPaymentCard payment={pendingPayment} />
+                  )}
+
+                  {/* Invoices */}
+                  <InvoiceList invoices={summary.invoices} />
+
+                  {/* Payment method */}
+                  {hasBillingAccount ? (
+                    <PaymentMethodCard
+                      account={summary.billingAccount!}
+                      onChangeMethod={() => setIsPaymentMethodModalOpen(true)}
+                    />
+                  ) : (
+                    <div className="card border-0 shadow-sm" style={{ borderRadius: 12 }}>
+                      <div className="card-body p-4">
+                        <div
+                          style={{ fontSize: "0.68rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}
+                        >
+                          Método de Pagamento
+                        </div>
+                        <div
+                          className="rounded-3 p-3 mb-3"
+                          style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", fontSize: "0.82rem", color: "#1d4ed8" }}
+                        >
+                          Nenhum método de pagamento cadastrado.
+                        </div>
+                        <button
+                          className="btn btn-primary w-100"
+                          style={{ borderRadius: 20, fontWeight: 600 }}
+                          onClick={() => setIsPaymentMethodModalOpen(true)}
+                        >
+                          Confirmar forma de pagamento
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Plan comparison + FAQ */}
+        <PlanComparisonSection
+          currentPlanCode={currentPlanCode}
+          onUpgradeClick={() => {
+            const firstItem = summary?.items?.[0];
+            if (firstItem) {
+              setSelectedItem({ id: firstItem.id, planCode: firstItem.plan.code });
+              setIsPlanModalOpen(true);
+            }
+          }}
+        />
+        <BillingFaq />
+
+      </div>
+
+      {/* Modals */}
+      {isPlanModalOpen && selectedItem && (
+        <PlanChangeDialog
+          show={isPlanModalOpen}
+          onClose={() => { setIsPlanModalOpen(false); setSelectedItem(null); }}
+          onSuccess={fetchSummary}
+          itemId={selectedItem.id}
+          currentPlanCode={selectedItem.planCode}
+        />
+      )}
+
+      <PaymentMethodSelectionModal
+        show={isPaymentMethodModalOpen}
+        onClose={() => setIsPaymentMethodModalOpen(false)}
+        onSuccess={fetchSummary}
+        currentMethod={summary?.billingAccount?.paymentMethod as "CARD" | "PIX" | null ?? null}
+      />
+
+      <ConfirmModal
+        show={!!itemToCancel}
+        title="Cancelar Item da Assinatura"
+        message="Tem certeza que deseja cancelar este item da assinatura? Esta ação removerá o acesso aos recursos relacionados a este item ao final do período vigente."
+        confirmLabel="Confirmar Cancelamento"
+        cancelLabel="Manter Item"
+        loading={cancelLoading}
+        onConfirm={() => itemToCancel && handleCancelItem(itemToCancel)}
+        onCancel={() => !cancelLoading && setItemToCancel(null)}
+      />
+    </section>
+  );
 }

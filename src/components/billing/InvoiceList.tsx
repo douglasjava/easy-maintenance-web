@@ -10,29 +10,36 @@ type Invoice = {
   paymentLink?: string | null;
 };
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const getBadgeStyles = (s: string) => {
-    switch (s.toUpperCase()) {
-      case "ACTIVE":
-      case "PAID":
-        return "bg-success-subtle text-success border-success-subtle";
-      case "PAST_DUE":
-      case "OVERDUE":
-      case "DEBT":
-        return "bg-danger-subtle text-danger border-danger-subtle";
-      case "OPEN":
-      case "PENDING":
-        return "bg-warning-subtle text-warning-emphasis border-warning-subtle";
-      case "CANCELED":
-        return "bg-secondary-subtle text-secondary border-secondary-subtle";
-      default:
-        return "bg-light text-dark border-light";
-    }
-  };
+const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; dot: string }> = {
+  PAID:     { label: "Pago",      bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
+  ACTIVE:   { label: "Ativo",     bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
+  PAST_DUE: { label: "Em atraso", bg: "#fef2f2", color: "#b91c1c", dot: "#ef4444" },
+  OVERDUE:  { label: "Em atraso", bg: "#fef2f2", color: "#b91c1c", dot: "#ef4444" },
+  DEBT:     { label: "Em atraso", bg: "#fef2f2", color: "#b91c1c", dot: "#ef4444" },
+  OPEN:     { label: "Pendente",  bg: "#fffbeb", color: "#92400e", dot: "#f59e0b" },
+  PENDING:  { label: "Pendente",  bg: "#fffbeb", color: "#92400e", dot: "#f59e0b" },
+  CANCELED: { label: "Cancelado", bg: "#f8fafc", color: "#64748b", dot: "#94a3b8" },
+};
 
+const StatusBadge = ({ status }: { status: string }) => {
+  const cfg = STATUS_CONFIG[status.toUpperCase()] ?? { label: status, bg: "#f8fafc", color: "#64748b", dot: "#94a3b8" };
   return (
-    <span className={`badge rounded-pill border px-2 py-1 ${getBadgeStyles(status)}`} style={{ fontSize: '0.7rem' }}>
-      {status}
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "3px 9px",
+        borderRadius: 20,
+        fontSize: "0.7rem",
+        fontWeight: 600,
+        backgroundColor: cfg.bg,
+        color: cfg.color,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: cfg.dot, flexShrink: 0 }} />
+      {cfg.label}
     </span>
   );
 };
@@ -44,22 +51,46 @@ export default function InvoiceList({ invoices }: { invoices: Invoice[] }) {
 
   return (
     <div id="invoice-section">
-      <h6 className="fw-bold mb-3">Faturas recentes</h6>
+      <h6 style={{ fontWeight: 700, marginBottom: 12, fontSize: "0.85rem", color: "#374151" }}>
+        Faturas recentes
+      </h6>
 
       {pendingInvoice && (
-        <div className="alert alert-warning border-0 rounded-4 mb-3 shadow-sm">
-          <div className="fw-bold mb-1">Pagamento pendente</div>
-          <div className="small mb-2">
+        <div
+          style={{
+            backgroundColor: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderLeft: "3px solid #f59e0b",
+            borderRadius: 8,
+            padding: "12px 16px",
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 4, fontSize: "0.85rem", color: "#92400e" }}>
+            Pagamento pendente
+          </div>
+          <div style={{ fontSize: "0.8rem", marginBottom: 10, color: "#a16207" }}>
             Existe uma cobrança em aberto referente à sua assinatura.
           </div>
-          <div className="d-flex justify-content-between align-items-center">
-            <strong className="text-dark">{formatMoney(pendingInvoice.amountCents)}</strong>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <strong style={{ color: "#111827" }}>{formatMoney(pendingInvoice.amountCents)}</strong>
             {pendingInvoice.paymentLink && (
               <a
                 href={pendingInvoice.paymentLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-sm btn-primary rounded-pill d-flex align-items-center gap-1 fw-bold px-3"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "5px 14px",
+                  borderRadius: 20,
+                  backgroundColor: "#2563eb",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: "0.78rem",
+                  textDecoration: "none",
+                }}
               >
                 Pagar agora
               </a>
@@ -68,34 +99,51 @@ export default function InvoiceList({ invoices }: { invoices: Invoice[] }) {
         </div>
       )}
 
-      <div className="d-flex flex-column gap-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {invoices.length === 0 ? (
-          <div className="text-muted small text-center py-3">
+          <div style={{ textAlign: "center", color: "#9ca3af", fontSize: "0.82rem", padding: "20px 0" }}>
             Nenhuma fatura encontrada
           </div>
         ) : (
           invoices.map((invoice) => (
-            <div key={invoice.id} className="card border shadow-sm rounded-4 p-3 bg-white">
-              <div className="d-flex justify-content-between align-items-center">
+            <div
+              key={invoice.id}
+              style={{
+                backgroundColor: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                padding: "12px 14px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <div>
-                  <div className="small text-muted mb-1" style={{ fontSize: '0.75rem' }}>
+                  <div style={{ fontSize: "0.73rem", color: "#9ca3af", marginBottom: 3 }}>
                     {formatDate(invoice.periodStart)} — {formatDate(invoice.periodEnd)}
                   </div>
-                  <div className="fw-bold text-primary">
+                  <div style={{ fontWeight: 700, color: "#2563eb", fontSize: "0.95rem" }}>
                     {formatMoney(invoice.amountCents)}
                   </div>
                 </div>
 
-                <div className="text-end">
+                <div style={{ textAlign: "right" }}>
                   <StatusBadge status={invoice.status} />
                   {invoice.paymentLink && (
-                    <div className="mt-2">
+                    <div style={{ marginTop: 8 }}>
                       <a
                         href={invoice.paymentLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-medium"
-                        style={{ fontSize: '0.75rem' }}
+                        style={{
+                          display: "inline-block",
+                          padding: "3px 12px",
+                          borderRadius: 20,
+                          border: "1px solid #bfdbfe",
+                          color: "#2563eb",
+                          fontWeight: 600,
+                          fontSize: "0.73rem",
+                          textDecoration: "none",
+                          backgroundColor: "#eff6ff",
+                        }}
                       >
                         Pagar
                       </a>
