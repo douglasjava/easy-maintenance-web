@@ -17,8 +17,18 @@ const COLORS = {
     bg: "#F3F4F6",
 };
 
+const COMPANY_TYPE_OPTIONS = [
+    { value: "CONDOMINIUM", label: "Condomínio" },
+    { value: "HOSPITAL",    label: "Hospital" },
+    { value: "SCHOOL",      label: "Escola" },
+    { value: "INDUSTRY",    label: "Indústria" },
+    { value: "OFFICE",      label: "Escritório" },
+    { value: "OTHER",       label: "Outro" },
+];
+
 const EMPTY_FORM = {
     name: "",
+    companyType: "OTHER",
     city: "",
     street: "",
     number: "",
@@ -96,7 +106,7 @@ export default function CreateOrganizationPage() {
         const payload = {
             code: orgCode,
             name: formData.name.trim(),
-            plan: "STARTER", // Plano padrão na criação, será ajustado no step 2 via assinatura
+            companyType: formData.companyType,
             city: formData.city?.trim() || undefined,
             street: formData.street?.trim() || undefined,
             number: formData.number?.trim() || undefined,
@@ -199,7 +209,7 @@ export default function CreateOrganizationPage() {
                         <form onSubmit={onSubmitStep1}>
                             <h5 className="mb-4 fw-bold">Informações Básicas</h5>
                             <div className="row g-3">
-                                <div className="col-12 col-md-8">
+                                <div className="col-12 col-md-5">
                                     <label className="form-label fw-semibold">Nome da Empresa *</label>
                                     <input
                                         className="form-control form-control-lg"
@@ -210,6 +220,19 @@ export default function CreateOrganizationPage() {
                                     />
                                 </div>
                                 <div className="col-12 col-md-4">
+                                    <label className="form-label fw-semibold">Tipo de Empresa *</label>
+                                    <select
+                                        className="form-select form-select-lg"
+                                        value={formData.companyType}
+                                        onChange={(e) => setFormData(p => ({ ...p, companyType: e.target.value }))}
+                                        required
+                                    >
+                                        {COMPANY_TYPE_OPTIONS.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="col-12 col-md-3">
                                     <label className="form-label fw-semibold">CNPJ/CPF</label>
                                     <input
                                         className="form-control form-control-lg"
