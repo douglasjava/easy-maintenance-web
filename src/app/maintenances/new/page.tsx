@@ -9,709 +9,724 @@ import toast from "react-hot-toast";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import { PagePermissionGuard } from "@/components/access/PagePermissionGuard";
 
-const COLORS = {
-    primary: "#0B5ED7",
-    primaryDark: "#083B7A",
-    accent: "#F59E0B",
-    bg: "#F3F4F6",
-    white: "#FFFFFF",
-};
-
 interface Item {
-    id: string | number;
-    itemType: string;
-    itemCategory: "REGULATORY" | "OPERATIONAL";
-    status: "OK" | "NEAR_DUE" | "OVERDUE";
-    nextDueAt?: string;
+  id: string | number;
+  itemType: string;
+  itemCategory: "REGULATORY" | "OPERATIONAL";
+  status: "OK" | "NEAR_DUE" | "OVERDUE";
+  nextDueAt?: string;
 }
 
 interface PageResp<T> {
-    content: T[];
-    totalPages: number;
-    totalElements: number;
-    number: number;
-    size: number;
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  number: number;
+  size: number;
 }
 
 interface NearbySupplier {
-    placeId: string;
-    name: string;
-    address?: string;
-    rating?: number;
-    userRatingsTotal?: number;
-    phone?: string;
-    website?: string;
-    mapsUrl?: string;
+  placeId: string;
+  name: string;
+  address?: string;
+  rating?: number;
+  userRatingsTotal?: number;
+  phone?: string;
+  website?: string;
+  mapsUrl?: string;
 }
 
 interface NearbyResponse {
-    serviceKey: string;
-    radiusKm: number;
-    center: { lat: number; lng: number };
-    suppliers: NearbySupplier[];
+  serviceKey: string;
+  radiusKm: number;
+  center: { lat: number; lng: number };
+  suppliers: NearbySupplier[];
+}
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontSize: "0.7rem",
+  fontWeight: 600,
+  color: "#9ca3af",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  marginBottom: 4,
+  display: "block",
+};
+
+const ATTACHMENT_TYPES: Record<string, string> = {
+  PHOTO:       "Foto",
+  REPORT:      "Relatório",
+  CERTIFICATE: "Certificado",
+  ART:         "ART",
+  INVOICE:     "Nota Fiscal",
+  OTHER:       "Outro",
+};
+
+const STATUS_DOT: Record<string, string> = {
+  OK:       "#22c55e",
+  NEAR_DUE: "#f59e0b",
+  OVERDUE:  "#ef4444",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  OK:       "Em dia",
+  NEAR_DUE: "Vencendo",
+  OVERDUE:  "Atrasado",
+};
+
+function formatDate(dt?: string) {
+  if (!dt) return "-";
+  try {
+    return new Date(dt + "T00:00:00").toLocaleDateString("pt-BR");
+  } catch {
+    return dt;
+  }
+}
+
+function formatCurrency(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const cents = parseInt(digits || "0", 10);
+  return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function NewMaintenanceContent() {
-    const searchParams = useSearchParams();
-    const origin = searchParams.get("origin");
-    let backHref = "/maintenances";
-    if (origin === "dashboard") backHref = "/";
-    if (origin === "item-detail") backHref = `/items/${searchParams.get("itemId")}`;
+  const searchParams = useSearchParams();
+  const origin = searchParams.get("origin");
+  let backHref = "/maintenances";
+  if (origin === "dashboard") backHref = "/";
+  if (origin === "item-detail") backHref = `/items/${searchParams.get("itemId")}`;
 
-    const { permissions } = useCurrentOrganizationAccess();
+  const { permissions } = useCurrentOrganizationAccess();
 
-    // seleção do item
-    const [itemId, setItemId] = useState(searchParams.get("itemId") || "");
+  // Item selection
+  const [itemId, setItemId] = useState(searchParams.get("itemId") || "");
+  const [itemsPage, setItemsPage] = useState(0);
+  const itemsSize = 20;
 
-    // filtros do combo de itens (novo)
-    const [itemsPage, setItemsPage] = useState(0);
-    const itemsSize = 20;
+  const { data: itemsComboData, isLoading: itemsComboLoading } = useQuery({
+    queryKey: ["items-for-combo", { itemsPage, itemsSize }],
+    queryFn: async () => {
+      const params: Record<string, any> = { page: itemsPage, size: itemsSize };
+      const res = await api.get("/items", { params });
+      if (Array.isArray(res.data)) {
+        const arr = res.data as Item[];
+        return { content: arr, totalPages: 1, totalElements: arr.length, number: 0, size: arr.length } as PageResp<Item>;
+      }
+      return res.data as PageResp<Item>;
+    },
+  });
 
-    const {
-        data: itemsComboData,
-        isLoading: itemsComboLoading,
-        refetch: refetchItemsCombo,
-        isFetching: itemsComboFetching,
-    } = useQuery({
-        queryKey: ["items-for-combo", { itemsPage, itemsSize }],
-        queryFn: async () => {
-            const params: Record<string, any> = { page: itemsPage, size: itemsSize };
-            const res = await api.get("/items", { params });
+  const itemsCombo = useMemo(() => itemsComboData?.content ?? [], [itemsComboData]);
 
-            if (Array.isArray(res.data)) {
-                const arr = res.data as Item[];
-                return {
-                    content: arr,
-                    totalPages: 1,
-                    totalElements: arr.length,
-                    number: 0,
-                    size: arr.length,
-                } as PageResp<Item>;
-            }
-            return res.data as PageResp<Item>;
-        },
-    });
+  // Maintenance form
+  const [performedAt, setPerformedAt] = useState("");
+  const [type, setType] = useState("PREVENTIVA");
+  const [performedBy, setPerformedBy] = useState("");
+  const [costInput, setCostInput] = useState("");
+  const [nextDueAt, setNextDueAt] = useState("");
+  const [step, setStep] = useState(1);
+  const [maintenanceId, setMaintenanceId] = useState<string | number | null>(null);
+  const [saving, setSaving] = useState(false);
 
-    const itemsCombo = useMemo(() => itemsComboData?.content ?? [], [itemsComboData]);
+  function resetForm() {
+    setPerformedAt("");
+    setType("PREVENTIVA");
+    setPerformedBy("");
+    setCostInput("");
+    setNextDueAt("");
+    setItemId("");
+    setStep(1);
+    setMaintenanceId(null);
+  }
 
-    // formulário de manutenção
-    const [performedAt, setPerformedAt] = useState("");
-    const [type, setType] = useState("PREVENTIVA");
-    const [performedBy, setPerformedBy] = useState("");
-    const [costInput, setCostInput] = useState(""); // valor formatado para o input
-    const [nextDueAt, setNextDueAt] = useState("");
-    const [step, setStep] = useState(1); // 1: Dados, 2: Anexos
-    const [maintenanceId, setMaintenanceId] = useState<string | number | null>(null);
+  // Selected item detail
+  const { data: selectedItem, isLoading: selectedItemLoading } = useQuery({
+    enabled: Boolean(itemId),
+    queryKey: ["item", itemId],
+    queryFn: async () => (await api.get(`/items/${itemId}`)).data as Item,
+  });
 
-    function resetForm() {
-        setPerformedAt("");
-        setType("PREVENTIVA");
-        setPerformedBy("");
-        setCostInput("");
-        setNextDueAt("");
-        setItemId("");
-        setStep(1);
-        setMaintenanceId(null);
+  // Suppliers
+  const [suppliers, setSuppliers] = useState<NearbySupplier[]>([]);
+  const [suppliersOpen, setSuppliersOpen] = useState(false);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+  const [suppliersError, setSuppliersError] = useState<string | null>(null);
+
+  async function fetchSuppliersNearby() {
+    setSuppliersError(null);
+    setSuppliersLoading(true);
+    try {
+      const serviceKey = String(selectedItem?.itemType ?? "").trim().toUpperCase();
+      if (!serviceKey) throw new Error("Selecione um item para buscar prestadores.");
+
+      const coords = await new Promise<GeolocationCoordinates>((resolve, reject) => {
+        if (!navigator.geolocation) { reject(new Error("Geolocalização não suportada.")); return; }
+        navigator.geolocation.getCurrentPosition((pos) => resolve(pos.coords), (err) => reject(err), { enableHighAccuracy: false, timeout: 8000 });
+      }).catch(() => ({ latitude: -19.9245, longitude: -43.9352 }) as any);
+
+      const payload = { serviceKey, lat: (coords as any).latitude, lng: (coords as any).longitude, radiusKm: 20, limit: 5 };
+      const res = await api.post<NearbyResponse>("/suppliers/nearby", payload);
+      setSuppliers(res.data?.suppliers ?? []);
+      setSuppliersOpen(true);
+    } catch (e: any) {
+      setSuppliersError(e?.message || "Falha ao buscar prestadores próximos.");
+      setSuppliers([]);
+      setSuppliersOpen(true);
+    } finally {
+      setSuppliersLoading(false);
+    }
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (saving) return;
+    if (!itemId) { toast.error("Selecione um item."); return; }
+    if (!performedAt) { toast.error("Informe a data da manutenção."); return; }
+    const today = new Date().toISOString().split("T")[0];
+    if (performedAt > today) { toast.error("A data da manutenção não pode ser no futuro."); return; }
+
+    let costCents = 0;
+    if (costInput) {
+      const numericValue = costInput.replace(/\D/g, "");
+      costCents = parseInt(numericValue, 10) || 0;
     }
 
-    const [saving, setSaving] = useState(false);
-
-    // detalhe do item selecionado (para mostrar contexto + usar itemType nos fornecedores)
-    const {
-        data: selectedItem,
-        isLoading: selectedItemLoading,
-    } = useQuery({
-        enabled: Boolean(itemId),
-        queryKey: ["item", itemId],
-        queryFn: async () => (await api.get(`/items/${itemId}`)).data as Item,
-    });
-
-    function formatDate(dt?: string) {
-        if (!dt) return "-";
-        try {
-            const d = new Date(dt + "T00:00:00");
-            return d.toLocaleDateString("pt-BR");
-        } catch {
-            return dt;
-        }
+    const body = { performedAt, type, performedBy: performedBy || null, costCents, nextDueAt: nextDueAt || null };
+    try {
+      setSaving(true);
+      const { data } = await api.post(`/items/${itemId}/maintenances`, body);
+      toast.success("Manutenção registrada! Agora você pode anexar documentos.");
+      setMaintenanceId(data.id);
+      setStep(2);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      if (status === 400) toast.error("Verifique os campos e tente novamente.");
+      else toast.error(detail || "Erro ao registrar manutenção");
+    } finally {
+      setSaving(false);
     }
+  }
 
-    // fornecedores
-    const [suppliers, setSuppliers] = useState<NearbySupplier[]>([]);
-    const [suppliersOpen, setSuppliersOpen] = useState(false);
-    const [suppliersLoading, setSuppliersLoading] = useState(false);
-    const [suppliersError, setSuppliersError] = useState<string | null>(null);
+  // Attachments
+  const [attachments, setAttachments] = useState<{ file: File; type: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
 
-    async function fetchSuppliersNearby() {
-        setSuppliersError(null);
-        setSuppliersLoading(true);
-        try {
-            const serviceKey = String(selectedItem?.itemType ?? "")
-                .trim()
-                .toUpperCase();
-
-            if (!serviceKey) {
-                throw new Error("Selecione um item para buscar prestadores.");
-            }
-
-            const coords = await new Promise<GeolocationCoordinates>((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    reject(new Error("Geolocalização não suportada pelo navegador."));
-                    return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => resolve(pos.coords),
-                    (err) => reject(err),
-                    { enableHighAccuracy: false, timeout: 8000 }
-                );
-            }).catch(() => {
-                // fallback BH
-                return { latitude: -19.9245, longitude: -43.9352 } as any;
-            });
-
-            const lat = (coords as any).latitude;
-            const lng = (coords as any).longitude;
-
-            const payload = { serviceKey, lat, lng, radiusKm: 20, limit: 5 };
-            const res = await api.post<NearbyResponse>("/suppliers/nearby", payload);
-
-            setSuppliers(res.data?.suppliers ?? []);
-            setSuppliersOpen(true);
-        } catch (e: any) {
-            setSuppliersError(e?.message || "Falha ao buscar prestadores próximos.");
-            setSuppliers([]);
-            setSuppliersOpen(true);
-        } finally {
-            setSuppliersLoading(false);
-        }
+  async function handleUploadAttachments() {
+    if (!maintenanceId) return;
+    const filesToUpload = attachments.filter((a) => a && a.file);
+    if (filesToUpload.length === 0) {
+      toast.success("Finalizado sem novos anexos");
+      resetForm();
+      return;
     }
-
-    async function onSubmit(e: React.FormEvent) {
-        e.preventDefault();
-
-        if (saving) return;
-
-        if (!itemId) {
-            toast.error("Selecione um item.");
-            return;
-        }
-        if (!performedAt) {
-            toast.error("Informe a data da manutenção.");
-            return;
-        }
-
-        const today = new Date().toISOString().split("T")[0];
-        if (performedAt > today) {
-            toast.error("A data da manutenção não pode ser no futuro.");
-            return;
-        }
-
-        // Converte costInput (ex: "1.234,56") para centavos (123456)
-        let costCents = 0;
-        if (costInput) {
-            const numericValue = costInput.replace(/\D/g, "");
-            costCents = parseInt(numericValue, 10) || 0;
-        }
-
-        const body = {
-            performedAt,
-            type,
-            performedBy: performedBy || null,
-            costCents,
-            nextDueAt: nextDueAt || null,
-        };
-
-        try {
-            setSaving(true);
-            const { data } = await api.post(`/items/${itemId}/maintenances`, body);
-            toast.success(`Manutenção registrada! Agora você pode anexar documentos.`);
-            setMaintenanceId(data.id);
-            setStep(2);
-        } catch (err: any) {
-            console.error("Erro ao registrar manutenção:", err);
-            const status = err?.response?.status;
-            const detail = err?.response?.data?.detail;
-            if (status === 400) toast.error("Verifique os campos e tente novamente.");
-            else toast.error(detail || "Erro ao registrar manutenção");
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    const [attachments, setAttachments] = useState<{ file: File; type: string }[]>([]);
-    const [uploading, setUploading] = useState(false);
-
-    const ATTACHMENT_TYPES = {
-        PHOTO: "Foto",
-        REPORT: "Relatório",
-        CERTIFICATE: "Certificado",
-        ART: "ART",
-        INVOICE: "Nota Fiscal",
-        OTHER: "Outro"
-    };
-
-    async function handleUploadAttachments() {
-        if (!maintenanceId) return;
-
-        const filesToUpload = attachments.filter(a => a && a.file);
-
-        if (filesToUpload.length === 0) {
-            toast.success("Finalizado sem novos anexos");
-            resetForm();
-            return;
-        }
-
-        setUploading(true);
-        try {
-            for (const att of filesToUpload) {
-                const contentType = att.file.type || "application/octet-stream";
-
-                // Step 1: get presigned URL from backend
-                const { data } = await api.post<{ uploadUrl: string; s3Key: string }>(
-                    `maintenances/${maintenanceId}/attachments/upload-url`,
-                    {
-                        fileName: att.file.name,
-                        contentType,
-                        attachmentType: att.type,
-                        sizeBytes: att.file.size
-                    }
-                );
-
-                // Step 2: PUT file directly to S3 (no auth headers — presigned URL is self-contained)
-                const s3Response = await fetch(data.uploadUrl, {
-                    method: "PUT",
-                    headers: { "Content-Type": contentType },
-                    body: att.file
-                });
-                if (!s3Response.ok) {
-                    throw new Error(`Upload S3 falhou: ${s3Response.status}`);
-                }
-
-                // Step 3: confirm upload to backend
-                await api.post(`maintenances/${maintenanceId}/attachments/confirm`, {
-                    s3Key: data.s3Key,
-                    fileName: att.file.name,
-                    contentType,
-                    sizeBytes: att.file.size,
-                    attachmentType: att.type
-                });
-            }
-            toast.success("Anexos enviados com sucesso!");
-            resetForm();
-        } catch (err: any) {
-            console.error("Erro ao enviar anexos:", err);
-            toast.error("Erro ao enviar anexos.");
-        } finally {
-            setUploading(false);
-        }
-    }
-
-    function formatCurrency(value: string) {
-        const digits = value.replace(/\D/g, "");
-        const cents = parseInt(digits || "0", 10);
-        return (cents / 100).toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+    setUploading(true);
+    try {
+      for (const att of filesToUpload) {
+        const contentType = att.file.type || "application/octet-stream";
+        const { data } = await api.post<{ uploadUrl: string; s3Key: string }>(
+          `maintenances/${maintenanceId}/attachments/upload-url`,
+          { fileName: att.file.name, contentType, attachmentType: att.type, sizeBytes: att.file.size }
+        );
+        const s3Response = await fetch(data.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: att.file });
+        if (!s3Response.ok) throw new Error(`Upload S3 falhou: ${s3Response.status}`);
+        await api.post(`maintenances/${maintenanceId}/attachments/confirm`, {
+          s3Key: data.s3Key, fileName: att.file.name, contentType, sizeBytes: att.file.size, attachmentType: att.type
         });
+      }
+      toast.success("Anexos enviados com sucesso!");
+      resetForm();
+    } catch {
+      toast.error("Erro ao enviar anexos.");
+    } finally {
+      setUploading(false);
     }
+  }
 
-    return (
-        <PagePermissionGuard allowed={permissions?.canRegisterMaintenance} redirectHref={backHref}>
-            <section style={{ backgroundColor: COLORS.bg }} className="p-3">
-            {/* 
-                PATTERN: Top + Footer
-                WHY: This is a multi-step flow (selecting item then registering maintenance). 
-                Following Rule 3, we use Top for structural back and Footer for flow actions.
-            */}
-            <div className="row align-items-center mb-4">
-                <div className="col-4">
-                    <Link className="btn btn-outline-secondary" href={backHref}>
-                        ← Voltar para listagem
-                    </Link>
-                </div>
+  return (
+    <PagePermissionGuard allowed={permissions?.canRegisterMaintenance} redirectHref={backHref}>
+      <section style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }} className="pb-5">
+        <div className="container px-3 px-md-4">
 
-                <div className="col-4 text-center">
-                    <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
-                        Registrar Manutenção
-                    </h1>
-                    <p className="text-muted mt-1 mb-0">
-                        Selecione o item e registre a execução
-                    </p>
-                </div>
+          {/* ── HEADER ── */}
+          <div className="pt-4 pb-3">
+            <Link
+              href={backHref}
+              className="d-inline-flex align-items-center gap-1 text-decoration-none mb-3"
+              style={{ color: "#6b7280", fontSize: "0.8rem" }}
+            >
+              ← {origin === "dashboard" ? "Dashboard" : origin === "item-detail" ? "Item" : "Manutenções"}
+            </Link>
 
-                <div className="col-4">
-                    {/* Espaçador */}
-                </div>
-            </div>
+            <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+              <div>
+                <h1
+                  style={{
+                    fontSize: "clamp(1.25rem, 3vw, 1.6rem)",
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    margin: 0,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Registrar Manutenção
+                </h1>
+                <p className="text-muted mb-0 mt-1" style={{ fontSize: "0.85rem" }}>
+                  Selecione o item e registre a execução
+                </p>
+              </div>
 
-            {/* PASSO 1: SELEÇÃO DO ITEM */}
-            {step === 1 && (
-                <div className="card border-0 shadow-sm mb-3">
-                    <div className="card-body">
-                        <div className="d-flex align-items-start gap-3">
-                            <div className="flex-grow-1">
-                                <div className="fw-semibold mb-2" style={{ color: COLORS.primaryDark }}>
-                                    1) Selecionar item
-                                </div>
-
-                            <div className="d-flex gap-2 align-items-end">
-                                <div className="flex-grow-1">
-                                    <select
-                                        className="form-select"
-                                        value={itemId}
-                                        onChange={(e) => setItemId(e.target.value)}
-                                        disabled={step !== 1}
-                                    >
-                                        <option value="">Selecione um item…</option>
-                                        {itemsCombo.map((it) => (
-                                            <option key={String(it.id)} value={String(it.id)}>
-                                                {it.itemType}
-                                            </option>
-                                        ))}
-                                    </select>
-
-                                    {/* paginação */}
-                                    {!!itemsComboData && itemsComboData.totalPages > 1 && (
-                                        <div className="d-flex justify-content-between align-items-center mt-2">
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-link p-0 text-decoration-none"
-                                                onClick={() => setItemsPage((p) => Math.max(0, p - 1))}
-                                                disabled={(itemsComboData?.number ?? 0) <= 0}
-                                            >
-                                                « Anterior
-                                            </button>
-                                            <span className="text-muted" style={{ fontSize: "0.75rem" }}>
-                            Pág. {(itemsComboData?.number ?? 0) + 1} / {itemsComboData.totalPages}
-                        </span>
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-link p-0 text-decoration-none"
-                                                onClick={() => setItemsPage((p) => p + 1)}
-                                                disabled={
-                                                    (itemsComboData?.number ?? 0) + 1 >= itemsComboData.totalPages
-                                                }
-                                            >
-                                                Próxima »
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-warning"
-                                    onClick={fetchSuppliersNearby}
-                                    disabled={!itemId || suppliersLoading}
-                                    title="Sugestões baseadas na localização e no tipo do item selecionado"
-                                    style={{ height: "38px" }} // mesma altura do select (Bootstrap)
-                                >
-                                    {suppliersLoading ? "Buscando..." : "Ver prestadores"}
-                                </button>
-                            </div>
-                        </div>
+              {/* Step indicator */}
+              <div className="d-flex align-items-center gap-2" style={{ flexShrink: 0 }}>
+                {[1, 2].map((s) => (
+                  <div key={s} className="d-flex align-items-center gap-2">
+                    <div
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: "50%",
+                        backgroundColor: step >= s ? "#2563eb" : "#e5e7eb",
+                        color: step >= s ? "#fff" : "#9ca3af",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {step > s ? "✓" : s}
                     </div>
-
-
-                    {/* resumo do item selecionado */}
-                    {itemId && (
-                        <div
-                            className="rounded p-3 mt-3"
-                            style={{
-                                backgroundColor: COLORS.white,
-                                border: "1px solid rgba(0,0,0,0.06)",
-                            }}
-                        >
-                            {selectedItemLoading ? (
-                                <div className="text-muted">Carregando dados do item…</div>
-                            ) : selectedItem ? (
-                                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                    <div>
-                                        <div className="small text-muted">Item selecionado</div>
-                                        <div className="fw-semibold">{selectedItem.itemType}</div>
-                                        <div className="small text-muted">
-                                            Categoria: {selectedItem.itemCategory} • Próximo venc.:{" "}
-                                            {formatDate(selectedItem.nextDueAt)}
-                                        </div>
-                                    </div>
-                                    <Link className="btn btn-sm btn-outline-secondary" href={`/items/${itemId}?origin=maintenance-new`}>
-                                        Ver detalhe
-                                    </Link>
-                                </div>
-                            ) : (
-                                <div className="text-muted">
-                                    Item não encontrado (verifique o ID).
-                                </div>
-                            )}
-                        </div>
+                    <span style={{ fontSize: "0.75rem", color: step >= s ? "#0f172a" : "#9ca3af", whiteSpace: "nowrap" }}>
+                      {s === 1 ? "Dados" : "Anexos"}
+                    </span>
+                    {s < 2 && (
+                      <div style={{ width: 20, height: 1, backgroundColor: step > 1 ? "#2563eb" : "#e5e7eb", flexShrink: 0 }} />
                     )}
-
-                </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            )}
+          </div>
 
-            {/* PASSO 2: REGISTRO */}
-            {step === 1 && (
-            <div className="card border-0 shadow-sm">
-                <div className="card-body">
-                    <div className="fw-semibold mb-3" style={{ color: COLORS.primaryDark }}>
-                        2) Registrar manutenção
+          {/* ── PASSO 1 ── */}
+          {step === 1 && (
+            <>
+              {/* Item selection card */}
+              <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: 10 }}>
+                <div className="card-body p-4">
+                  <div
+                    style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}
+                  >
+                    1 — Selecionar item
+                  </div>
+
+                  {/* Select + supplier button */}
+                  <div className="d-flex flex-column flex-sm-row gap-2 align-items-start align-items-sm-end">
+                    <div className="flex-grow-1 w-100">
+                      <label style={LABEL_STYLE}>Item</label>
+                      <select
+                        className="form-select"
+                        value={itemId}
+                        onChange={(e) => setItemId(e.target.value)}
+                        disabled={itemsComboLoading}
+                      >
+                        <option value="">Selecione um item…</option>
+                        {itemsCombo.map((it) => (
+                          <option key={String(it.id)} value={String(it.id)}>
+                            {it.itemType} #{String(it.id)}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Items pagination — only when needed */}
+                      {itemsComboData && itemsComboData.totalPages > 1 && (
+                        <div className="d-flex justify-content-between align-items-center mt-1 gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-link p-0"
+                            style={{ fontSize: "0.72rem", color: "#6b7280" }}
+                            onClick={() => setItemsPage((p) => Math.max(0, p - 1))}
+                            disabled={(itemsComboData?.number ?? 0) <= 0}
+                          >
+                            ← Anterior
+                          </button>
+                          <span style={{ fontSize: "0.72rem", color: "#9ca3af" }}>
+                            Pág. {(itemsComboData?.number ?? 0) + 1} / {itemsComboData.totalPages}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-link p-0"
+                            style={{ fontSize: "0.72rem", color: "#6b7280" }}
+                            onClick={() => setItemsPage((p) => p + 1)}
+                            disabled={(itemsComboData?.number ?? 0) + 1 >= itemsComboData.totalPages}
+                          >
+                            Próxima →
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    <form onSubmit={onSubmit}>
-                        <div className="row g-3">
-                            <div className="col-12 col-md-4">
-                                <label className="form-label">Data da manutenção*</label>
-                                <input
-                                    className="form-control"
-                                    type="date"
-                                    value={performedAt}
-                                    max={new Date().toISOString().split("T")[0]}
-                                    onChange={(e) => setPerformedAt(e.target.value)}
-                                    required
-                                />
-                            </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm flex-shrink-0"
+                      style={{
+                        border: "1px solid #f59e0b",
+                        color: "#92400e",
+                        backgroundColor: "#fffbeb",
+                        whiteSpace: "nowrap",
+                        padding: "6px 12px",
+                        borderRadius: 6,
+                        fontSize: "0.82rem",
+                      }}
+                      onClick={fetchSuppliersNearby}
+                      disabled={!itemId || suppliersLoading}
+                      title="Sugestões baseadas na localização e no tipo do item"
+                    >
+                      {suppliersLoading ? "Buscando…" : "🔍 Ver prestadores"}
+                    </button>
+                  </div>
 
-                            <div className="col-12 col-md-4">
-                                <label className="form-label">Tipo de manutenção*</label>
-                                <select
-                                    className="form-select"
-                                    value={type}
-                                    onChange={(e) => setType(e.target.value)}
-                                    required
-                                >
-                                    <option value="PREVENTIVA">PREVENTIVA</option>
-                                    <option value="CORRETIVA">CORRETIVA</option>
-                                    <option value="INSPECAO">INSPECAO</option>
-                                    <option value="TESTE">TESTE</option>
-                                    <option value="EMERGENCIAL">EMERGENCIAL</option>
-                                </select>
-                            </div>
-
-                            <div className="col-12 col-md-4">
-                                <label className="form-label">Responsável</label>
-                                <input
-                                    className="form-control"
-                                    value={performedBy}
-                                    onChange={(e) => setPerformedBy(e.target.value)}
-                                    placeholder="Ex.: João Silva"
-                                />
-                            </div>
-
-                            <div className="col-12 col-md-4">
-                                <label className="form-label">Custo (R$)</label>
-                                <input
-                                    className="form-control"
-                                    value={costInput}
-                                    onChange={(e) => setCostInput(formatCurrency(e.target.value))}
-                                    placeholder="0,00"
-                                />
-                            </div>
-
-                            <div className="col-12 col-md-4">
-                                <label className="form-label">Data da próxima manutenção</label>
-                                <input
-                                    className="form-control"
-                                    type="date"
-                                    value={nextDueAt}
-                                    onChange={(e) => setNextDueAt(e.target.value)}
-                                />
-                            </div>
+                  {/* Selected item context */}
+                  {itemId && (
+                    <div
+                      className="rounded-3 mt-3 px-3 py-2"
+                      style={{ border: "1px solid #e5e7eb", backgroundColor: "#f8fafc" }}
+                    >
+                      {selectedItemLoading ? (
+                        <div className="placeholder-glow d-flex gap-3">
+                          <span className="placeholder rounded" style={{ height: 14, width: "30%" }} />
+                          <span className="placeholder rounded" style={{ height: 14, width: "20%" }} />
                         </div>
-
-                        <div className="d-flex gap-2 mt-4">
-                            <button className="btn btn-primary" disabled={saving}>
-                                {saving ? "Registrando..." : "Próximo passo →"}
-                            </button>
-                            <Link className="btn btn-outline-secondary" href="/maintenances">
-                                Cancelar registro
-                            </Link>
+                      ) : selectedItem ? (
+                        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                          <div>
+                            <div className="fw-semibold text-dark" style={{ fontSize: "0.875rem" }}>
+                              {selectedItem.itemType}
+                            </div>
+                            <div className="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                              <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                                {selectedItem.itemCategory === "REGULATORY" ? "Regulatório" : "Operacional"}
+                              </span>
+                              <span style={{ color: "#d1d5db" }}>•</span>
+                              <span className="d-inline-flex align-items-center gap-1" style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                                <span
+                                  style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: "50%",
+                                    backgroundColor: STATUS_DOT[selectedItem.status] ?? "#9ca3af",
+                                    flexShrink: 0,
+                                    display: "inline-block",
+                                  }}
+                                />
+                                {STATUS_LABEL[selectedItem.status] ?? selectedItem.status}
+                              </span>
+                              <span style={{ color: "#d1d5db" }}>•</span>
+                              <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                                Vence: {formatDate(selectedItem.nextDueAt)}
+                              </span>
+                            </div>
+                          </div>
+                          <Link
+                            className="btn btn-sm flex-shrink-0"
+                            style={{ border: "1px solid #e5e7eb", color: "#374151", fontSize: "0.78rem", padding: "3px 10px" }}
+                            href={`/items/${itemId}?origin=maintenance-new`}
+                          >
+                            Ver item →
+                          </Link>
                         </div>
-                    </form>
+                      ) : (
+                        <div className="text-muted" style={{ fontSize: "0.82rem" }}>Item não encontrado.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              {/* Maintenance form card */}
+              <div className="card border-0 shadow-sm" style={{ borderRadius: 10 }}>
+                <div className="card-body p-4">
+                  <div
+                    style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}
+                  >
+                    2 — Dados da manutenção
+                  </div>
+
+                  <form onSubmit={onSubmit} noValidate>
+                    <div className="row g-3 mb-4">
+                      <div className="col-12 col-sm-6 col-md-4">
+                        <label style={LABEL_STYLE}>Data da manutenção *</label>
+                        <input
+                          className="form-control"
+                          type="date"
+                          value={performedAt}
+                          max={new Date().toISOString().split("T")[0]}
+                          onChange={(e) => setPerformedAt(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="col-12 col-sm-6 col-md-4">
+                        <label style={LABEL_STYLE}>Tipo de manutenção *</label>
+                        <select
+                          className="form-select"
+                          value={type}
+                          onChange={(e) => setType(e.target.value)}
+                          required
+                        >
+                          <option value="PREVENTIVA">Preventiva</option>
+                          <option value="CORRETIVA">Corretiva</option>
+                          <option value="INSPECAO">Inspeção</option>
+                          <option value="TESTE">Teste</option>
+                          <option value="EMERGENCIAL">Emergencial</option>
+                        </select>
+                      </div>
+
+                      <div className="col-12 col-sm-6 col-md-4">
+                        <label style={LABEL_STYLE}>Responsável <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(opcional)</span></label>
+                        <input
+                          className="form-control"
+                          value={performedBy}
+                          onChange={(e) => setPerformedBy(e.target.value)}
+                          placeholder="Ex: João Silva"
+                        />
+                      </div>
+
+                      <div className="col-12 col-sm-6 col-md-4">
+                        <label style={LABEL_STYLE}>Custo R$ <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(opcional)</span></label>
+                        <div className="input-group">
+                          <span className="input-group-text" style={{ fontSize: "0.82rem", color: "#6b7280" }}>R$</span>
+                          <input
+                            className="form-control"
+                            value={costInput}
+                            onChange={(e) => setCostInput(formatCurrency(e.target.value))}
+                            placeholder="0,00"
+                            inputMode="numeric"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-sm-6 col-md-4">
+                        <label style={LABEL_STYLE}>Próxima manutenção <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(opcional)</span></label>
+                        <input
+                          className="form-control"
+                          type="date"
+                          value={nextDueAt}
+                          onChange={(e) => setNextDueAt(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="d-flex flex-column flex-sm-row gap-2">
+                      <button
+                        className="btn btn-primary"
+                        disabled={saving}
+                        style={{ minWidth: 160 }}
+                      >
+                        {saving ? "Registrando…" : "Próximo →"}
+                      </button>
+                      <Link
+                        className="btn btn-outline-secondary"
+                        href="/maintenances"
+                      >
+                        Cancelar
+                      </Link>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── PASSO 2: ANEXOS ── */}
+          {step === 2 && (
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 10 }}>
+              <div className="card-body p-4">
+                <div
+                  style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}
+                >
+                  2 — Anexar documentos
+                </div>
+                <p className="text-muted mb-4" style={{ fontSize: "0.82rem" }}>
+                  Você pode anexar até 2 documentos. Caso não possua, clique em "Finalizar".
+                </p>
+
+                <div className="row g-3 mb-4">
+                  {[0, 1].map((idx) => (
+                    <div key={idx} className="col-12 col-md-6">
+                      <div
+                        className="rounded-3 p-3"
+                        style={{ border: "1px dashed #d1d5db", backgroundColor: "#fafafa" }}
+                      >
+                        <div
+                          style={{ fontSize: "0.68rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}
+                        >
+                          Documento {idx + 1}
+                        </div>
+                        <input
+                          type="file"
+                          className="form-control form-control-sm mb-2"
+                          style={{ fontSize: "0.82rem" }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const newAtts = [...attachments];
+                              newAtts[idx] = { file, type: newAtts[idx]?.type || "REPORT" };
+                              setAttachments(newAtts);
+                            }
+                          }}
+                        />
+                        <select
+                          className="form-select form-select-sm"
+                          value={attachments[idx]?.type || "REPORT"}
+                          onChange={(e) => {
+                            const newAtts = [...attachments];
+                            if (newAtts[idx]) {
+                              newAtts[idx].type = e.target.value;
+                              setAttachments(newAtts);
+                            }
+                          }}
+                        >
+                          {Object.entries(ATTACHMENT_TYPES).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
+
+                        {attachments[idx]?.file && (
+                          <div className="mt-2" style={{ fontSize: "0.72rem", color: "#6b7280" }}>
+                            ✓ {attachments[idx].file.name}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="d-flex flex-column flex-sm-row gap-2">
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleUploadAttachments}
+                    disabled={uploading}
+                    style={{ minWidth: 160 }}
+                  >
+                    {uploading ? "Enviando…" : "Finalizar registro"}
+                  </button>
+                  <button
+                    className="btn btn-outline-secondary"
+                    onClick={() => resetForm()}
+                    disabled={uploading}
+                  >
+                    Ignorar e sair
+                  </button>
+                </div>
+              </div>
             </div>
-            )}
+          )}
 
-            {/* PASSO 2: ANEXOS */}
-            {step === 2 && (
-                <div className="card border-0 shadow-sm">
-                    <div className="card-body">
-                        <div className="fw-semibold mb-3" style={{ color: COLORS.primaryDark }}>
-                            2) Anexar documentos (Opcional - Até 2)
-                        </div>
-
-                        <div className="alert alert-info py-2 small">
-                            Você pode anexar até 2 documentos. Caso não possua anexos, clique em "Finalizar".
-                        </div>
-
-                        <div className="row g-3">
-                            {[0, 1].map((idx) => (
-                                <div key={idx} className="col-12 col-md-6">
-                                    <div className="border rounded p-3 bg-light">
-                                        <label className="form-label small fw-bold">Documento {idx + 1}</label>
-                                        <input
-                                            type="file"
-                                            className="form-control mb-2"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    const newAtts = [...attachments];
-                                                    newAtts[idx] = { file, type: newAtts[idx]?.type || "REPORT" };
-                                                    setAttachments(newAtts);
-                                                }
-                                            }}
-                                        />
-                                        <select
-                                            className="form-select form-select-sm"
-                                            value={attachments[idx]?.type || "REPORT"}
-                                            onChange={(e) => {
-                                                const newAtts = [...attachments];
-                                                if (newAtts[idx]) {
-                                                    newAtts[idx].type = e.target.value;
-                                                    setAttachments(newAtts);
-                                                }
-                                            }}
-                                        >
-                                            {Object.entries(ATTACHMENT_TYPES).map(([val, label]) => (
-                                                <option key={val} value={val}>{label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="d-flex gap-2 mt-4">
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleUploadAttachments}
-                                disabled={uploading}
-                            >
-                                {uploading ? "Enviando..." : "Finalizar registro"}
-                            </button>
-                            <button
-                                className="btn btn-outline-secondary"
-                                onClick={() => resetForm()}
-                                disabled={uploading}
-                            >
-                                Ignorar anexos e sair
-                            </button>
-                        </div>
-                    </div>
+          {/* ── PRESTADORES ── */}
+          {suppliersOpen && (
+            <div className="card border-0 shadow-sm mt-3" style={{ borderRadius: 10 }}>
+              <div className="card-body p-4">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <div
+                    style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}
+                  >
+                    Prestadores próximos
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    style={{ border: "1px solid #e5e7eb", color: "#6b7280", padding: "2px 10px", fontSize: "0.78rem" }}
+                    onClick={() => setSuppliersOpen(false)}
+                  >
+                    Fechar
+                  </button>
                 </div>
-            )}
 
-            {/* PRESTADORES (opcional) */}
-            {suppliersOpen && (
-                <div className="card border-0 shadow-sm mt-3">
-                    <div className="card-body">
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                            <h2 className="h6 m-0" style={{ color: COLORS.primaryDark }}>
-                                Prestadores próximos
-                            </h2>
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-outline-secondary"
-                                onClick={() => setSuppliersOpen(false)}
-                            >
-                                Fechar
-                            </button>
+                <p className="text-muted mb-3" style={{ fontSize: "0.78rem" }}>
+                  Sugestões baseadas na localização e tipo do item. O Easy Maintenance não se
+                  responsabiliza pela qualidade dos serviços prestados.
+                </p>
+
+                {suppliersError && (
+                  <div
+                    className="rounded-3 px-3 py-2 mb-3"
+                    style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", fontSize: "0.82rem", color: "#b91c1c" }}
+                  >
+                    {suppliersError}
+                  </div>
+                )}
+
+                {suppliersLoading && (
+                  <div className="placeholder-glow d-flex flex-column gap-2">
+                    {[0, 1, 2].map((i) => (
+                      <span key={i} className="placeholder rounded w-100" style={{ height: 56 }} />
+                    ))}
+                  </div>
+                )}
+
+                {!suppliersLoading && !suppliersError && suppliers.length === 0 && (
+                  <p className="text-muted mb-0" style={{ fontSize: "0.82rem" }}>
+                    Nenhum prestador encontrado para este serviço na região.
+                  </p>
+                )}
+
+                {!suppliersLoading && !suppliersError && suppliers.length > 0 && (
+                  <div className="d-flex flex-column gap-2">
+                    {suppliers.map((s) => (
+                      <div
+                        key={s.placeId}
+                        className="rounded-3 px-3 py-2"
+                        style={{ border: "1px solid #e5e7eb", backgroundColor: "#fafafa" }}
+                      >
+                        <div className="fw-semibold text-dark" style={{ fontSize: "0.875rem" }}>
+                          {s.name}
                         </div>
-
-                        <p className="text-muted mb-3 small">
-                            Sugestões baseadas na sua localização e no tipo do item selecionado.
-                            O Easy Maintenance não se responsabiliza pela contratação, execução
-                            e qualidade dos serviços prestados.
-                        </p>
-
-                        {suppliersError && (
-                            <p className="small mb-3" style={{ color: COLORS.accent }}>
-                                {suppliersError}
-                            </p>
+                        {s.address && (
+                          <div className="text-muted" style={{ fontSize: "0.75rem" }}>{s.address}</div>
                         )}
+                        <div className="d-flex flex-wrap align-items-center gap-2 mt-1">
+                          {typeof s.rating === "number" && (
+                            <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                              ⭐ {s.rating.toFixed(1)}
+                              {typeof s.userRatingsTotal === "number" && (
+                                <span style={{ color: "#9ca3af" }}> ({s.userRatingsTotal})</span>
+                              )}
+                            </span>
+                          )}
+                          {s.phone && (
+                            <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>📞 {s.phone}</span>
+                          )}
+                          {s.website && (
+                            <a href={s.website} target="_blank" rel="noreferrer" style={{ fontSize: "0.75rem", color: "#2563eb" }}>
+                              Site →
+                            </a>
+                          )}
+                          {s.mapsUrl && (
+                            <a href={s.mapsUrl} target="_blank" rel="noreferrer" style={{ fontSize: "0.75rem", color: "#2563eb" }}>
+                              Ver no mapa →
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-                        {!suppliersError && suppliers.length === 0 && !suppliersLoading && (
-                            <p className="text-muted small m-0">
-                                Nenhum prestador encontrado para este serviço na região.
-                            </p>
-                        )}
-
-                        {suppliersLoading && <p className="m-0">Buscando prestadores…</p>}
-
-                        {!suppliersLoading && !suppliersError && suppliers.length > 0 && (
-                            <div className="list-group">
-                                {suppliers.map((s) => (
-                                    <div key={s.placeId} className="list-group-item">
-                                        <div className="fw-semibold">{s.name}</div>
-                                        {s.address && (
-                                            <div className="text-muted small">{s.address}</div>
-                                        )}
-
-                                        <div className="small mt-2">
-                                            {typeof s.rating === "number" && (
-                                                <span className="me-2">
-                          Avaliação: {s.rating.toFixed(1)} ⭐
-                        </span>
-                                            )}
-                                            {typeof s.userRatingsTotal === "number" && (
-                                                <span className="text-muted">
-                          ({s.userRatingsTotal} avaliações)
-                        </span>
-                                            )}
-                                        </div>
-
-                                        <div className="small mt-2">
-                                            {s.phone && <span className="me-2">📞 {s.phone}</span>}
-                                            {s.website && (
-                                                <a
-                                                    href={s.website}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="me-3"
-                                                    style={{ color: COLORS.primary }}
-                                                >
-                                                    Site
-                                                </a>
-                                            )}
-                                            {s.mapsUrl && (
-                                                <a
-                                                    href={s.mapsUrl}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    style={{ color: COLORS.primary }}
-                                                >
-                                                    Ver no mapa
-                                                </a>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* estilo do outline-warning sem depender do tema do bootstrap */}
-            <style jsx global>{`
-        .btn-outline-warning {
-          border-color: ${COLORS.accent} !important;
-          color: ${COLORS.accent} !important;
-        }
-        .btn-outline-warning:hover {
-          background-color: ${COLORS.accent} !important;
-          color: #fff !important;
-        }
-      `}</style>
-        </section>
-        </PagePermissionGuard>
-    );
+        </div>
+      </section>
+    </PagePermissionGuard>
+  );
 }
 
 export default function NewMaintenancePage() {
-    return (
-        <Suspense fallback={<p className="p-3 m-0">Carregando formulário...</p>}>
-            <NewMaintenanceContent />
-        </Suspense>
-    );
+  return (
+    <Suspense fallback={<p className="p-3 m-0">Carregando formulário...</p>}>
+      <NewMaintenanceContent />
+    </Suspense>
+  );
 }
