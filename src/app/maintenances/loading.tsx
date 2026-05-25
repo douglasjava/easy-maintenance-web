@@ -1,86 +1,137 @@
-// Maintenances loading skeleton — shown during navigation to "/maintenances"
-// Mirrors: 3-col header + filter card (4 inputs) + table card (6 columns, 5 rows)
-// No "use client" — this is a Server Component rendered before hydration
-
 export default function MaintenancesLoading() {
   return (
-    <section style={{ backgroundColor: "#F3F4F6" }} className="p-3">
+    <section style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }} className="pb-5">
+      <div className="container px-3 px-md-4">
 
-      {/* Header: back btn | title | action btns stacked */}
-      <div className="row align-items-center mb-4">
-        <div className="col-4">
-          <span className="placeholder col-10 rounded" style={{ height: 32 }} />
-        </div>
-        <div className="col-4 text-center placeholder-glow">
-          <span className="placeholder col-8 d-block mx-auto mb-1 rounded" style={{ height: 24 }} />
-          <span className="placeholder col-10 d-block mx-auto rounded" style={{ height: 14 }} />
-        </div>
-        <div className="col-4 d-flex flex-column align-items-end gap-2 placeholder-glow">
-          <span className="placeholder rounded" style={{ width: 110, height: 36 }} />
-          <span className="placeholder rounded" style={{ width: 130, height: 30 }} />
-        </div>
-      </div>
-
-      {/* Filter card skeleton */}
-      <div className="card border-0 shadow-sm mb-3">
-        <div className="card-body placeholder-glow">
-          <div className="row g-3 align-items-end">
-            <div className="col-12 col-md-4">
-              <span className="placeholder col-4 d-block mb-1" style={{ height: 12 }} />
-              <span className="placeholder col-12 rounded" style={{ height: 36 }} />
+        {/* Header skeleton */}
+        <div className="pt-4 pb-3">
+          <span className="placeholder rounded mb-3 d-block" style={{ height: 14, width: 80 }} />
+          <div className="d-flex justify-content-between align-items-start gap-3 placeholder-glow">
+            <div>
+              <span className="placeholder rounded d-block mb-2" style={{ height: 26, width: 140 }} />
+              <span className="placeholder rounded d-block" style={{ height: 14, width: 260 }} />
             </div>
-            <div className="col-12 col-md-3">
-              <span className="placeholder col-7 d-block mb-1" style={{ height: 12 }} />
-              <span className="placeholder col-12 rounded" style={{ height: 36 }} />
-            </div>
-            <div className="col-12 col-md-3">
-              <span className="placeholder col-6 d-block mb-1" style={{ height: 12 }} />
-              <span className="placeholder col-12 rounded" style={{ height: 36 }} />
-            </div>
-            <div className="col-12 col-md-2">
-              <span className="placeholder col-12 rounded" style={{ height: 36 }} />
+            <div className="d-flex gap-2">
+              <span className="placeholder rounded" style={{ height: 30, width: 120 }} />
+              <span className="placeholder rounded" style={{ height: 36, width: 100 }} />
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Table card skeleton */}
-      <div className="card border-0 shadow-sm">
-        <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table align-middle mb-0">
-              <thead style={{ backgroundColor: "#F9FAFB" }}>
-                <tr>
-                  {["ID", "Data", "Tipo", "Responsável", "Custo", "Ações"].map((col) => (
-                    <th key={col} className="text-muted small fw-semibold">
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="placeholder-glow">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <tr key={i}>
-                    <td><span className="placeholder col-5 rounded" style={{ height: 14 }} /></td>
-                    <td><span className="placeholder col-7 rounded" style={{ height: 14 }} /></td>
-                    <td><span className="placeholder col-6 rounded-pill" style={{ height: 22 }} /></td>
-                    <td><span className="placeholder col-8 rounded" style={{ height: 14 }} /></td>
-                    <td className="text-end"><span className="placeholder col-7 rounded" style={{ height: 14 }} /></td>
-                    <td className="text-end">
-                      <span className="placeholder rounded" style={{ width: 80, height: 28 }} />
-                    </td>
+        {/* Filter card skeleton */}
+        <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: 10 }}>
+          <div className="card-body py-3 px-3 placeholder-glow">
+            <div className="row g-2 align-items-end">
+              <div className="col-12 col-md-4">
+                <span className="placeholder rounded d-block mb-1" style={{ height: 10, width: "30%" }} />
+                <span className="placeholder rounded d-block" style={{ height: 31 }} />
+              </div>
+              <div className="col-6 col-md-3">
+                <span className="placeholder rounded d-block mb-1" style={{ height: 10, width: "40%" }} />
+                <span className="placeholder rounded d-block" style={{ height: 31 }} />
+              </div>
+              <div className="col-6 col-md-3">
+                <span className="placeholder rounded d-block mb-1" style={{ height: 10, width: "50%" }} />
+                <span className="placeholder rounded d-block" style={{ height: 31 }} />
+              </div>
+              <div className="col-12 col-md-2">
+                <span className="placeholder rounded d-block" style={{ height: 31 }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Table/card skeleton */}
+        <div className="card border-0 shadow-sm" style={{ borderRadius: 10 }}>
+          <div className="card-body p-0">
+
+            {/* Desktop table skeleton */}
+            <div className="d-none d-md-block table-responsive">
+              <table className="table align-middle mb-0">
+                <thead style={{ backgroundColor: "#f8f9fa" }}>
+                  <tr>
+                    {["Data", "Tipo", "Responsável", "Custo", ""].map((col, i) => (
+                      <th
+                        key={i}
+                        style={{
+                          padding: "10px 16px",
+                          color: "#9ca3af",
+                          fontSize: "0.68rem",
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          borderBottom: "1px solid #e5e7eb",
+                        }}
+                      >
+                        {col}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="px-3 py-3 border-top placeholder-glow d-flex justify-content-between">
-            <span className="placeholder col-2 rounded" style={{ height: 28 }} />
-            <span className="placeholder col-2 rounded" style={{ height: 28 }} />
+                </thead>
+                <tbody className="placeholder-glow">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span className="placeholder rounded" style={{ height: 14, width: 80 }} />
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span className="placeholder rounded-pill" style={{ height: 20, width: 88 }} />
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span className="placeholder rounded" style={{ height: 14, width: "60%" }} />
+                      </td>
+                      <td style={{ padding: "12px 16px" }} className="text-end">
+                        <span className="placeholder rounded" style={{ height: 14, width: 72 }} />
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <div className="d-flex justify-content-end">
+                          <span className="placeholder rounded" style={{ height: 26, width: 84 }} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile card skeleton */}
+            <div className="d-md-none p-2 d-flex flex-column gap-2 placeholder-glow">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-3"
+                  style={{ border: "1px solid #e5e7eb", borderLeft: "3px solid #e5e7eb", backgroundColor: "#fff", overflow: "hidden" }}
+                >
+                  <div className="d-flex justify-content-between align-items-start gap-2 px-3 pt-3 pb-1">
+                    <span className="placeholder rounded" style={{ height: 16, width: 80 }} />
+                    <span className="placeholder rounded-pill" style={{ height: 22, width: 80 }} />
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center px-3 pb-2 gap-2">
+                    <span className="placeholder rounded" style={{ height: 12, width: "45%" }} />
+                    <span className="placeholder rounded" style={{ height: 12, width: 60 }} />
+                  </div>
+                  <div
+                    className="px-3 py-2"
+                    style={{ borderTop: "1px solid #f1f5f9", backgroundColor: "#fafafa" }}
+                  >
+                    <span className="placeholder rounded d-block" style={{ height: 30 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination skeleton */}
+            <div
+              className="px-3 py-3 d-flex justify-content-between align-items-center placeholder-glow"
+              style={{ borderTop: "1px solid #f1f5f9" }}
+            >
+              <span className="placeholder rounded" style={{ height: 28, width: 120 }} />
+              <span className="placeholder rounded" style={{ height: 28, width: 160 }} />
+            </div>
           </div>
         </div>
-      </div>
 
+      </div>
     </section>
   );
 }
