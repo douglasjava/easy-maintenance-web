@@ -7,410 +7,735 @@ import { adminUsersService } from "@/services/private/admin-users.service";
 import { adminBillingService } from "@/services/private/admin-billing.service";
 import toast from "react-hot-toast";
 import AsyncSelect from "react-select/async";
-import PageHeader from "@/components/admin/PageHeader";
+import Link from "next/link";
+
+// ── Types ──────────────────────────────────────────────────────────────────
 
 type Plan = "STARTER" | "BUSINESS" | "ENTERPRISE";
 
-const COLORS = {
-    primary: "#0B5ED7",
-    primaryDark: "#083B7A",
-    bg: "#F3F4F6",
+// ── Design tokens ──────────────────────────────────────────────────────────
+
+const C = {
+  navy:    "#0B2545",
+  blue:    "#1d4ed8",
+  blueSoft:"#eff6ff",
+  border:  "#e2e8f0",
+  borderFocus: "#93c5fd",
+  muted:   "#64748b",
+  error:   "#dc2626",
+  errorBg: "#fef2f2",
+  surface: "#ffffff",
+  bg:      "#f1f5f9",
+  success: "#16a34a",
+  successBg: "#f0fdf4",
 };
 
-const COMPANY_TYPE_OPTIONS = [
-    { value: "CONDOMINIUM", label: "Condomínio" },
-    { value: "HOSPITAL",    label: "Hospital" },
-    { value: "SCHOOL",      label: "Escola" },
-    { value: "INDUSTRY",    label: "Indústria" },
-    { value: "OFFICE",      label: "Escritório" },
-    { value: "OTHER",       label: "Outro" },
+const LABEL: React.CSSProperties = {
+  fontSize: "0.7rem",
+  fontWeight: 700,
+  color: C.muted,
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+  marginBottom: 5,
+  display: "block",
+};
+
+const INPUT: React.CSSProperties = {
+  width: "100%",
+  border: `1px solid ${C.border}`,
+  borderRadius: 7,
+  padding: "9px 12px",
+  fontSize: "0.875rem",
+  color: C.navy,
+  backgroundColor: C.surface,
+  outline: "none",
+  transition: "border-color 0.15s",
+};
+
+const INPUT_ERR: React.CSSProperties = {
+  ...INPUT,
+  border: `1px solid ${C.error}`,
+  backgroundColor: C.errorBg,
+};
+
+// ── Masks ──────────────────────────────────────────────────────────────────
+
+function maskDoc(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 14);
+  if (d.length <= 11) {
+    return d
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  }
+  return d
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
+function maskCep(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 8);
+  return d.replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+// ── Company type cards ────────────────────────────────────────────────────
+
+const COMPANY_TYPES = [
+  { value: "CONDOMINIUM", label: "Condomínio",  icon: "🏢" },
+  { value: "HOSPITAL",    label: "Hospital",     icon: "🏥" },
+  { value: "SCHOOL",      label: "Escola",       icon: "🏫" },
+  { value: "INDUSTRY",    label: "Indústria",    icon: "🏭" },
+  { value: "OFFICE",      label: "Escritório",   icon: "🏬" },
+  { value: "OTHER",       label: "Outro",        icon: "📋" },
 ];
 
+// ── Plan cards ────────────────────────────────────────────────────────────
+
+const PLANS: { value: Plan; label: string; desc: string }[] = [
+  { value: "STARTER",    label: "Starter",    desc: "1 empresa" },
+  { value: "BUSINESS",   label: "Business",   desc: "5 empresas" },
+  { value: "ENTERPRISE", label: "Enterprise", desc: "15 empresas" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "ACTIVE",   label: "Ativo" },
+  { value: "TRIALING", label: "Trial" },
+  { value: "PAST_DUE", label: "Em atraso" },
+  { value: "CANCELED", label: "Cancelado" },
+];
+
+// ── Field wrapper ─────────────────────────────────────────────────────────
+
+function Field({ label, error, children, required }: {
+  label: string; error?: string; children: React.ReactNode; required?: boolean;
+}) {
+  return (
+    <div>
+      <label style={LABEL}>
+        {label}{required && <span style={{ color: C.error }}> *</span>}
+      </label>
+      {children}
+      {error && (
+        <p style={{ fontSize: "0.72rem", color: C.error, margin: "4px 0 0" }}>{error}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Section header ────────────────────────────────────────────────────────
+
+function Section({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div style={{ borderLeft: `3px solid ${C.blue}`, paddingLeft: 12, marginBottom: 20 }}>
+      <div style={{ fontWeight: 700, fontSize: "0.85rem", color: C.navy }}>{title}</div>
+      {subtitle && <div style={{ fontSize: "0.75rem", color: C.muted, marginTop: 2 }}>{subtitle}</div>}
+    </div>
+  );
+}
+
+// ── Step indicator ────────────────────────────────────────────────────────
+
+function StepBar({ step }: { step: number }) {
+  const steps = [
+    { n: 1, label: "Dados da empresa" },
+    { n: 2, label: "Assinatura" },
+  ];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 32 }}>
+      {steps.map((s, i) => (
+        <div key={s.n} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? 1 : undefined }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 700, fontSize: "0.85rem",
+              backgroundColor: step > s.n ? C.success : step === s.n ? C.blue : C.border,
+              color: step >= s.n ? "#fff" : C.muted,
+              flexShrink: 0,
+              transition: "background-color 0.2s",
+            }}>
+              {step > s.n ? "✓" : s.n}
+            </div>
+            <span style={{
+              fontSize: "0.68rem", fontWeight: 600,
+              color: step >= s.n ? C.navy : C.muted,
+              whiteSpace: "nowrap",
+              textTransform: "uppercase", letterSpacing: "0.05em",
+            }}>
+              {s.label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div style={{
+              flex: 1, height: 2, margin: "0 8px", marginBottom: 22,
+              backgroundColor: step > s.n ? C.success : C.border,
+              transition: "background-color 0.2s",
+            }} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────
+
 const EMPTY_FORM = {
-    name: "",
-    companyType: "OTHER",
-    city: "",
-    street: "",
-    number: "",
-    zipCode: "",
-    state: "",
-    complement: "",
-    neighborhood: "",
-    country: "BR",
-    doc: "",
+  name: "", companyType: "OTHER", doc: "", docMasked: "",
+  zipCode: "", zipMasked: "", street: "", number: "",
+  complement: "", neighborhood: "", city: "", state: "", country: "BR",
 };
 
-const EMPTY_SUBSCRIPTION = {
-    payerUserId: "",
-    planCode: "STARTER" as Plan,
-    status: "ACTIVE",
-    currentPeriodStart: "",
-    currentPeriodEnd: "",
+const EMPTY_SUB = {
+  payerUserId: "", planCode: "STARTER" as Plan,
+  status: "ACTIVE", currentPeriodStart: "", currentPeriodEnd: "",
 };
 
 export default function CreateOrganizationPage() {
-    const [step, setStep] = useState(1);
-    const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState(EMPTY_FORM);
-    const [subscriptionData, setSubscriptionData] = useState(EMPTY_SUBSCRIPTION);
-    const [createdOrgCode, setCreatedOrgCode] = useState("");
-    const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [zipLoading, setZipLoading] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [sub, setSub] = useState(EMPTY_SUB);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [createdOrgCode, setCreatedOrgCode] = useState("");
+  const router = useRouter();
 
-    async function handleZipCodeBlur() {
-        const zip = formData.zipCode.replace(/\D/g, "");
-        if (zip.length !== 8) return;
+  function touch(field: string) {
+    setTouched(p => ({ ...p, [field]: true }));
+  }
 
-        try {
-            const response = await fetch(`https://viacep.com.br/ws/${zip}/json/`);
-            const data = await response.json();
-
-            if (!data.erro) {
-                setFormData(prev => ({
-                    ...prev,
-                    street: data.logradouro || prev.street,
-                    neighborhood: data.bairro || prev.neighborhood,
-                    city: data.localidade || prev.city,
-                    state: data.uf || prev.state,
-                }));
-            }
-        } catch (error) {
-            console.error("Error fetching zip code", error);
-        }
+  function getError(field: string): string | undefined {
+    if (!touched[field]) return undefined;
+    if (field === "name" && !form.name.trim()) return "Nome é obrigatório";
+    if (field === "doc") {
+      const d = form.doc;
+      if (d && d.length !== 11 && d.length !== 14) return "Documento incompleto";
     }
+    return undefined;
+  }
 
-    async function loadPayerOptions(inputValue: string) {
-        if (!inputValue || inputValue.length < 2) return [];
-
-        try {
-            const data = await adminUsersService.list({ page: 0, size: 20 });
-            // O ideal seria um endpoint de busca por nome, mas o service list aceita params.
-            // Se o backend suportar filtro por nome no list, adminUsersService.list({ name: inputValue })
-
-            return (data.content || [])
-                .filter(u => u.name.toLowerCase().includes(inputValue.toLowerCase()) || u.email.toLowerCase().includes(inputValue.toLowerCase()))
-                .map((user: any) => ({
-                    value: String(user.id),
-                    label: `${user.name} (${user.email})`
-                }));
-        } catch (err) {
-            console.error(err);
-            return [];
-        }
+  async function handleZipBlur() {
+    touch("zipCode");
+    const raw = form.zipCode;
+    if (raw.length !== 8) return;
+    setZipLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setForm(p => ({
+          ...p,
+          street:       data.logradouro || p.street,
+          neighborhood: data.bairro     || p.neighborhood,
+          city:         data.localidade || p.city,
+          state:        data.uf         || p.state,
+          zipMasked:    maskCep(raw),
+        }));
+        toast.success("Endereço preenchido pelo CEP");
+      } else {
+        toast.error("CEP não encontrado");
+      }
+    } catch {
+      /* silently ignore */
+    } finally {
+      setZipLoading(false);
     }
+  }
 
-    async function onSubmitStep1(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        if (loading) return;
-
-        const orgCode = crypto.randomUUID();
-        const payload = {
-            code: orgCode,
-            name: formData.name.trim(),
-            companyType: formData.companyType,
-            city: formData.city?.trim() || undefined,
-            street: formData.street?.trim() || undefined,
-            number: formData.number?.trim() || undefined,
-            zipCode: formData.zipCode?.replace(/\D/g, "") || undefined,
-            state: formData.state?.trim() || undefined,
-            complement: formData.complement?.trim() || undefined,
-            neighborhood: formData.neighborhood?.trim() || undefined,
-            country: formData.country?.trim() || "BR",
-            doc: formData.doc?.replace(/\D/g, "") || undefined,
-        };
-
-        if (!payload.name) {
-            toast.error("Por favor, preencha o nome da empresa.");
-            return;
-        }
-
-        try {
-            setLoading(true);
-            await adminOrganizationsService.create(payload);
-
-            toast.success("Empresa criada com sucesso. Agora configure a assinatura.");
-            setCreatedOrgCode(orgCode);
-            setStep(2);
-        } catch (err) {
-            console.error("Error creating organization", err);
-            toast.error("Falha ao criar organização.");
-        } finally {
-            setLoading(false);
-        }
+  async function loadPayerOptions(inputValue: string) {
+    if (!inputValue || inputValue.length < 2) return [];
+    try {
+      const data = await adminUsersService.list({ page: 0, size: 20 });
+      return (data.content || [])
+        .filter(u =>
+          u.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+          u.email.toLowerCase().includes(inputValue.toLowerCase())
+        )
+        .map((u: any) => ({ value: String(u.id), label: `${u.name} (${u.email})` }));
+    } catch {
+      return [];
     }
+  }
 
-    async function onSubmitStep2(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        if (loading) return;
+  async function onSubmitStep1(e: React.FormEvent) {
+    e.preventDefault();
+    setTouched({ name: true, doc: true, zipCode: true });
+    if (!form.name.trim()) return;
+    if (loading) return;
 
-        if (!subscriptionData.payerUserId || !subscriptionData.planCode) {
-            toast.error("Por favor, preencha os campos obrigatórios da assinatura.");
-            return;
-        }
+    const orgCode = crypto.randomUUID();
+    const payload = {
+      code: orgCode,
+      name: form.name.trim(),
+      companyType: form.companyType,
+      doc: form.doc || undefined,
+      zipCode: form.zipCode || undefined,
+      street: form.street.trim() || undefined,
+      number: form.number.trim() || undefined,
+      complement: form.complement.trim() || undefined,
+      neighborhood: form.neighborhood.trim() || undefined,
+      city: form.city.trim() || undefined,
+      state: form.state.trim() || undefined,
+      country: form.country.trim() || "BR",
+    };
 
-        const toTimestamp = (dateStr: string) => {
-            if (!dateStr) return undefined;
-            return Math.floor(new Date(dateStr).getTime() / 1000);
-        };
-
-        const payload = {
-            payerUserId: Number(subscriptionData.payerUserId),
-            planCode: subscriptionData.planCode,
-            status: subscriptionData.status,
-            currentPeriodStart: toTimestamp(subscriptionData.currentPeriodStart),
-            currentPeriodEnd: toTimestamp(subscriptionData.currentPeriodEnd),
-        };
-
-        try {
-            setLoading(true);
-            await adminBillingService.updateUserSubscription(createdOrgCode, payload);
-
-            toast.success("Assinatura configurada com sucesso.");
-            router.push("/private/organizations");
-        } catch (err) {
-            console.error("Error creating subscription", err);
-            toast.error("Falha ao configurar assinatura.");
-        } finally {
-            setLoading(false);
-        }
+    try {
+      setLoading(true);
+      await adminOrganizationsService.create(payload);
+      toast.success("Empresa criada. Configure a assinatura.");
+      setCreatedOrgCode(orgCode);
+      setStep(2);
+    } catch {
+      toast.error("Falha ao criar organização.");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    return (
-        <section style={{ backgroundColor: COLORS.bg, minHeight: "100vh" }} className="p-3">
-            <PageHeader 
-                title="Criar Nova Empresa"
-                description={`Passo ${step} de 2: ${step === 1 ? "Dados da Empresa" : "Configuração da Assinatura"}`}
-                backUrl="/private/organizations"
-            />
+  async function onSubmitStep2(e: React.FormEvent) {
+    e.preventDefault();
+    if (!sub.payerUserId || !sub.planCode) {
+      toast.error("Preencha os campos obrigatórios.");
+      return;
+    }
+    if (loading) return;
 
-            <div className="card border-0 shadow-sm mx-auto overflow-hidden" style={{ maxWidth: "1000px" }}>
-                <div className="card-body p-4 p-md-5">
-                    {/* PROGRESS BAR */}
-                    <div className="d-flex align-items-center mb-5 position-relative justify-content-between px-md-5">
-                        <div className="position-absolute top-50 start-0 end-0 border-top d-none d-sm-block" style={{ zIndex: 0, marginTop: "-1px" }}></div>
-                        
-                        <div className="text-center position-relative bg-white px-2 px-md-3" style={{ zIndex: 1 }}>
-                            <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 ${step >= 1 ? "bg-primary text-white" : "bg-secondary text-white"}`} style={{ width: "40px", height: "40px" }}>
-                                1
-                            </div>
-                            <div className={`small fw-bold ${step >= 1 ? "text-primary" : "text-muted"}`}>Dados</div>
-                            <div className="d-none d-md-block extra-small text-muted">Informações básicas</div>
-                        </div>
+    const toTs = (d: string) => d ? Math.floor(new Date(d).getTime() / 1000) : undefined;
+    const payload = {
+      payerUserId: Number(sub.payerUserId),
+      planCode: sub.planCode,
+      status: sub.status,
+      currentPeriodStart: toTs(sub.currentPeriodStart),
+      currentPeriodEnd: toTs(sub.currentPeriodEnd),
+    };
 
-                        <div className="text-center position-relative bg-white px-2 px-md-3" style={{ zIndex: 1 }}>
-                            <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 ${step >= 2 ? "bg-primary text-white" : "bg-white border text-muted"}`} style={{ width: "40px", height: "40px" }}>
-                                2
-                            </div>
-                            <div className={`small fw-bold ${step >= 2 ? "text-primary" : "text-muted"}`}>Assinatura</div>
-                            <div className="d-none d-md-block extra-small text-muted">Configuração de plano</div>
-                        </div>
-                    </div>
+    try {
+      setLoading(true);
+      await adminBillingService.updateUserSubscription(createdOrgCode, payload);
+      toast.success("Assinatura configurada com sucesso.");
+      router.push("/private/organizations");
+    } catch {
+      toast.error("Falha ao configurar assinatura.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-                    {step === 1 ? (
-                        <form onSubmit={onSubmitStep1}>
-                            <h5 className="mb-4 fw-bold">Informações Básicas</h5>
-                            <div className="row g-3">
-                                <div className="col-12 col-md-5">
-                                    <label className="form-label fw-semibold">Nome da Empresa *</label>
-                                    <input
-                                        className="form-control form-control-lg"
-                                        placeholder="Ex: Minha Empresa LTDA"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
-                                        required
-                                    />
-                                </div>
-                                <div className="col-12 col-md-4">
-                                    <label className="form-label fw-semibold">Tipo de Empresa *</label>
-                                    <select
-                                        className="form-select form-select-lg"
-                                        value={formData.companyType}
-                                        onChange={(e) => setFormData(p => ({ ...p, companyType: e.target.value }))}
-                                        required
-                                    >
-                                        {COMPANY_TYPE_OPTIONS.map(opt => (
-                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="col-12 col-md-3">
-                                    <label className="form-label fw-semibold">CNPJ/CPF</label>
-                                    <input
-                                        className="form-control form-control-lg"
-                                        placeholder="00.000.000/0000-00"
-                                        value={formData.doc}
-                                        onChange={(e) => {
-                                            const onlyNumbers = e.target.value.replace(/\D/g, "");
-                                            setFormData(p => ({ ...p, doc: onlyNumbers }));
-                                        }}
-                                    />
-                                </div>
+  return (
+    <section style={{ backgroundColor: C.bg, minHeight: "100vh", padding: "16px" }}>
 
-                                <h5 className="mt-5 mb-3 fw-bold">Endereço</h5>
-                                <div className="col-12 col-md-3">
-                                    <label className="form-label">CEP</label>
-                                    <input
-                                        className="form-control"
-                                        placeholder="00000-000"
-                                        value={formData.zipCode}
-                                        onChange={(e) => setFormData(p => ({ ...p, zipCode: e.target.value }))}
-                                        onBlur={handleZipCodeBlur}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-7">
-                                    <label className="form-label">Logradouro</label>
-                                    <input
-                                        className="form-control"
-                                        placeholder="Rua, Avenida, etc."
-                                        value={formData.street}
-                                        onChange={(e) => setFormData(p => ({ ...p, street: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-2">
-                                    <label className="form-label">Número</label>
-                                    <input
-                                        className="form-control"
-                                        placeholder="123"
-                                        value={formData.number}
-                                        onChange={(e) => setFormData(p => ({ ...p, number: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-4">
-                                    <label className="form-label">Bairro</label>
-                                    <input
-                                        className="form-control"
-                                        placeholder="Bairro"
-                                        value={formData.neighborhood}
-                                        onChange={(e) => setFormData(p => ({ ...p, neighborhood: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-4">
-                                    <label className="form-label">Cidade</label>
-                                    <input
-                                        className="form-control"
-                                        placeholder="Cidade"
-                                        value={formData.city}
-                                        onChange={(e) => setFormData(p => ({ ...p, city: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-2">
-                                    <label className="form-label">Estado</label>
-                                    <input
-                                        className="form-control"
-                                        placeholder="UF"
-                                        maxLength={2}
-                                        value={formData.state}
-                                        onChange={(e) => setFormData(p => ({ ...p, state: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="col-12 col-md-2">
-                                    <label className="form-label">País</label>
-                                    <input
-                                        className="form-control"
-                                        value={formData.country}
-                                        onChange={(e) => setFormData(p => ({ ...p, country: e.target.value }))}
-                                    />
-                                </div>
-                            </div>
+      {/* Page header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <Link
+          href="/private/organizations"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            fontSize: "0.78rem", color: C.muted, textDecoration: "none",
+            border: `1px solid ${C.border}`, borderRadius: 6,
+            padding: "5px 10px", backgroundColor: C.surface,
+          }}
+        >
+          ← Voltar
+        </Link>
+        <div>
+          <h1 style={{ fontSize: "1.1rem", fontWeight: 700, color: C.navy, margin: 0 }}>
+            Nova Empresa
+          </h1>
+          <p style={{ fontSize: "0.75rem", color: C.muted, margin: 0 }}>
+            Preencha os dados e configure a assinatura
+          </p>
+        </div>
+      </div>
 
-                            <div className="mt-5 pt-3 border-top d-flex justify-content-end">
-                                <button className="btn btn-primary px-5 py-2 fw-bold" type="submit" disabled={loading}>
-                                    {loading ? "Criando..." : "Próximo Passo"}
-                                </button>
-                            </div>
-                        </form>
-                    ) : (
-                        <form onSubmit={onSubmitStep2}>
-                            <h5 className="mb-4 fw-bold">Configurar Plano e Responsável</h5>
-                            <div className="row g-4">
-                                <div className="col-12">
-                                    <label className="form-label fw-semibold">Usuário Responsável (Pagador) *</label>
-                                    <AsyncSelect
-                                        cacheOptions
-                                        loadOptions={loadPayerOptions}
-                                        defaultOptions
-                                        placeholder="Digite o nome ou e-mail do usuário..."
-                                        noOptionsMessage={() => "Nenhum usuário encontrado"}
-                                        loadingMessage={() => "Buscando..."}
-                                        onChange={(option: any) => {
-                                            setSubscriptionData(p => ({ 
-                                                ...p, 
-                                                payerUserId: option ? option.value : "" 
-                                            }));
-                                        }}
-                                        isClearable
-                                        styles={{
-                                            control: (base) => ({
-                                                ...base,
-                                                padding: "5px",
-                                                borderRadius: "8px"
-                                            })
-                                        }}
-                                    />
-                                    <div className="form-text mt-2">Este usuário será o responsável financeiro pela empresa.</div>
-                                </div>
+      <div style={{ maxWidth: 760, margin: "0 auto" }}>
+        {/* Card */}
+        <div style={{
+          backgroundColor: C.surface,
+          borderRadius: 12,
+          border: `1px solid ${C.border}`,
+          boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
+          padding: "28px 24px",
+        }}>
+          <StepBar step={step} />
 
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label fw-semibold">Plano *</label>
-                                    <select
-                                        className="form-select form-select-lg"
-                                        value={subscriptionData.planCode}
-                                        onChange={(e) => setSubscriptionData(p => ({ ...p, planCode: e.target.value as Plan }))}
-                                        required
-                                    >
-                                        <option value="STARTER">STARTER - 1 Empresa</option>
-                                        <option value="BUSINESS">BUSINESS - 5 Empresas</option>
-                                        <option value="ENTERPRISE">ENTERPRISE - 15 Empresas</option>
-                                    </select>
-                                </div>
+          {/* ── STEP 1 ─────────────────────────────────────── */}
+          {step === 1 && (
+            <form onSubmit={onSubmitStep1} noValidate>
 
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label fw-semibold">Status *</label>
-                                    <select
-                                        className="form-select form-select-lg"
-                                        value={subscriptionData.status}
-                                        onChange={(e) => setSubscriptionData(p => ({ ...p, status: e.target.value }))}
-                                        required
-                                    >
-                                        <option value="ACTIVE">Ativo</option>
-                                        <option value="PAST_DUE">Em atraso</option>
-                                        <option value="CANCELED">Cancelado</option>
-                                        <option value="TRIALING">Degustação (Trial)</option>
-                                    </select>
-                                </div>
+              {/* Identificação */}
+              <Section title="Identificação" subtitle="Nome e tipo da organização" />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginBottom: 28 }}>
+                <Field label="Nome da empresa" required error={getError("name")}>
+                  <input
+                    style={getError("name") ? INPUT_ERR : INPUT}
+                    placeholder="Ex: Condomínio Parque das Flores"
+                    value={form.name}
+                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    onBlur={() => touch("name")}
+                    required
+                  />
+                </Field>
 
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label fw-semibold">Início do Período</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={subscriptionData.currentPeriodStart}
-                                        onChange={(e) => setSubscriptionData(p => ({ ...p, currentPeriodStart: e.target.value }))}
-                                    />
-                                </div>
+                <Field label="CNPJ / CPF" error={getError("doc")}>
+                  <input
+                    style={getError("doc") ? INPUT_ERR : INPUT}
+                    placeholder="00.000.000/0000-00"
+                    value={form.docMasked}
+                    inputMode="numeric"
+                    onChange={e => {
+                      const masked = maskDoc(e.target.value);
+                      const raw = masked.replace(/\D/g, "");
+                      setForm(p => ({ ...p, doc: raw, docMasked: masked }));
+                    }}
+                    onBlur={() => touch("doc")}
+                  />
+                </Field>
+              </div>
 
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label fw-semibold">Fim do Período</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={subscriptionData.currentPeriodEnd}
-                                        onChange={(e) => setSubscriptionData(p => ({ ...p, currentPeriodEnd: e.target.value }))}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="mt-5 pt-3 border-top d-flex justify-content-between">
-                                <button className="btn btn-outline-secondary px-4 py-2" type="button" onClick={() => setStep(1)} disabled={loading}>
-                                    Voltar
-                                </button>
-                                <button className="btn btn-success px-5 py-2 fw-bold" type="submit" disabled={loading}>
-                                    {loading ? "Finalizando..." : "Concluir e Criar Empresa"}
-                                </button>
-                            </div>
-                        </form>
-                    )}
+              {/* Tipo de empresa */}
+              <div style={{ marginBottom: 28 }}>
+                <label style={LABEL}>Tipo de empresa <span style={{ color: C.error }}>*</span></label>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 8,
+                }}>
+                  {COMPANY_TYPES.map(ct => {
+                    const selected = form.companyType === ct.value;
+                    return (
+                      <button
+                        key={ct.value}
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, companyType: ct.value }))}
+                        style={{
+                          display: "flex", flexDirection: "column",
+                          alignItems: "center", gap: 4,
+                          padding: "12px 8px",
+                          borderRadius: 8,
+                          border: selected ? `2px solid ${C.blue}` : `1px solid ${C.border}`,
+                          backgroundColor: selected ? C.blueSoft : C.surface,
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <span style={{ fontSize: "1.4rem", lineHeight: 1 }}>{ct.icon}</span>
+                        <span style={{
+                          fontSize: "0.7rem", fontWeight: selected ? 700 : 500,
+                          color: selected ? C.blue : C.muted,
+                        }}>
+                          {ct.label}
+                        </span>
+                        {selected && (
+                          <span style={{
+                            fontSize: "0.6rem", backgroundColor: C.blue,
+                            color: "#fff", borderRadius: 10, padding: "1px 6px", fontWeight: 700,
+                          }}>✓</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-            </div>
-        </section>
-    );
+              </div>
+
+              {/* Endereço */}
+              <Section title="Endereço" subtitle="Localização da organização (opcional)" />
+              <div style={{ display: "grid", gap: 12, marginBottom: 28 }}>
+
+                {/* CEP + Número */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="CEP">
+                    <div style={{ position: "relative" }}>
+                      <input
+                        style={INPUT}
+                        placeholder="00000-000"
+                        value={form.zipMasked}
+                        inputMode="numeric"
+                        onChange={e => {
+                          const masked = maskCep(e.target.value);
+                          const raw = masked.replace(/\D/g, "");
+                          setForm(p => ({ ...p, zipCode: raw, zipMasked: masked }));
+                        }}
+                        onBlur={handleZipBlur}
+                      />
+                      {zipLoading && (
+                        <div style={{
+                          position: "absolute", right: 10, top: "50%",
+                          transform: "translateY(-50%)",
+                          width: 14, height: 14,
+                          border: "2px solid #e2e8f0",
+                          borderTop: `2px solid ${C.blue}`,
+                          borderRadius: "50%",
+                          animation: "spin 0.7s linear infinite",
+                        }} />
+                      )}
+                    </div>
+                  </Field>
+                  <Field label="Número">
+                    <input
+                      style={INPUT}
+                      placeholder="123"
+                      value={form.number}
+                      onChange={e => setForm(p => ({ ...p, number: e.target.value }))}
+                    />
+                  </Field>
+                </div>
+
+                {/* Logradouro */}
+                <Field label="Logradouro">
+                  <input
+                    style={INPUT}
+                    placeholder="Rua, Avenida..."
+                    value={form.street}
+                    onChange={e => setForm(p => ({ ...p, street: e.target.value }))}
+                  />
+                </Field>
+
+                {/* Bairro + Complemento */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="Bairro">
+                    <input
+                      style={INPUT}
+                      placeholder="Bairro"
+                      value={form.neighborhood}
+                      onChange={e => setForm(p => ({ ...p, neighborhood: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Complemento">
+                    <input
+                      style={INPUT}
+                      placeholder="Apto, Sala..."
+                      value={form.complement}
+                      onChange={e => setForm(p => ({ ...p, complement: e.target.value }))}
+                    />
+                  </Field>
+                </div>
+
+                {/* Cidade + UF + País */}
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+                  <Field label="Cidade">
+                    <input
+                      style={INPUT}
+                      placeholder="Cidade"
+                      value={form.city}
+                      onChange={e => setForm(p => ({ ...p, city: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="UF">
+                    <input
+                      style={INPUT}
+                      placeholder="SP"
+                      maxLength={2}
+                      value={form.state}
+                      onChange={e => setForm(p => ({ ...p, state: e.target.value.toUpperCase() }))}
+                    />
+                  </Field>
+                  <Field label="País">
+                    <input
+                      style={INPUT}
+                      value={form.country}
+                      onChange={e => setForm(p => ({ ...p, country: e.target.value }))}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                borderTop: `1px solid ${C.border}`, paddingTop: 20,
+                display: "flex", justifyContent: "flex-end",
+              }}>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: "10px 28px", borderRadius: 8,
+                    backgroundColor: loading ? "#93c5fd" : C.blue,
+                    color: "#fff", border: "none",
+                    fontWeight: 700, fontSize: "0.875rem", cursor: loading ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <span style={{
+                        width: 14, height: 14,
+                        border: "2px solid rgba(255,255,255,0.3)",
+                        borderTop: "2px solid #fff",
+                        borderRadius: "50%",
+                        display: "inline-block",
+                        animation: "spin 0.7s linear infinite",
+                      }} />
+                      Criando...
+                    </>
+                  ) : "Próximo: Assinatura →"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ── STEP 2 ─────────────────────────────────────── */}
+          {step === 2 && (
+            <form onSubmit={onSubmitStep2} noValidate>
+              <Section title="Responsável financeiro" subtitle="Usuário que será o pagador da assinatura" />
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={LABEL}>Usuário responsável <span style={{ color: C.error }}>*</span></label>
+                <AsyncSelect
+                  cacheOptions
+                  loadOptions={loadPayerOptions}
+                  defaultOptions
+                  placeholder="Digite nome ou e-mail..."
+                  noOptionsMessage={() => "Nenhum usuário encontrado"}
+                  loadingMessage={() => "Buscando..."}
+                  onChange={(opt: any) => setSub(p => ({ ...p, payerUserId: opt ? opt.value : "" }))}
+                  isClearable
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderRadius: 7,
+                      borderColor: state.isFocused ? C.borderFocus : C.border,
+                      boxShadow: state.isFocused ? `0 0 0 3px ${C.blueSoft}` : "none",
+                      fontSize: "0.875rem",
+                      minHeight: 40,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      fontSize: "0.875rem",
+                      backgroundColor: state.isSelected ? C.blue : state.isFocused ? C.blueSoft : "#fff",
+                      color: state.isSelected ? "#fff" : C.navy,
+                    }),
+                  }}
+                />
+                <p style={{ fontSize: "0.72rem", color: C.muted, marginTop: 5 }}>
+                  Este usuário será o responsável financeiro.
+                </p>
+              </div>
+
+              <Section title="Plano e período" subtitle="Configuração da assinatura inicial" />
+
+              {/* Plan cards */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={LABEL}>Plano <span style={{ color: C.error }}>*</span></label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                  {PLANS.map(pl => {
+                    const sel = sub.planCode === pl.value;
+                    return (
+                      <button
+                        key={pl.value}
+                        type="button"
+                        onClick={() => setSub(p => ({ ...p, planCode: pl.value }))}
+                        style={{
+                          padding: "12px 8px", borderRadius: 8,
+                          border: sel ? `2px solid ${C.blue}` : `1px solid ${C.border}`,
+                          backgroundColor: sel ? C.blueSoft : C.surface,
+                          cursor: "pointer", textAlign: "center",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: "0.8rem", color: sel ? C.blue : C.navy }}>
+                          {pl.label}
+                        </div>
+                        <div style={{ fontSize: "0.68rem", color: C.muted }}>{pl.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Status */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={LABEL}>Status inicial <span style={{ color: C.error }}>*</span></label>
+                <select
+                  value={sub.status}
+                  onChange={e => setSub(p => ({ ...p, status: e.target.value }))}
+                  style={{ ...INPUT, appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", paddingRight: 32 }}
+                >
+                  {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+
+              {/* Dates */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 28 }}>
+                <Field label="Início do período">
+                  <input
+                    type="date"
+                    style={INPUT}
+                    value={sub.currentPeriodStart}
+                    onChange={e => setSub(p => ({ ...p, currentPeriodStart: e.target.value }))}
+                  />
+                </Field>
+                <Field label="Fim do período">
+                  <input
+                    type="date"
+                    style={INPUT}
+                    value={sub.currentPeriodEnd}
+                    onChange={e => setSub(p => ({ ...p, currentPeriodEnd: e.target.value }))}
+                  />
+                </Field>
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                borderTop: `1px solid ${C.border}`, paddingTop: 20,
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  disabled={loading}
+                  style={{
+                    padding: "9px 20px", borderRadius: 8,
+                    border: `1px solid ${C.border}`, backgroundColor: C.surface,
+                    color: C.muted, fontWeight: 600, fontSize: "0.875rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  ← Voltar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: "10px 28px", borderRadius: 8,
+                    backgroundColor: loading ? "#86efac" : C.success,
+                    color: "#fff", border: "none",
+                    fontWeight: 700, fontSize: "0.875rem",
+                    cursor: loading ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <span style={{
+                        width: 14, height: 14,
+                        border: "2px solid rgba(255,255,255,0.3)",
+                        borderTop: "2px solid #fff",
+                        borderRadius: "50%",
+                        display: "inline-block",
+                        animation: "spin 0.7s linear infinite",
+                      }} />
+                      Finalizando...
+                    </>
+                  ) : "✓ Concluir e criar empresa"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        input:focus, select:focus { outline: none; border-color: ${C.borderFocus} !important; box-shadow: 0 0 0 3px ${C.blueSoft}; }
+        @media (max-width: 480px) {
+          .type-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .plan-grid { grid-template-columns: 1fr !important; }
+          .two-col { grid-template-columns: 1fr !important; }
+          .three-col { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
+    </section>
+  );
 }
