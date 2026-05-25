@@ -22,7 +22,58 @@ type Invoice = {
   dueDate: string;
 };
 
-import StatusBadge from "@/components/admin/StatusBadge";
+const C = {
+  navy: "#0f172a", blue: "#1d4ed8", blueSoft: "#eff6ff",
+  border: "#e2e8f0", muted: "#64748b", surface: "#ffffff",
+};
+
+const STATUS_CFG: Record<string, { label: string; bg: string; color: string; dot: string }> = {
+  PAID:     { label: "Pago",      bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
+  OPEN:     { label: "Aberto",    bg: "#fffbeb", color: "#92400e", dot: "#f59e0b" },
+  PENDING:  { label: "Pendente",  bg: "#fffbeb", color: "#92400e", dot: "#f59e0b" },
+  OVERDUE:  { label: "Vencido",   bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
+  CANCELED: { label: "Cancelado", bg: "#f1f5f9", color: "#475569", dot: "#94a3b8" },
+  DEBT:     { label: "Inadimp.",  bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
+};
+
+function DotBadge({ status }: { status: string }) {
+  const c = STATUS_CFG[status] ?? { label: status, bg: "#f1f5f9", color: "#475569", dot: "#94a3b8" };
+  return (
+    <span style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:20, fontSize:12, fontWeight:600, backgroundColor:c.bg, color:c.color, whiteSpace:"nowrap" }}>
+      <span style={{ width:6, height:6, borderRadius:"50%", backgroundColor:c.dot, flexShrink:0 }} />
+      {c.label}
+    </span>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <tr className="inv-skel">
+      {[28,25,12,12,12,10].map((w,i) => (
+        <td key={i} style={{ padding:"13px 14px", borderBottom:"1px solid #e2e8f0" }}>
+          <div style={{ height:12, width:`${w}%`, borderRadius:6, backgroundColor:"#e2e8f0" }} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="inv-skel" style={{ background:"#fff", borderRadius:12, padding:16, border:"1px solid #e2e8f0" }}>
+      {[50,35,20].map((w,i) => (
+        <div key={i} style={{ height:12, width:`${w}%`, borderRadius:6, backgroundColor:"#e2e8f0", marginBottom:8 }} />
+      ))}
+      <div style={{ display:"flex", justifyContent:"flex-end", marginTop:10 }}>
+        <div style={{ height:28, width:100, borderRadius:8, backgroundColor:"#e2e8f0" }} />
+      </div>
+    </div>
+  );
+}
+
+const SEL: React.CSSProperties = { width:"100%", padding:"9px 12px", borderRadius:8, border:"1.5px solid #e2e8f0", fontSize:13, color:"#0f172a", background:"#fff", outline:"none" };
+const TH: React.CSSProperties = { padding:"11px 14px", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em", color:"#64748b", backgroundColor:"#f8fafc", borderBottom:"1px solid #e2e8f0" };
+const TD: React.CSSProperties = { padding:"13px 14px", fontSize:13, color:"#0f172a", borderBottom:"1px solid #e2e8f0", verticalAlign:"middle" };
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -31,26 +82,17 @@ export default function InvoicesPage() {
   const [size, setSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [filters, setFilters] = useState({
-      status: "",
-      periodStart: "",
-      periodEnd: "",
-      dueDateStart: "",
-      dueDateEnd: "",
-      payerUserId: "",
+    status: "", periodStart: "", periodEnd: "",
+    dueDateStart: "", dueDateEnd: "", payerUserId: "",
   });
   const [payerFilter, setPayerFilter] = useState<{ value: string; label: string } | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
-
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  useEffect(() => { setIsMounted(true); }, []);
 
   useEffect(() => {
-    if (isMounted) {
-      fetchInvoices();
-    }
+    if (isMounted) fetchInvoices();
   }, [page, size, isMounted]);
 
   if (!isMounted) return null;
@@ -59,80 +101,69 @@ export default function InvoicesPage() {
     try {
       setLoading(true);
       const res = await api.get("/private/admin/billing/invoices", {
-        params: { 
-          ...filters, 
-          payerUserId: filters.payerUserId || undefined,
-          page, 
-          size 
-        },
+        params: { ...filters, payerUserId: filters.payerUserId || undefined, page, size },
       });
-      
-      const content = res.data.content || [];
-      
-      setInvoices(content);
+      setInvoices(res.data.content || []);
       setTotalPages(res.data.totalPages || 0);
-    } catch (err) {
-      console.error("Error fetching invoices", err);
+    } catch {
       toast.error("Erro ao carregar faturas");
     } finally {
       setLoading(false);
     }
   }
 
-  function handleFilter() {
-    setPage(0);
-    fetchInvoices();
-  }
+  function handleFilter() { setPage(0); fetchInvoices(); }
 
   function handleClear() {
-    setFilters({
-      status: "",
-      periodStart: "",
-      periodEnd: "",
-      dueDateStart: "",
-      dueDateEnd: "",
-      payerUserId: "",
-    });
+    setFilters({ status:"", periodStart:"", periodEnd:"", dueDateStart:"", dueDateEnd:"", payerUserId:"" });
     setPayerFilter(null);
   }
 
   async function loadPayerOptions(inputValue: string) {
     if (!inputValue || inputValue.length < 3) return [];
-
     try {
       const data = await adminBillingService.listAccounts({ name: inputValue });
       return (data.content || []).map((account: any) => ({
         value: String(account.userId),
         label: account.name,
       }));
-    } catch (err) {
-      console.error(err);
+    } catch {
       return [];
     }
   }
 
   return (
     <BillingAdminLayout>
-      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4 gap-3">
-        <h5 className="fw-bold m-0">Filtros e Faturas</h5>
+      <style>{`
+        @keyframes inv-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+        .inv-skel { animation: inv-pulse 1.5s ease-in-out infinite; }
+        .inv-tbl { display: block; }
+        .inv-cards { display: none; }
+        @media (max-width: 639px) {
+          .inv-tbl { display: none !important; }
+          .inv-cards { display: flex !important; flex-direction: column; gap: 12px; }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 }}>
+        <h6 style={{ fontWeight:700, margin:0, color:C.navy }}>Faturas</h6>
         <button
-          className="btn btn-primary btn-sm align-self-stretch align-self-sm-center"
           data-bs-toggle="modal"
           data-bs-target="#generateInvoicesModal"
+          style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"8px 18px", borderRadius:8, backgroundColor:C.blue, color:"#fff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}
         >
           Gerar Faturas
         </button>
       </div>
 
-      <div className="mb-4">
-        <div className="row g-3">
-          <div className="col-12 col-md-3">
-            <label className="form-label small fw-medium">Status</label>
-            <select
-              className="form-select"
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            >
+      {/* Filters */}
+      <div style={{ background:"#f8fafc", borderRadius:10, padding:16, border:`1px solid ${C.border}`, marginBottom:24 }}>
+        <div style={{ fontSize:12, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:12 }}>Filtros</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:12 }}>
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:C.muted, display:"block", marginBottom:5 }}>Status</label>
+            <select style={SEL} value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}>
               <option value="">Todos</option>
               <option value="OPEN">Aberto</option>
               <option value="PAID">Pago</option>
@@ -140,125 +171,128 @@ export default function InvoicesPage() {
               <option value="OVERDUE">Vencido</option>
             </select>
           </div>
-          <div className="col-12 col-sm-6 col-md-2">
-            <label className="form-label small fw-medium">Data Vencimento Início</label>
-            <input
-              type="date"
-              className="form-control"
-              value={filters.dueDateStart}
-              onChange={(e) => setFilters({ ...filters, dueDateStart: e.target.value })}
-            />
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:C.muted, display:"block", marginBottom:5 }}>Vencimento início</label>
+            <input type="date" style={SEL} value={filters.dueDateStart} onChange={e => setFilters(f => ({ ...f, dueDateStart: e.target.value }))} />
           </div>
-          <div className="col-12 col-sm-6 col-md-2">
-            <label className="form-label small fw-medium">Data Vencimento Fim</label>
-            <input
-              type="date"
-              className="form-control"
-              value={filters.dueDateEnd}
-              onChange={(e) => setFilters({ ...filters, dueDateEnd: e.target.value })}
-            />
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:C.muted, display:"block", marginBottom:5 }}>Vencimento fim</label>
+            <input type="date" style={SEL} value={filters.dueDateEnd} onChange={e => setFilters(f => ({ ...f, dueDateEnd: e.target.value }))} />
           </div>
-          <div className="col-12 col-md-3">
-            <label className="form-label small fw-medium">Pagador</label>
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:C.muted, display:"block", marginBottom:5 }}>Pagador</label>
             <AsyncSelect
               cacheOptions
               loadOptions={loadPayerOptions}
               defaultOptions
               value={payerFilter}
-              onChange={(option) => {
+              onChange={option => {
                 setPayerFilter(option);
-                setFilters({ ...filters, payerUserId: option ? option.value : "" });
+                setFilters(f => ({ ...f, payerUserId: option ? option.value : "" }));
               }}
               placeholder="Buscar por nome..."
-              noOptionsMessage={() => "Nenhum pagador encontrado"}
+              noOptionsMessage={() => "Nenhum pagador"}
               loadingMessage={() => "Buscando..."}
               isClearable
               styles={{
-                control: (base) => ({
-                  ...base,
-                  minHeight: "38px",
-                  borderRadius: "0.375rem",
-                  borderColor: "#dee2e6",
-                }),
+                control: base => ({ ...base, minHeight:38, borderRadius:8, borderColor:"#e2e8f0", fontSize:13 }),
+                menu: base => ({ ...base, zIndex: 9999 }),
               }}
             />
           </div>
-          <div className="col-12 col-md-2 d-flex align-items-end gap-2">
-            <button className="btn btn-primary btn-sm flex-fill" onClick={handleFilter}>
-              Filtrar
-            </button>
-            <button className="btn btn-outline-secondary btn-sm flex-fill" onClick={handleClear}>
-              Limpar
-            </button>
-          </div>
+        </div>
+        <div style={{ display:"flex", gap:10, marginTop:14 }}>
+          <button onClick={handleFilter}
+            style={{ padding:"8px 20px", borderRadius:8, backgroundColor:C.blue, color:"#fff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>
+            Filtrar
+          </button>
+          <button onClick={handleClear}
+            style={{ padding:"8px 20px", borderRadius:8, border:`1px solid ${C.border}`, color:C.muted, fontSize:13, fontWeight:600, background:"#fff", cursor:"pointer" }}>
+            Limpar
+          </button>
         </div>
       </div>
 
-      <div className="table-responsive">
-        <table className="table table-hover align-middle mb-0">
-          <thead className="table-light">
-            <tr>
-              <th>Período</th>
-              <th>Pagador</th>
-              <th>Total</th>
-              <th>Status</th>
-              <th>Vencimento</th>
-              <th className="text-end">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+      <div style={{ background:"#fff", borderRadius:12, border:`1px solid ${C.border}`, overflow:"hidden", marginBottom:20 }}>
+        {/* Desktop */}
+        <div className="inv-tbl" style={{ overflowX:"auto" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <thead>
               <tr>
-                <td colSpan={6} className="text-center py-5 text-muted">
-                  Carregando...
-                </td>
+                <th style={TH}>Período</th>
+                <th style={TH}>Pagador</th>
+                <th style={TH}>Total</th>
+                <th style={TH}>Status</th>
+                <th style={TH}>Vencimento</th>
+                <th style={{ ...TH, textAlign:"right" }} />
               </tr>
-            ) : invoices.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="text-center py-5 text-muted">
-                  Nenhuma fatura encontrada
-                </td>
-              </tr>
-            ) : (
-              invoices.map((inv) => (
-                <tr key={inv.id}>
-                  <td>
-                    {formatDate(inv.periodStart)} - {formatDate(inv.periodEnd)}
-                  </td>
-                  <td>
-                    {inv.payerUserName || inv.payerUserId}
-                  </td>
-                  <td className="fw-semibold">{formatMoney(inv.totalCents)}</td>
-                  <td>
-                    <StatusBadge status={inv.status} />
-                  </td>
-                  <td>{formatDate(inv.dueDate)}</td>
-                  <td className="text-end">
-                    <button
-                      className="btn btn-sm btn-outline-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#invoiceDetailsModal"
-                      onClick={() => setSelectedInvoiceId(inv.id)}
-                    >
-                      Ver Detalhes
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading
+                ? Array.from({ length: 5 }).map((_,i) => <SkeletonRow key={i} />)
+                : invoices.length === 0
+                  ? <tr><td colSpan={6} style={{ ...TD, textAlign:"center", color:C.muted, padding:48 }}>Nenhuma fatura encontrada</td></tr>
+                  : invoices.map(inv => (
+                    <tr key={inv.id}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      style={{ transition:"background 0.15s" }}>
+                      <td style={{ ...TD, fontSize:12, color:C.muted }}>
+                        {formatDate(inv.periodStart)} — {formatDate(inv.periodEnd)}
+                      </td>
+                      <td style={TD}>{inv.payerUserName || inv.payerUserId}</td>
+                      <td style={{ ...TD, fontWeight:700 }}>{formatMoney(inv.totalCents)}</td>
+                      <td style={TD}><DotBadge status={inv.status} /></td>
+                      <td style={{ ...TD, fontSize:12, color:C.muted }}>{formatDate(inv.dueDate)}</td>
+                      <td style={{ ...TD, textAlign:"right" }}>
+                        <button
+                          data-bs-toggle="modal"
+                          data-bs-target="#invoiceDetailsModal"
+                          onClick={() => setSelectedInvoiceId(inv.id)}
+                          style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${C.blue}`, color:C.blue, fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}
+                        >
+                          Ver Detalhes
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile */}
+        <div className="inv-cards" style={{ padding:16 }}>
+          {loading
+            ? Array.from({ length: 4 }).map((_,i) => <CardSkeleton key={i} />)
+            : invoices.map(inv => (
+              <div key={inv.id} style={{ background:"#fff", borderRadius:12, padding:16, border:`1px solid ${C.border}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:14, color:C.navy }}>{inv.payerUserName || inv.payerUserId}</div>
+                    <div style={{ fontSize:12, color:C.muted, marginTop:2 }}>{formatDate(inv.periodStart)} — {formatDate(inv.periodEnd)}</div>
+                  </div>
+                  <DotBadge status={inv.status} />
+                </div>
+                <div style={{ fontSize:13, fontWeight:700, color:C.blue, marginBottom:4 }}>{formatMoney(inv.totalCents)}</div>
+                <div style={{ fontSize:12, color:C.muted, marginBottom:12 }}>Vencimento: {formatDate(inv.dueDate)}</div>
+                <div style={{ display:"flex", justifyContent:"flex-end" }}>
+                  <button
+                    data-bs-toggle="modal"
+                    data-bs-target="#invoiceDetailsModal"
+                    onClick={() => setSelectedInvoiceId(inv.id)}
+                    style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${C.blue}`, color:C.blue, fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}
+                  >
+                    Ver Detalhes
+                  </button>
+                </div>
+              </div>
+            ))
+          }
+        </div>
       </div>
 
-      <div className="mt-4">
-        <Pagination
-          page={page}
-          size={size}
-          totalPages={totalPages}
-          onChange={setPage}
-          onSizeChange={setSize}
-        />
-      </div>
+      <Pagination page={page} size={size} totalPages={totalPages} onChange={setPage} onSizeChange={setSize} />
 
       <GenerateInvoicesModal />
       <InvoiceDetailsModal invoiceId={selectedInvoiceId} />

@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import BillingAdminLayout from "../BillingAdminLayout";
-import {formatMoney, formatDateTime} from "@/lib/formatters";
+import { formatMoney, formatDateTime } from "@/lib/formatters";
 import { sourceTypeLabelMap, subscriptionStatusLabelMap } from "@/lib/enums/labels";
+import PlanChangeDialog from "@/components/billing/PlanChangeDialog";
+import ConfirmModal from "@/components/ConfirmModal";
 
 type Plan = {
   code: string;
@@ -25,25 +27,76 @@ type Subscription = {
   periodStart: string;
   periodEnd: string;
   totalCents: number;
-  organizationCode?: string; // Mantido para compatibilidade se necessário
-  organizationName?: string; // Mantido para compatibilidade se necessário
+  organizationCode?: string;
+  organizationName?: string;
 };
 
-import PlanChangeDialog from "@/components/billing/PlanChangeDialog";
-import ConfirmModal from "@/components/ConfirmModal";
-import StatusBadge from "@/components/admin/StatusBadge";
+const C = {
+  navy: "#0f172a", blue: "#1d4ed8", blueSoft: "#eff6ff",
+  border: "#e2e8f0", muted: "#64748b", surface: "#ffffff",
+  error: "#dc2626",
+};
+
+const STATUS_CFG: Record<string, { label: string; bg: string; color: string; dot: string }> = {
+  ACTIVE:    { label: "Ativo",     bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
+  PAST_DUE:  { label: "Atrasado",  bg: "#fffbeb", color: "#92400e", dot: "#f59e0b" },
+  OVERDUE:   { label: "Vencido",   bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
+  CANCELED:  { label: "Cancelado", bg: "#f1f5f9", color: "#475569", dot: "#94a3b8" },
+  SUSPENDED: { label: "Suspenso",  bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
+  TRIALING:  { label: "Trial",     bg: C.blueSoft, color: C.blue,   dot: "#3b82f6" },
+  BLOCKED:   { label: "Bloqueado", bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
+  INACTIVE:  { label: "Inativo",   bg: "#f1f5f9", color: "#475569", dot: "#94a3b8" },
+};
+
+function DotBadge({ status }: { status: string }) {
+  const c = STATUS_CFG[status] ?? { label: status, bg: "#f1f5f9", color: "#475569", dot: "#94a3b8" };
+  return (
+    <span style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:20, fontSize:12, fontWeight:600, backgroundColor:c.bg, color:c.color, whiteSpace:"nowrap" }}>
+      <span style={{ width:6, height:6, borderRadius:"50%", backgroundColor:c.dot, flexShrink:0 }} />
+      {c.label}
+    </span>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <tr className="sub-skel">
+      {[30,15,12,10,15,15,14].map((w,i) => (
+        <td key={i} style={{ padding:"13px 14px", borderBottom:"1px solid #e2e8f0" }}>
+          <div style={{ height:12, width:`${w}%`, borderRadius:6, backgroundColor:"#e2e8f0" }} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="sub-skel" style={{ background:"#fff", borderRadius:12, padding:16, border:"1px solid #e2e8f0" }}>
+      {[50,35,25,20].map((w,i) => (
+        <div key={i} style={{ height:12, width:`${w}%`, borderRadius:6, backgroundColor:"#e2e8f0", marginBottom:8 }} />
+      ))}
+      <div style={{ display:"flex", gap:8, marginTop:12 }}>
+        {[60,60,60].map((_,i) => (
+          <div key={i} style={{ height:28, flex:1, borderRadius:8, backgroundColor:"#e2e8f0" }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const SEL: React.CSSProperties = { width:"100%", padding:"9px 12px", borderRadius:8, border:"1.5px solid #e2e8f0", fontSize:13, color:"#0f172a", background:"#fff", outline:"none" };
+const INP: React.CSSProperties = { ...SEL };
+
+const TH: React.CSSProperties = { padding:"11px 14px", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em", color:"#64748b", backgroundColor:"#f8fafc", borderBottom:"1px solid #e2e8f0" };
+const TD: React.CSSProperties = { padding:"13px 14px", fontSize:13, color:"#0f172a", borderBottom:"1px solid #e2e8f0", verticalAlign:"middle" };
 
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    status: "",
-    planCode: "",
-    payerName: "",
-  });
+  const [filters, setFilters] = useState({ status: "", planCode: "", payerName: "" });
 
-  // Modal states
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ id: number; planCode: string; idUser: number } | null>(null);
   const [itemToCancel, setItemToCancel] = useState<{ id: number; idUser: number } | null>(null);
@@ -51,31 +104,26 @@ export default function SubscriptionsPage() {
 
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  useEffect(() => { setIsMounted(true); }, []);
 
   async function fetchPlans() {
     try {
       const res = await api.get("/private/admin/billing/plans");
       setPlans(res.data);
-    } catch (err) {
-      console.error("Error fetching plans", err);
+    } catch {
+      // silent
     }
   }
 
   async function fetchSubscriptions() {
     try {
       setLoading(true);
-
       const params = Object.fromEntries(
-          Object.entries(filters).filter(([_, v]) => v !== "" && v !== null && v !== undefined)
+        Object.entries(filters).filter(([, v]) => v !== "" && v !== null && v !== undefined)
       );
-
-      const res = await api.get("/private/admin/billing/subscriptions", { params: params });
+      const res = await api.get("/private/admin/billing/subscriptions", { params });
       setSubscriptions(res.data.content || []);
-    } catch (err) {
-      console.error("Error fetching subscriptions", err);
+    } catch {
       toast.error("Erro ao carregar assinaturas");
     } finally {
       setLoading(false);
@@ -91,18 +139,6 @@ export default function SubscriptionsPage() {
     }
   }, [isMounted, filters]);
 
-  function handleFilter() {
-    fetchSubscriptions();
-  }
-
-  function handleClear() {
-    setFilters({
-      status: "",
-      planCode: "",
-      payerName: "",
-    });
-  }
-
   if (!isMounted) return null;
 
   async function handleCancelSubscription(itemId: number, idUser: number) {
@@ -110,13 +146,12 @@ export default function SubscriptionsPage() {
       setCancelLoading(true);
       const adminToken = window.localStorage.getItem("adminToken");
       await api.post(`/private/admin/billing/subscription-items/${itemId}/cancel`, {}, {
-            headers: { "X-Admin-Token": adminToken , "X-id-User": idUser },
-        });
+        headers: { "X-Admin-Token": adminToken, "X-id-User": idUser },
+      });
       toast.success("Assinatura cancelada com sucesso!");
       setItemToCancel(null);
       fetchSubscriptions();
-    } catch (err) {
-      console.error("Error canceling subscription", err);
+    } catch {
       toast.error("Erro ao cancelar assinatura");
     } finally {
       setCancelLoading(false);
@@ -128,143 +163,140 @@ export default function SubscriptionsPage() {
     setIsPlanModalOpen(true);
   }
 
+  const actionBtns = (sub: Subscription) => sub.status === "ACTIVE" ? (
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+      <button onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
+        style={{ padding:"5px 12px", borderRadius:7, border:`1px solid ${C.blue}`, color:C.blue, fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
+        Upgrade
+      </button>
+      <button onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
+        style={{ padding:"5px 12px", borderRadius:7, border:"1px solid #64748b", color:"#64748b", fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
+        Downgrade
+      </button>
+      <button onClick={() => setItemToCancel({ id: sub.itemId, idUser: sub.idUser })}
+        style={{ padding:"5px 12px", borderRadius:7, border:`1px solid ${C.error}`, color:C.error, fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
+        Cancelar
+      </button>
+    </div>
+  ) : <span style={{ fontSize:12, color:C.muted }}>—</span>;
+
   return (
     <BillingAdminLayout>
-      <div className="mb-4">
-        <h5 className="fw-bold mb-3">Filtros</h5>
-        <div className="row g-3">
-          <div className="col-12 col-md-4">
-            <label className="form-label small fw-medium">Status</label>
-            <select
-              className="form-select"
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            >
+      <style>{`
+        @keyframes sub-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+        .sub-skel { animation: sub-pulse 1.5s ease-in-out infinite; }
+        .sub-tbl { display: block; }
+        .sub-cards { display: none; }
+        @media (max-width: 639px) {
+          .sub-tbl { display: none !important; }
+          .sub-cards { display: flex !important; flex-direction: column; gap: 12px; padding: 4px 0; }
+        }
+      `}</style>
+
+      {/* Filters */}
+      <div style={{ marginBottom:28 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:C.navy, marginBottom:12, textTransform:"uppercase", letterSpacing:"0.05em" }}>Filtros</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:12 }}>
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:C.muted, display:"block", marginBottom:5 }}>Status</label>
+            <select style={SEL} value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}>
               <option value="">Todos</option>
-              {Object.entries(subscriptionStatusLabelMap).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
+              {Object.entries(subscriptionStatusLabelMap).map(([k, label]) => (
+                <option key={k} value={k}>{String(label)}</option>
               ))}
             </select>
           </div>
-          <div className="col-12 col-md-4">
-            <label className="form-label small fw-medium">Plano</label>
-            <select
-              className="form-select"
-              value={filters.planCode}
-              onChange={(e) => setFilters({ ...filters, planCode: e.target.value })}
-            >
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:C.muted, display:"block", marginBottom:5 }}>Plano</label>
+            <select style={SEL} value={filters.planCode} onChange={e => setFilters(f => ({ ...f, planCode: e.target.value }))}>
               <option value="">Todos</option>
-              {plans.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.name}
-                </option>
-              ))}
+              {plans.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
             </select>
           </div>
-          <div className="col-12 col-md-4">
-            <label className="form-label small fw-medium">Nome do Responsável</label>
-            <input
-              type="text"
-              className="form-control"
-              value={filters.payerName}
-              onChange={(e) => setFilters({ ...filters, payerName: e.target.value })}
-              placeholder="Pesquisar por nome..."
-            />
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:C.muted, display:"block", marginBottom:5 }}>Responsável</label>
+            <input style={INP} type="text" placeholder="Pesquisar por nome..."
+              value={filters.payerName} onChange={e => setFilters(f => ({ ...f, payerName: e.target.value }))} />
           </div>
-          <div className="col-12 d-flex gap-2">
-            <button className="btn btn-primary btn-sm px-4 flex-fill flex-md-initial" onClick={handleFilter}>
-              Filtrar
-            </button>
-            <button className="btn btn-outline-secondary btn-sm px-4 flex-fill flex-md-initial" onClick={handleClear}>
-              Limpar
-            </button>
-          </div>
+        </div>
+        <div style={{ display:"flex", gap:10, marginTop:14 }}>
+          <button onClick={() => fetchSubscriptions()}
+            style={{ padding:"8px 20px", borderRadius:8, backgroundColor:C.blue, color:"#fff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>
+            Filtrar
+          </button>
+          <button onClick={() => setFilters({ status:"", planCode:"", payerName:"" })}
+            style={{ padding:"8px 20px", borderRadius:8, border:`1px solid ${C.border}`, color:C.muted, fontSize:13, fontWeight:600, background:"#fff", cursor:"pointer" }}>
+            Limpar
+          </button>
         </div>
       </div>
 
-      <div className="table-responsive">
-        <table className="table table-hover align-middle mb-0">
-          <thead className="table-light">
-            <tr>
-              <th>Nome do Responsável</th>
-              <th>Tipo</th>
-              <th>Status</th>
-              <th>Valor</th>
-              <th>Início</th>
-              <th>Fim</th>
-              <th className="text-end">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+      <div style={{ background:"#fff", borderRadius:12, border:`1px solid ${C.border}`, overflow:"hidden" }}>
+        {/* Desktop */}
+        <div className="sub-tbl" style={{ overflowX:"auto" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <thead>
               <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  Carregando...
-                </td>
+                <th style={TH}>Responsável</th>
+                <th style={TH}>Tipo</th>
+                <th style={TH}>Status</th>
+                <th style={TH}>Valor</th>
+                <th style={TH}>Início</th>
+                <th style={TH}>Fim</th>
+                <th style={{ ...TH, textAlign:"right" }}>Ações</th>
               </tr>
-            ) : subscriptions.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  Nenhuma assinatura encontrada
-                </td>
-              </tr>
-            ) : (
-              subscriptions.map((sub, index) => (
-                <tr key={sub.subscriptionId || index}>
-                  <td>
-                    <div className="fw-semibold">{sub.payerName}</div>
-                  </td>
-                  <td>{sourceTypeLabelMap[sub.sourceType] || sub.sourceType}</td>
-                  <td>
-                    <StatusBadge status={sub.status} />
-                  </td>
-                  <td>{formatMoney(sub.totalCents)}</td>
-                  <td>{formatDateTime(sub.periodStart)}</td>
-                  <td>{formatDateTime(sub.periodEnd)}</td>
-                    <td className="text-end">
-                        {sub.status === "ACTIVE" ? (
-                            <div className="d-flex justify-content-end gap-2">
-                                <button
-                                    className="btn btn-sm btn-outline-primary"
-                                    onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
-                                >
-                                    Upgrade
-                                </button>
+            </thead>
+            <tbody>
+              {loading
+                ? Array.from({ length: 5 }).map((_,i) => <SkeletonRow key={i} />)
+                : subscriptions.length === 0
+                  ? <tr><td colSpan={7} style={{ ...TD, textAlign:"center", color:C.muted, padding:48 }}>Nenhuma assinatura encontrada</td></tr>
+                  : subscriptions.map((sub, idx) => (
+                    <tr key={sub.subscriptionId || idx}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      style={{ transition:"background 0.15s" }}>
+                      <td style={TD}><span style={{ fontWeight:600 }}>{sub.payerName}</span></td>
+                      <td style={{ ...TD, color:C.muted, fontSize:12 }}>{sourceTypeLabelMap[sub.sourceType] ?? sub.sourceType}</td>
+                      <td style={TD}><DotBadge status={sub.status} /></td>
+                      <td style={{ ...TD, fontWeight:600 }}>{formatMoney(sub.totalCents)}</td>
+                      <td style={{ ...TD, fontSize:12, color:C.muted }}>{formatDateTime(sub.periodStart)}</td>
+                      <td style={{ ...TD, fontSize:12, color:C.muted }}>{formatDateTime(sub.periodEnd)}</td>
+                      <td style={{ ...TD, textAlign:"right" }}>{actionBtns(sub)}</td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
 
-                                <button
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
-                                >
-                                    Downgrade
-                                </button>
-
-                                <button
-                                    className="btn btn-sm btn-outline-danger"
-                                    onClick={() => setItemToCancel({ id: sub.itemId, idUser: sub.idUser })}
-                                >
-                                    Cancelar
-                                </button>
-                            </div>
-                        ) : (
-                            <span className="text-muted small">Sem ações disponíveis</span>
-                        )}
-                    </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        {/* Mobile */}
+        <div className="sub-cards" style={{ padding:"12px 0" }}>
+          {loading
+            ? Array.from({ length: 4 }).map((_,i) => <CardSkeleton key={i} />)
+            : subscriptions.map((sub, idx) => (
+              <div key={sub.subscriptionId || idx} style={{ background:"#fff", borderRadius:12, padding:16, border:`1px solid ${C.border}`, margin:"0 4px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                  <div style={{ fontWeight:700, fontSize:14, color:C.navy }}>{sub.payerName}</div>
+                  <DotBadge status={sub.status} />
+                </div>
+                <div style={{ fontSize:12, color:C.muted, marginBottom:4 }}>
+                  {sourceTypeLabelMap[sub.sourceType] ?? sub.sourceType} · <strong style={{ color:C.navy }}>{formatMoney(sub.totalCents)}</strong>
+                </div>
+                <div style={{ fontSize:12, color:C.muted, marginBottom:12 }}>
+                  {formatDateTime(sub.periodStart)} → {formatDateTime(sub.periodEnd)}
+                </div>
+                {actionBtns(sub)}
+              </div>
+            ))
+          }
+        </div>
       </div>
 
       {isPlanModalOpen && selectedItem && (
         <PlanChangeDialog
           show={isPlanModalOpen}
-          onClose={() => {
-            setIsPlanModalOpen(false);
-            setSelectedItem(null);
-          }}
+          onClose={() => { setIsPlanModalOpen(false); setSelectedItem(null); }}
           onSuccess={fetchSubscriptions}
           itemId={selectedItem.id}
           currentPlanCode={selectedItem.planCode}
