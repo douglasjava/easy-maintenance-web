@@ -12,6 +12,7 @@ import Link from "next/link";
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Plan = "STARTER" | "BUSINESS" | "ENTERPRISE";
+type PaymentMethod = "PIX" | "CARD" | "BOLETO";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 
@@ -188,8 +189,15 @@ const EMPTY_FORM = {
   complement: "", neighborhood: "", city: "", state: "", country: "BR",
 };
 
+const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: string }[] = [
+  { value: "PIX",    label: "PIX",              icon: "⚡" },
+  { value: "CARD",   label: "Cartão de Crédito", icon: "💳" },
+  { value: "BOLETO", label: "Boleto",            icon: "📄" },
+];
+
 const EMPTY_SUB = {
   payerUserId: "", planCode: "STARTER" as Plan,
+  paymentMethod: "" as PaymentMethod | "",
   status: "ACTIVE", currentPeriodStart: "", currentPeriodEnd: "",
 };
 
@@ -297,7 +305,7 @@ export default function CreateOrganizationPage() {
 
   async function onSubmitStep2(e: React.FormEvent) {
     e.preventDefault();
-    if (!sub.payerUserId || !sub.planCode) {
+    if (!sub.payerUserId || !sub.planCode || !sub.paymentMethod) {
       toast.error("Preencha os campos obrigatórios.");
       return;
     }
@@ -307,6 +315,7 @@ export default function CreateOrganizationPage() {
     const payload = {
       payerUserId: Number(sub.payerUserId),
       planCode: sub.planCode,
+      paymentMethod: sub.paymentMethod,
       status: sub.status,
       currentPeriodStart: toTs(sub.currentPeriodStart),
       currentPeriodEnd: toTs(sub.currentPeriodEnd),
@@ -612,6 +621,46 @@ export default function CreateOrganizationPage() {
                 <p style={{ fontSize: "0.72rem", color: C.muted, marginTop: 5 }}>
                   Este usuário será o responsável financeiro.
                 </p>
+              </div>
+
+              <Section title="Forma de pagamento" subtitle="Método preferencial de cobrança" />
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={LABEL}>Forma de pagamento <span style={{ color: C.error }}>*</span></label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                  {PAYMENT_METHODS.map(pm => {
+                    const sel = sub.paymentMethod === pm.value;
+                    return (
+                      <button
+                        key={pm.value}
+                        type="button"
+                        onClick={() => setSub(p => ({ ...p, paymentMethod: pm.value }))}
+                        style={{
+                          display: "flex", flexDirection: "column",
+                          alignItems: "center", gap: 4,
+                          padding: "12px 8px", borderRadius: 8,
+                          border: sel ? `2px solid ${C.blue}` : `1px solid ${C.border}`,
+                          backgroundColor: sel ? C.blueSoft : C.surface,
+                          cursor: "pointer", transition: "all 0.15s",
+                        }}
+                      >
+                        <span style={{ fontSize: "1.4rem", lineHeight: 1 }}>{pm.icon}</span>
+                        <span style={{
+                          fontSize: "0.7rem", fontWeight: sel ? 700 : 500,
+                          color: sel ? C.blue : C.muted,
+                        }}>
+                          {pm.label}
+                        </span>
+                        {sel && (
+                          <span style={{
+                            fontSize: "0.6rem", backgroundColor: C.blue,
+                            color: "#fff", borderRadius: 10, padding: "1px 6px", fontWeight: 700,
+                          }}>✓</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <Section title="Plano e período" subtitle="Configuração da assinatura inicial" />
