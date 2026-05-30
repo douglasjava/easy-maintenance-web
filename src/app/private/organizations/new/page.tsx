@@ -12,7 +12,7 @@ import Link from "next/link";
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Plan = "STARTER" | "BUSINESS" | "ENTERPRISE";
-type PaymentMethod = "PIX" | "CARD" | "BOLETO";
+type PaymentMethod = "PIX" | "CARD";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 
@@ -190,9 +190,8 @@ const EMPTY_FORM = {
 };
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: string }[] = [
-  { value: "PIX",    label: "PIX",              icon: "⚡" },
-  { value: "CARD",   label: "Cartão de Crédito", icon: "💳" },
-  { value: "BOLETO", label: "Boleto",            icon: "📄" },
+  { value: "PIX",  label: "PIX",              icon: "⚡" },
+  { value: "CARD", label: "Cartão de Crédito", icon: "💳" },
 ];
 
 const EMPTY_SUB = {
