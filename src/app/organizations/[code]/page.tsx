@@ -62,7 +62,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
         if (found) {
           setData(found);
         } else {
-          toast.error("Organização não encontrada.");
+          toast.error("Empresa não encontrada.");
           router.push("/organizations");
         }
       } catch (err) {
@@ -128,7 +128,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
         <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
           <div>
             <h2 className="mb-1 fw-bold">{org.name}</h2>
-            <p className="text-muted mb-0">Detalhes completos da organização e assinatura</p>
+            <p className="text-muted mb-0">Detalhes completos da empresa e assinatura</p>
           </div>
           <button onClick={handleAccess} className="btn btn-primary px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2">
             Selecionar e Acessar

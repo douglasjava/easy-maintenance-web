@@ -41,7 +41,7 @@ export const subscriptionStatusLabelMap: Record<string, string> = {
 
 export const sourceTypeLabelMap: Record<string, string> = {
     USER: "Usuário",
-    ORGANIZATION: "Organização"
+    ORGANIZATION: "Empresa"
 }
 
 export const billingCycleLabelMap: Record<string, string> = {

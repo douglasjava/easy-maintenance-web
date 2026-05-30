@@ -178,7 +178,7 @@ export default function BillingOverviewPage() {
 
       {/* Metrics */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:16, marginBottom:32 }}>
-        <MetricCard label="Total Organizações" value={data?.counters.totalOrganizations ?? 0} icon="🏢" />
+        <MetricCard label="Total Empresas" value={data?.counters.totalOrganizations ?? 0} icon="🏢" />
         <MetricCard label="Total Pagadores"    value={data?.counters.totalPayers ?? 0}         icon="👥" />
         <MetricCard label="Receita Mensal Est." value={formatMoney(data?.counters.estimatedMonthlyRevenueCents ?? 0)} icon="💰" accent />
       </div>

@@ -118,12 +118,12 @@ export default function NewOrganizationPage() {
                 await api.post(`/organizations/${orgCode}/users/${userId}`);
             }
 
-            toast.success("Organização criada com sucesso. Agora configure a assinatura.");
+            toast.success("Empresa criada com sucesso. Agora configure a assinatura.");
             setCreatedOrgCode(orgCode);
             setStep(2);
         } catch (err: any) {
             console.error("Error creating organization", err);
-            toast.error("Erro ao criar organização. Verifique os dados e tente novamente.");
+            toast.error("Erro ao criar empresa. Verifique os dados e tente novamente.");
         } finally {
             setLoading(false);
         }
@@ -177,7 +177,7 @@ export default function NewOrganizationPage() {
                 <div className="d-flex align-items-center justify-content-between mb-4">
                     <div>
                         <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
-                            Nova Organização
+                            Nova Empresa
                         </h1>
                         <p className="text-muted mt-1 mb-0">
                             Cadastre a empresa, condomínio ou cliente que utilizará o sistema
@@ -201,7 +201,7 @@ export default function NewOrganizationPage() {
                         <div className={`rounded-circle d-flex align-items-center justify-content-center mx-2 ${step === 1 ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ width: 32, height: 32 }}>
                             {step > 1 ? '✓' : '2'}
                         </div>
-                        <div className="fw-medium" style={{ color: step === 1 ? COLORS.primaryDark : '#6c757d' }}>Organização</div>
+                        <div className="fw-medium" style={{ color: step === 1 ? COLORS.primaryDark : '#6c757d' }}>Empresa</div>
                         <div className="bg-secondary opacity-25 mx-2" style={{ width: 50, height: 2 }}></div>
 
                         <div className={`rounded-circle d-flex align-items-center justify-content-center ${step === 2 ? 'bg-primary text-white' : 'bg-light text-muted border'}`} style={{ width: 32, height: 32 }}>

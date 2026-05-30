@@ -38,7 +38,10 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
     const [loadingPayment, setLoadingPayment] = useState(false);
     const [paymentForm, setPaymentForm] = useState({
+        name: "",
         billingEmail: "",
+        paymentMethod: "PIX",
+        planCode: "STARTER",
         doc: "",
         street: "",
         number: "",
@@ -112,7 +115,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             setOrgCount(data.length);
         } catch (err) {
             console.error(err);
-            toast.error("Erro ao carregar organizações do usuário.");
+            toast.error("Erro ao carregar empresas do usuário.");
         } finally {
             setLoadingOrgs(false);
         }
@@ -141,20 +144,26 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     const fetchUserPayment = useCallback(async () => {
         try {
             setLoadingPayment(true);
-            const data = await adminBillingService.getUserAccount(id);
+            const [accountData, subscriptionData] = await Promise.all([
+                adminBillingService.getUserAccount(id),
+                adminBillingService.getUserSubscription(id).catch(() => null),
+            ]);
 
-            if (data) {
+            if (accountData) {
                 setPaymentForm({
-                    billingEmail: data.billingEmail || "",
-                    doc: data.doc || "",
-                    street: data.street || "",
-                    number: data.number || "",
-                    neighborhood: data.neighborhood || "",
-                    city: data.city || "",
-                    state: data.state || "",
-                    zipCode: data.zipCode || "",
-                    country: data.country || "BR",
-                    status: data.status || "ACTIVE",
+                    name: accountData.name || "",
+                    billingEmail: accountData.billingEmail || "",
+                    paymentMethod: accountData.paymentMethod || "PIX",
+                    planCode: subscriptionData?.planCode || "STARTER",
+                    doc: accountData.doc || "",
+                    street: accountData.street || "",
+                    number: accountData.number || "",
+                    neighborhood: accountData.neighborhood || "",
+                    city: accountData.city || "",
+                    state: accountData.state || "",
+                    zipCode: accountData.zipCode || "",
+                    country: accountData.country || "BR",
+                    status: accountData.status || "ACTIVE",
                 });
             }
         } catch (err) {
@@ -231,12 +240,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         try {
             setUnlinking(true);
             await adminUsersService.unlinkOrganization(id, orgToUnlink.organization.code);
-            toast.success("Vínculo com a organização removido.");
+            toast.success("Vínculo com a empresa removido.");
             setOrgToUnlink(null);
             await fetchUserOrgs();
         } catch (err) {
             console.error(err);
-            toast.error("Erro ao remover vínculo com a organização.");
+            toast.error("Erro ao remover vínculo com a empresa.");
         } finally {
             setUnlinking(false);
         }
@@ -260,11 +269,11 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             if (results.length > 0) {
                 setFoundOrgs(results);
             } else {
-                toast.error("Nenhuma organização encontrada.");
+                toast.error("Nenhuma empresa encontrada.");
             }
         } catch (err) {
             console.error(err);
-            toast.error("Erro na busca de organizações.");
+            toast.error("Erro na busca de empresas.");
         } finally {
             setSearchingOrg(false);
         }
@@ -276,12 +285,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         try {
             setLinkingOrg(true);
             await adminUsersService.linkOrganization(id, selectedOrg.code);
-            toast.success("Organização vinculada com sucesso.");
+            toast.success("Empresa vinculada com sucesso.");
             resetLinkModalState();
             await fetchUserOrgs();
         } catch (err) {
             console.error(err);
-            toast.error("Erro ao vincular organização.");
+            toast.error("Erro ao vincular empresa.");
         } finally {
             setLinkingOrg(false);
         }
@@ -378,7 +387,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
     const userTabs = [
         { id: "profile", label: "Perfil" },
-        { id: "organizations", label: "Organizações" },
+        { id: "organizations", label: "Empresas" },
         { id: "payment", label: "Dados Faturamento" },
         { id: "security", label: "Segurança" },
     ];
@@ -394,7 +403,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                         <span className="text-muted d-none d-sm-inline">•</span>
                         <span className="text-muted">{roleLabelMap[user.role] || user.role}</span>
                         <span className="text-muted d-none d-sm-inline">•</span>
-                        <span className="text-muted">{orgCount} organizações vinculadas</span>
+                        <span className="text-muted">{orgCount} empresas vinculadas</span>
                     </div>
                 }
                 backUrl="/private/users"
@@ -545,6 +554,37 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
                                 <form onSubmit={handleUpdatePayment}>
                                     <div className="row g-3">
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label">Nome para Faturamento</label>
+                                            <input
+                                                className="form-control"
+                                                value={paymentForm.name}
+                                                onChange={(e) =>
+                                                    setPaymentForm((p) => ({ ...p, name: e.target.value }))
+                                                }
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label">Método de Pagamento</label>
+                                            <select
+                                                className="form-select"
+                                                value={paymentForm.paymentMethod}
+                                                onChange={(e) =>
+                                                    setPaymentForm((p) => ({
+                                                        ...p,
+                                                        paymentMethod: e.target.value,
+                                                    }))
+                                                }
+                                                required
+                                            >
+                                                <option value="PIX">PIX</option>
+                                                <option value="CARD">Cartão de Crédito</option>
+                                                <option value="BOLETO">Boleto</option>
+                                            </select>
+                                        </div>
+
                                         <div className="col-12 col-md-6">
                                             <label className="form-label">Email de Faturamento</label>
                                             <input
@@ -733,7 +773,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
             <ConfirmModal
                 show={!!orgToUnlink}
-                title="Remover Organização"
+                title="Remover Empresa"
                 message={`Tem certeza que deseja remover este usuário da empresa ${orgToUnlink?.organization.name}?`}
                 onConfirm={confirmUnlinkOrg}
                 onCancel={() => setOrgToUnlink(null)}
@@ -756,7 +796,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                     <div className="modal-dialog modal-dialog-centered" style={{ zIndex: 1060 }}>
                         <div className="modal-content shadow border-0">
                             <div className="modal-header">
-                                <h5 className="modal-title fw-bold">Vincular Organização</h5>
+                                <h5 className="modal-title fw-bold">Vincular Empresa</h5>
                                 <button
                                     type="button"
                                     className="btn-close"
@@ -770,7 +810,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                                     <input
                                         type="text"
                                         className="form-control"
-                                        placeholder="Nome da organização..."
+                                        placeholder="Nome da empresa..."
                                         value={searchOrgName}
                                         onChange={(e) => setSearchOrgName(e.target.value)}
                                         onBlur={handleSearchOrg}
@@ -840,7 +880,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                                     disabled={!selectedOrg || linkingOrg}
                                     onClick={handleLinkOrg}
                                 >
-                                    {linkingOrg ? "Vinculando..." : "Vincular à Organização"}
+                                    {linkingOrg ? "Vinculando..." : "Vincular à Empresa"}
                                 </button>
                             </div>
                         </div>

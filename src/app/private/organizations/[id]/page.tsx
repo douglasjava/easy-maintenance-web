@@ -82,7 +82,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
 
         } catch (err) {
             console.error(err);
-            toast.error("Erro ao carregar detalhes da organização.");
+            toast.error("Erro ao carregar detalhes da empresa.");
         } finally {
             setLoading(false);
         }
@@ -104,7 +104,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     }
 
     if (loading) return <div className="p-4 text-center">Carregando...</div>;
-    if (!org) return <div className="p-4 text-center text-danger">Organização não encontrada.</div>;
+    if (!org) return <div className="p-4 text-center text-danger">Empresa não encontrada.</div>;
 
     return (
         <section style={{ backgroundColor: COLORS.bg }} className="p-3">
@@ -113,7 +113,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                     <h1 className="h4 m-0" style={{ color: COLORS.primaryDark }}>
                         {org.name}
                     </h1>
-                    <p className="text-muted mt-1 mb-0">Gerenciar detalhes da organização e usuários.</p>
+                    <p className="text-muted mt-1 mb-0">Gerenciar detalhes da empresa e usuários.</p>
                 </div>
                 <Link className="btn btn-outline-secondary" href="/private/organizations">
                     ← Voltar para a lista

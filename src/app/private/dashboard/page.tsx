@@ -107,7 +107,7 @@ export default function PrivateDashboardPage() {
     : 0;
 
   const kpis = [
-    { label: "Total de Empresas", value: metrics?.totalOrganizations ?? 0, icon: "🏢", accent: C.blue,    sub: "organizações cadastradas" },
+    { label: "Total de Empresas", value: metrics?.totalOrganizations ?? 0, icon: "🏢", accent: C.blue,    sub: "empresas cadastradas" },
     { label: "Total de Usuários", value: metrics?.totalUsers ?? 0,          icon: "👥", accent: "#0891b2", sub: "usuários no sistema"       },
     { label: "Planos Ativos",     value: totalPlans,                         icon: "📊", accent: "#7c3aed", sub: "assinaturas vigentes"      },
   ];

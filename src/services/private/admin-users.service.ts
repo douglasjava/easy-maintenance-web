@@ -36,7 +36,7 @@ export type PaginatedUsers = {
 };
 
 export const adminUsersService = {
-    async list(params: { page?: number; size?: number }): Promise<PaginatedUsers> {
+    async list(params: { page?: number; size?: number; name?: string; email?: string }): Promise<PaginatedUsers> {
         const { data } = await api.get("/private/admin/users", { params });
         return data;
     },

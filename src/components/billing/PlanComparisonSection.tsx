@@ -31,8 +31,8 @@ interface Props {
 
 const FEATURE_ROWS: { key: keyof PlanFeatures; label: string; format: (v: any) => string }[] = [
   { key: "maxItems", label: "Itens cadastrados", format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
-  { key: "maxUsers", label: "Usuários por organização", format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
-  { key: "maxOrganizations", label: "Organizações", format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
+  { key: "maxUsers", label: "Usuários por empresa", format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
+  { key: "maxOrganizations", label: "Empresas", format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
   { key: "aiEnabled", label: "Assistente IA", format: (v) => (v ? "Incluso" : "Não incluso") },
   { key: "reportsEnabled", label: "Exportação de relatórios", format: (v) => (v ? "Incluso" : "Não incluso") },
   { key: "aiMonthlyCredits", label: "Créditos IA/mês", format: (v) => (v <= 0 ? "—" : String(v)) },

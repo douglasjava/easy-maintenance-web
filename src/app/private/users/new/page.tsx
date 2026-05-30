@@ -10,7 +10,7 @@ import PageHeader from "@/components/admin/PageHeader";
 type Role = "ADMIN" | "SYNDIC" | "TECH" | "READER";
 
 const C = {
-  navy: "#0f172a", blue: "#1d4ed8", blueSoft: "#eff6ff",
+  navy: "#0f172a", blue: "#0891b2", blueSoft: "#ecfeff",
   border: "#e2e8f0", borderFocus: "#3b82f6",
   muted: "#64748b", error: "#dc2626", errorBg: "#fef2f2",
   surface: "#ffffff", bg: "#f8fafc",

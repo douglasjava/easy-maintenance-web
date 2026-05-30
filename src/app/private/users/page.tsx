@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import PageHeader from "@/components/admin/PageHeader";
 
 const C = {
-  navy: "#0f172a", blue: "#1d4ed8", blueSoft: "#eff6ff",
+  navy: "#0f172a", blue: "#0891b2", blueSoft: "#ecfeff",
   border: "#e2e8f0", muted: "#64748b", surface: "#ffffff", bg: "#f8fafc",
 };
 
@@ -65,21 +65,56 @@ export default function PrivateUsersListPage() {
   const [page, setPage] = useState(0);
   const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+
+  // Filter input state (what user is typing)
+  const [inputName, setInputName] = useState("");
+  const [inputEmail, setInputEmail] = useState("");
+
+  // Applied filter state (what's actually sent to the API)
+  const [appliedName, setAppliedName] = useState("");
+  const [appliedEmail, setAppliedEmail] = useState("");
+
+  const hasActiveFilter = appliedName.trim() !== "" || appliedEmail.trim() !== "";
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await adminUsersService.list({ page, size });
+      const data = await adminUsersService.list({
+        page,
+        size,
+        name: appliedName.trim() || undefined,
+        email: appliedEmail.trim() || undefined,
+      });
       setUsers(data.content || []);
       setTotalPages(data.totalPages || 0);
+      setTotalElements(data.totalElements || 0);
     } catch {
       toast.error("Erro ao carregar usuários");
     } finally {
       setLoading(false);
     }
-  }, [page, size]);
+  }, [page, size, appliedName, appliedEmail]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  function handleSearch() {
+    setPage(0);
+    setAppliedName(inputName);
+    setAppliedEmail(inputEmail);
+  }
+
+  function handleClear() {
+    setInputName("");
+    setInputEmail("");
+    setPage(0);
+    setAppliedName("");
+    setAppliedEmail("");
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") handleSearch();
+  }
 
   const profileBtn: React.CSSProperties = {
     display:"inline-flex", alignItems:"center", padding:"6px 14px", borderRadius:8,
@@ -110,6 +145,69 @@ export default function PrivateUsersListPage() {
         }
       />
 
+      {/* Filter bar */}
+      <div style={{ background:C.surface, borderRadius:12, border:`1px solid ${C.border}`, padding:"16px 20px", marginBottom:12 }}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:10, alignItems:"flex-end" }}>
+          <div style={{ flex:"1 1 200px", minWidth:0 }}>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:4 }}>
+              Nome
+            </label>
+            <input
+              type="text"
+              value={inputName}
+              onChange={e => setInputName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Buscar por nome..."
+              style={{ width:"100%", padding:"7px 12px", borderRadius:8, border:`1px solid ${C.border}`, fontSize:13, color:C.navy, outline:"none", boxSizing:"border-box" }}
+            />
+          </div>
+
+          <div style={{ flex:"1 1 200px", minWidth:0 }}>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:4 }}>
+              E-mail
+            </label>
+            <input
+              type="text"
+              value={inputEmail}
+              onChange={e => setInputEmail(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Buscar por e-mail..."
+              style={{ width:"100%", padding:"7px 12px", borderRadius:8, border:`1px solid ${C.border}`, fontSize:13, color:C.navy, outline:"none", boxSizing:"border-box" }}
+            />
+          </div>
+
+          <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+            <button
+              onClick={handleSearch}
+              disabled={loading}
+              style={{ padding:"7px 18px", borderRadius:8, backgroundColor:C.blue, color:"#fff", fontSize:13, fontWeight:600, border:"none", cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.7 : 1 }}
+            >
+              Buscar
+            </button>
+            {hasActiveFilter && (
+              <button
+                onClick={handleClear}
+                disabled={loading}
+                style={{ padding:"7px 14px", borderRadius:8, backgroundColor:"transparent", color:C.muted, fontSize:13, fontWeight:600, border:`1px solid ${C.border}`, cursor:"pointer" }}
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {hasActiveFilter && !loading && (
+          <div style={{ marginTop:10, fontSize:12, color:C.muted }}>
+            {totalElements === 0
+              ? "Nenhum resultado encontrado"
+              : `${totalElements} ${totalElements === 1 ? "usuário encontrado" : "usuários encontrados"}`
+            }
+            {appliedName && <span style={{ marginLeft:8, padding:"2px 8px", borderRadius:12, background:C.blueSoft, color:C.blue, fontSize:11, fontWeight:600 }}>nome: {appliedName}</span>}
+            {appliedEmail && <span style={{ marginLeft:6, padding:"2px 8px", borderRadius:12, background:C.blueSoft, color:C.blue, fontSize:11, fontWeight:600 }}>e-mail: {appliedEmail}</span>}
+          </div>
+        )}
+      </div>
+
       <div style={{ background:C.surface, borderRadius:12, border:`1px solid ${C.border}`, overflow:"hidden" }}>
         {/* Desktop table */}
         <div className="usr-tbl" style={{ overflowX:"auto" }}>
@@ -127,7 +225,13 @@ export default function PrivateUsersListPage() {
               {loading
                 ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
                 : users.length === 0
-                  ? <tr><td colSpan={5} style={{ ...TD, textAlign:"center", color:C.muted, padding:48 }}>Nenhum usuário encontrado</td></tr>
+                  ? (
+                    <tr>
+                      <td colSpan={5} style={{ ...TD, textAlign:"center", color:C.muted, padding:48 }}>
+                        {hasActiveFilter ? "Nenhum usuário encontrado para esta busca" : "Nenhum usuário encontrado"}
+                      </td>
+                    </tr>
+                  )
                   : users.map(u => (
                     <tr key={u.id}
                       onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
@@ -153,21 +257,27 @@ export default function PrivateUsersListPage() {
         <div className="usr-cards">
           {loading
             ? Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
-            : users.map(u => (
-              <div key={u.id} style={{ background:C.surface, borderRadius:12, padding:16, border:`1px solid ${C.border}` }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-                  <div>
-                    <div style={{ fontWeight:700, fontSize:15, color:C.navy }}>{u.name}</div>
-                    <div style={{ fontSize:13, color:C.muted, marginTop:2 }}>{u.email}</div>
+            : users.length === 0
+              ? (
+                <div style={{ padding:32, textAlign:"center", color:C.muted, fontSize:14 }}>
+                  {hasActiveFilter ? "Nenhum usuário encontrado para esta busca" : "Nenhum usuário encontrado"}
+                </div>
+              )
+              : users.map(u => (
+                <div key={u.id} style={{ background:C.surface, borderRadius:12, padding:16, border:`1px solid ${C.border}` }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:15, color:C.navy }}>{u.name}</div>
+                      <div style={{ fontSize:13, color:C.muted, marginTop:2 }}>{u.email}</div>
+                    </div>
+                    <DotBadge status={u.status} />
                   </div>
-                  <DotBadge status={u.status} />
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12 }}>
+                    <span style={{ fontSize:12, color:C.muted }}>{u.organizationCodes?.length || 0} org(s) vinculada(s)</span>
+                    <Link href={`/private/users/${u.id}`} style={profileBtn}>Ver Perfil</Link>
+                  </div>
                 </div>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12 }}>
-                  <span style={{ fontSize:12, color:C.muted }}>{u.organizationCodes?.length || 0} org(s) vinculada(s)</span>
-                  <Link href={`/private/users/${u.id}`} style={profileBtn}>Ver Perfil</Link>
-                </div>
-              </div>
-            ))
+              ))
           }
         </div>
 

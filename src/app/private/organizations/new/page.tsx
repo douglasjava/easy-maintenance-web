@@ -289,7 +289,7 @@ export default function CreateOrganizationPage() {
       setCreatedOrgCode(orgCode);
       setStep(2);
     } catch {
-      toast.error("Falha ao criar organização.");
+      toast.error("Falha ao criar empresa.");
     } finally {
       setLoading(false);
     }
@@ -366,7 +366,7 @@ export default function CreateOrganizationPage() {
             <form onSubmit={onSubmitStep1} noValidate>
 
               {/* Identificação */}
-              <Section title="Identificação" subtitle="Nome e tipo da organização" />
+              <Section title="Identificação" subtitle="Nome e tipo da empresa" />
               <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginBottom: 28 }}>
                 <Field label="Nome da empresa" required error={getError("name")}>
                   <input
@@ -441,7 +441,7 @@ export default function CreateOrganizationPage() {
               </div>
 
               {/* Endereço */}
-              <Section title="Endereço" subtitle="Localização da organização (opcional)" />
+              <Section title="Endereço" subtitle="Localização da empresa (opcional)" />
               <div style={{ display: "grid", gap: 12, marginBottom: 28 }}>
 
                 {/* CEP + Número */}

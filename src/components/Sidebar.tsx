@@ -66,7 +66,7 @@ export default function Sidebar() {
 
     const adminItems: NavItem[] = [
         {href: "/private/users", label: "Usuários", section: "admin"},
-        {href: "/private/organizations", label: "Organizações", section: "admin"},
+        {href: "/private/organizations", label: "Empresas", section: "admin"},
         {href: "/private/admin/billing", label: "Faturamento", section: "admin"},
     ];
 
