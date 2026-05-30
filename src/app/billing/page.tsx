@@ -47,6 +47,7 @@ type Invoice = {
   periodStart: string;
   periodEnd: string;
   paymentLink?: string | null;
+  receiptUrl?: string | null;
 };
 
 type BillingAccount = {

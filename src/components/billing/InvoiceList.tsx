@@ -8,6 +8,7 @@ type Invoice = {
   periodStart: string;
   periodEnd: string;
   paymentLink?: string | null;
+  receiptUrl?: string | null;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; dot: string }> = {
@@ -146,6 +147,28 @@ export default function InvoiceList({ invoices }: { invoices: Invoice[] }) {
                         }}
                       >
                         Pagar
+                      </a>
+                    </div>
+                  )}
+                  {invoice.receiptUrl && (
+                    <div style={{ marginTop: 8 }}>
+                      <a
+                        href={invoice.receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "inline-block",
+                          padding: "3px 12px",
+                          borderRadius: 20,
+                          border: "1px solid #bbf7d0",
+                          color: "#15803d",
+                          fontWeight: 600,
+                          fontSize: "0.73rem",
+                          textDecoration: "none",
+                          backgroundColor: "#f0fdf4",
+                        }}
+                      >
+                        Ver recibo
                       </a>
                     </div>
                   )}
