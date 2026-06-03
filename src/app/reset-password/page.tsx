@@ -44,8 +44,12 @@ function ResetPasswordContent() {
             toast.success("Senha redefinida com sucesso! Faça login com sua nova senha.");
             router.push("/login");
         } catch (err: any) {
-            console.error(err);
-            toast.error("Erro ao redefinir senha. O link pode ter expirado.");
+            const status = err?.response?.status;
+            if (status === 404 || status === 409) {
+                toast.error("O link é inválido, já foi utilizado ou expirou. Solicite um novo.");
+            } else {
+                toast.error("Erro ao redefinir senha. Tente novamente.");
+            }
         } finally {
             setLoading(false);
         }
