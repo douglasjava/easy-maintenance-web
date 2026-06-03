@@ -334,7 +334,7 @@ function NewMaintenanceContent() {
                         <option value="">Selecione um item…</option>
                         {itemsCombo.map((it) => (
                           <option key={String(it.id)} value={String(it.id)}>
-                            {it.itemType} #{String(it.id)}
+                            {it.itemType}
                           </option>
                         ))}
                       </select>
