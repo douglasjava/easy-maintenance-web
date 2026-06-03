@@ -18,7 +18,7 @@ const COLORS = {
 type NavItem = {
     href: string;
     label: string;
-    section?: "main" | "actions" | "admin";
+    section?: "main" | "actions" | "resources" | "admin";
 };
 
 export default function Sidebar() {
@@ -61,8 +61,8 @@ export default function Sidebar() {
         {href: "/items/new", label: "Novo Item", section: "actions"},
         {href: "/maintenances/new", label: "Registrar Manutenção", section: "actions"},
 
-        {href: "/norms", label: "Normas e Obrigações", section: "main"},
-        {href: "/help", label: "❓ Ajuda / FAQ", section: "main"},
+        {href: "/norms", label: "Normas e Obrigações", section: "resources"},
+        {href: "/help", label: "❓ Ajuda / FAQ", section: "resources"},
     ];
 
     const adminItems: NavItem[] = [
@@ -185,6 +185,17 @@ export default function Sidebar() {
                                     </nav>
                                 </>
                             )}
+
+                            <div className="mt-2"/>
+
+                            <SectionTitle>Recursos</SectionTitle>
+                            <nav className="nav flex-column gap-1">
+                                {currentItems
+                                    .filter((i) => i.section === "resources")
+                                    .map((i) => (
+                                        <NavLink key={i.href} href={i.href} label={i.label}/>
+                                    ))}
+                            </nav>
 
                             <div className="mt-2"/>
                         </>
