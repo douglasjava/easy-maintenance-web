@@ -112,6 +112,15 @@ function ItemsContent() {
     setStackIndex(0);
   }
 
+  function clearFilters() {
+    setStatus("");
+    setCategoria("");
+    setItemType("");
+    resetCursor();
+  }
+
+  const hasActiveFilters = !!(status || categoria || itemType);
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -303,9 +312,21 @@ function ItemsContent() {
                 </div>
 
                 <div className="col-12 col-md-2">
-                  <button className="btn btn-primary btn-sm w-100" type="submit">
-                    Aplicar
-                  </button>
+                  <div className="d-flex gap-1">
+                    <button className="btn btn-primary btn-sm flex-fill" type="submit">
+                      Aplicar
+                    </button>
+                    {hasActiveFilters && (
+                      <button
+                        className="btn btn-outline-secondary btn-sm"
+                        type="button"
+                        onClick={clearFilters}
+                        title="Limpar filtros"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </form>
