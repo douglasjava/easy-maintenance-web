@@ -30,7 +30,7 @@ export default function DashboardPage() {
   // parâmetros
   const [daysAhead] = useState(30);
   const [nearDueThresholdDays] = useState(7);
-  const [limitAttention] = useState(5);
+  const [limitAttention] = useState(10);
 
   const {
     data,
