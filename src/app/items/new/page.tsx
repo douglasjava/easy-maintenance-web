@@ -408,30 +408,6 @@ function NewItemContent() {
                   </div>
                 )}
 
-                {/* Localização (opcional) */}
-                <div className="row g-3 mb-4">
-                  <div className="col-12 col-sm-8">
-                    <label style={LABEL_STYLE}>Endereço <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(opcional)</span></label>
-                    <input
-                      className="form-control"
-                      placeholder="Rua, número, bairro"
-                      value={formData.address}
-                      onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="col-12 col-sm-4">
-                    <label style={LABEL_STYLE}>Complemento <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(opcional)</span></label>
-                    <input
-                      className="form-control"
-                      placeholder="Sala, andar…"
-                      value={formData.complement}
-                      onChange={(e) => setFormData((p) => ({ ...p, complement: e.target.value }))}
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-
                 {/* CTA */}
                 <div className="d-flex flex-column flex-sm-row gap-2">
                   <button
