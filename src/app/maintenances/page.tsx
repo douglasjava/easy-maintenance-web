@@ -17,6 +17,7 @@ interface Item {
 interface Maintenance {
   id: string | number;
   itemId: string | number;
+  itemType?: string;
   performedAt: string;
   performedBy?: string;
   type: string;
@@ -443,6 +444,7 @@ function MaintenancesListContent() {
                     <thead style={{ backgroundColor: "#f8f9fa" }}>
                       <tr>
                         {[
+                          { label: "Item" },
                           { label: "Data" },
                           { label: "Tipo" },
                           { label: "Responsável" },
@@ -476,6 +478,15 @@ function MaintenancesListContent() {
                           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
                         >
+                          <td style={{ padding: "12px 16px", maxWidth: 180 }}>
+                            <span
+                              className="fw-semibold text-dark d-block"
+                              style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.85rem" }}
+                              title={m.itemType}
+                            >
+                              {m.itemType || "—"}
+                            </span>
+                          </td>
                           <td style={{ padding: "12px 16px", color: "#374151", whiteSpace: "nowrap" }}>
                             {formatDate(m.performedAt)}
                           </td>
@@ -518,7 +529,7 @@ function MaintenancesListContent() {
 
                       {maintenances.length === 0 && (
                         <tr>
-                          <td colSpan={5} style={{ padding: "56px 16px" }}>
+                          <td colSpan={6} style={{ padding: "56px 16px" }}>
                             <div className="text-center">
                               <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>🔧</div>
                               <div className="fw-semibold text-dark mb-1" style={{ fontSize: "0.9rem" }}>
@@ -564,11 +575,24 @@ function MaintenancesListContent() {
                             overflow: "hidden",
                           }}
                         >
+                          {/* Item name */}
+                          {m.itemType && (
+                            <div className="px-3 pt-3 pb-0">
+                              <span
+                                className="fw-semibold text-dark"
+                                style={{ fontSize: "0.85rem", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                title={m.itemType}
+                              >
+                                {m.itemType}
+                              </span>
+                            </div>
+                          )}
+
                           {/* Date + type */}
-                          <div className="d-flex align-items-start justify-content-between gap-2 px-3 pt-3 pb-1">
+                          <div className="d-flex align-items-start justify-content-between gap-2 px-3 pt-2 pb-1">
                             <span
-                              className="fw-semibold text-dark"
-                              style={{ fontSize: "0.9rem" }}
+                              className="text-muted"
+                              style={{ fontSize: "0.82rem" }}
                             >
                               {formatDate(m.performedAt)}
                             </span>
