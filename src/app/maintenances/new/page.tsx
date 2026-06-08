@@ -339,32 +339,6 @@ function NewMaintenanceContent() {
                         ))}
                       </select>
 
-                      {/* Items pagination — only when needed */}
-                      {itemsComboData && itemsComboData.totalPages > 1 && (
-                        <div className="d-flex justify-content-between align-items-center mt-1 gap-2">
-                          <button
-                            type="button"
-                            className="btn btn-link p-0"
-                            style={{ fontSize: "0.72rem", color: "#6b7280" }}
-                            onClick={() => setItemsPage((p) => Math.max(0, p - 1))}
-                            disabled={(itemsComboData?.number ?? 0) <= 0}
-                          >
-                            ← Anterior
-                          </button>
-                          <span style={{ fontSize: "0.72rem", color: "#9ca3af" }}>
-                            Pág. {(itemsComboData?.number ?? 0) + 1} / {itemsComboData.totalPages}
-                          </span>
-                          <button
-                            type="button"
-                            className="btn btn-link p-0"
-                            style={{ fontSize: "0.72rem", color: "#6b7280" }}
-                            onClick={() => setItemsPage((p) => p + 1)}
-                            disabled={(itemsComboData?.number ?? 0) + 1 >= itemsComboData.totalPages}
-                          >
-                            Próxima →
-                          </button>
-                        </div>
-                      )}
                     </div>
 
                     <button
