@@ -100,7 +100,7 @@ function ItemsContent() {
   const origin = searchParams.get("origin");
   const backHref = origin === "dashboard" ? "/" : "/";
 
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(searchParams.get("status") ?? "");
   const [categoria, setCategoria] = useState("");
   const [itemType, setItemType] = useState("");
   const [cursorStack, setCursorStack] = useState<(number | null)[]>([null]);

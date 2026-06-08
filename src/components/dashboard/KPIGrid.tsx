@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 interface KPIGridProps {
   kpis: {
     itemsTotal: number;
@@ -13,13 +15,28 @@ interface KPICardProps {
   accentColor: string;
   bgColor?: string;
   icon: string;
+  href?: string;
 }
 
-function KPICard({ label, value, accentColor, bgColor, icon }: KPICardProps) {
-  return (
+function KPICard({ label, value, accentColor, bgColor, icon, href }: KPICardProps) {
+  const inner = (
     <div
       className="card border-0 shadow-sm h-100 overflow-hidden"
-      style={{ borderRadius: 12, backgroundColor: bgColor ?? "#fff" }}
+      style={{
+        borderRadius: 12,
+        backgroundColor: bgColor ?? "#fff",
+        cursor: href ? "pointer" : "default",
+        transition: "box-shadow 0.15s, transform 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        if (!href) return;
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.12)";
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "";
+        (e.currentTarget as HTMLDivElement).style.transform = "";
+      }}
     >
       {/* Accent bar */}
       <div style={{ height: 3, backgroundColor: accentColor }} />
@@ -54,6 +71,16 @@ function KPICard({ label, value, accentColor, bgColor, icon }: KPICardProps) {
       </div>
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} style={{ textDecoration: "none", display: "block", height: "100%" }}>
+        {inner}
+      </Link>
+    );
+  }
+
+  return inner;
 }
 
 export function KPIGrid({ kpis }: KPIGridProps) {
@@ -65,6 +92,7 @@ export function KPIGrid({ kpis }: KPIGridProps) {
           value={kpis.itemsTotal}
           accentColor="#2563eb"
           icon="📦"
+          href="/items"
         />
       </div>
       <div className="col-6 col-xl-3">
@@ -74,6 +102,7 @@ export function KPIGrid({ kpis }: KPIGridProps) {
           accentColor="#ef4444"
           bgColor={kpis.overdueCount > 0 ? "#fff5f5" : undefined}
           icon="⚠️"
+          href="/items?status=OVERDUE"
         />
       </div>
       <div className="col-6 col-xl-3">
@@ -82,6 +111,7 @@ export function KPIGrid({ kpis }: KPIGridProps) {
           value={kpis.dueSoonCount}
           accentColor="#f59e0b"
           icon="🕐"
+          href="/items?status=NEAR_DUE"
         />
       </div>
       <div className="col-6 col-xl-3">
@@ -90,6 +120,7 @@ export function KPIGrid({ kpis }: KPIGridProps) {
           value={kpis.maintenancesThisMonth}
           accentColor="#10b981"
           icon="✅"
+          href="/maintenances"
         />
       </div>
     </div>
