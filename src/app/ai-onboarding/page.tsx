@@ -133,6 +133,12 @@ export default function AiOnboardingPage() {
     return (
         <section style={{ backgroundColor: COLORS.bg, minHeight: "100vh" }} className="p-3">
             <div className="container" style={{ maxWidth: "900px" }}>
+                <div className="mb-3">
+                    <Link className="btn btn-outline-secondary btn-sm" href="/">
+                        ← Voltar ao dashboard
+                    </Link>
+                </div>
+
                 {/* TOPO */}
                 <div className="text-center mb-4">
                     <h1 className="h3" style={{ color: COLORS.primaryDark }}>
