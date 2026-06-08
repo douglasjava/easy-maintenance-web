@@ -312,7 +312,7 @@ function MaintenancesListContent() {
                     <option value="">Todos os itens</option>
                     {items.map((it) => (
                       <option key={String(it.id)} value={String(it.id)}>
-                        {it.itemType} #{String(it.id)}
+                        {it.itemType}
                       </option>
                     ))}
                   </select>
