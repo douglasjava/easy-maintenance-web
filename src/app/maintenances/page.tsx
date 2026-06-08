@@ -636,7 +636,7 @@ function MaintenancesListContent() {
                 </div>
 
                 {/* ── Pagination ── */}
-                {(maints?.totalElements ?? 0) > 0 && (
+                {(maints?.content?.length ?? 0) > 0 && (
                   <div
                     className="px-3 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2"
                     style={{ borderTop: "1px solid #f1f5f9" }}
