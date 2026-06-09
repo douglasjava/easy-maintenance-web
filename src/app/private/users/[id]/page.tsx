@@ -777,7 +777,21 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             <ConfirmModal
                 show={!!orgToUnlink}
                 title="Remover Empresa"
-                message={`Tem certeza que deseja remover este usuário da empresa ${orgToUnlink?.organization.name}?`}
+                message={
+                    orgToUnlink?.subscription ? (
+                        <div className="text-start">
+                            <p className="mb-3">
+                                Tem certeza que deseja remover este usuário da empresa{" "}
+                                <strong>{orgToUnlink.organization.name}</strong>?
+                            </p>
+                            <div className="alert alert-warning py-2 px-3 mb-0" style={{ fontSize: "0.875rem" }}>
+                                <strong>Atenção:</strong> Esta empresa possui uma assinatura ativa. Ao remover o vínculo, a cobrança será <strong>cancelada ao final do período atual</strong>.
+                            </div>
+                        </div>
+                    ) : (
+                        `Tem certeza que deseja remover este usuário da empresa ${orgToUnlink?.organization.name}?`
+                    )
+                }
                 onConfirm={confirmUnlinkOrg}
                 onCancel={() => setOrgToUnlink(null)}
                 loading={unlinking}
