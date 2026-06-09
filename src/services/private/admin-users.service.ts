@@ -16,7 +16,7 @@ export type UserOrganization = {
         name: string;
         doc: string;
     };
-    subscription: {
+    subscription?: {
         id: string;
         sourceId: string;
         sourceType: string;
@@ -26,7 +26,7 @@ export type UserOrganization = {
         status: string;
         currentPeriodStart: string;
         currentPeriodEnd: string;
-    };
+    } | null;
 };
 
 export type PaginatedUsers = {

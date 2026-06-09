@@ -521,7 +521,10 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                                                 <tr key={org.organization.id}>
                                                     <td className="fw-semibold">{org.organization.name}</td>
                                                     <td>
-                                                        <StatusBadge status={org.subscription.status} />
+                                                        {org.subscription
+                                                            ? <StatusBadge status={org.subscription.status} />
+                                                            : <span className="badge border bg-secondary-subtle text-secondary border-secondary-subtle">Sem assinatura</span>
+                                                        }
                                                     </td>
                                                     <td className="text-muted small">{org.organization.doc}</td>
                                                     <td className="text-end">
