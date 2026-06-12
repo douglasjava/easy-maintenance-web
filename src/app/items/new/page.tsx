@@ -70,8 +70,8 @@ function NewItemContent() {
           lastPerformedAt: item.lastPerformedAt || "",
           address: item.location?.address || "",
           complement: item.location?.complement || "",
-          normId: item.norm?.id?.toString() || "",
-          normName: item.norm?.itemType || "",
+          normId: item.normId?.toString() || "",
+          normName: item.normName || "",
           customPeriodUnit: item.customPeriodUnit || "MESES",
           customPeriodQty: item.customPeriodQty || 6,
         });
