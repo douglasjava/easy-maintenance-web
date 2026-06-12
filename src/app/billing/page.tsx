@@ -30,6 +30,8 @@ type SubscriptionItem = {
   plan: Plan;
   valueCents: number;
   pendingChange: PendingChange | null;
+  cancelAtPeriodEnd: boolean;
+  scheduledCancellationDate: string | null;
 };
 
 type Subscription = {
@@ -140,6 +142,24 @@ function SubscriptionItemCard({
           </div>
         </div>
 
+        {/* Cancellation scheduled */}
+        {item.cancelAtPeriodEnd && (
+          <div
+            className="rounded-3 p-3 mb-3 d-flex align-items-start gap-2"
+            style={{ backgroundColor: "#fff7ed", border: "1px solid #fed7aa" }}
+          >
+            <Clock size={16} style={{ color: "#c2410c", flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <div className="fw-semibold" style={{ fontSize: "0.8rem", color: "#c2410c" }}>Cancelamento agendado</div>
+              <div style={{ fontSize: "0.78rem", color: "#9a3412" }}>
+                Este item será encerrado em{" "}
+                <strong>{item.scheduledCancellationDate ? formatDate(item.scheduledCancellationDate) : "breve"}</strong>.
+                {" "}O acesso permanece ativo até o fim do período vigente.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pending change */}
         {item.pendingChange && (
           <div
@@ -161,13 +181,15 @@ function SubscriptionItemCard({
 
         {/* Actions */}
         <div className="d-flex justify-content-end gap-2">
-          <button
-            className="btn btn-sm"
-            style={{ border: "1px solid #fecaca", color: "#dc2626", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
-            onClick={() => onCancel(item.id)}
-          >
-            Cancelar
-          </button>
+          {!item.cancelAtPeriodEnd && (
+            <button
+              className="btn btn-sm"
+              style={{ border: "1px solid #fecaca", color: "#dc2626", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
+              onClick={() => onCancel(item.id)}
+            >
+              Cancelar
+            </button>
+          )}
           <button
             className="btn btn-sm d-flex align-items-center gap-1"
             style={{ border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
@@ -432,6 +454,29 @@ export default function BillingPage() {
 
               {/* Subscription items — main column */}
               <div className="col-12 col-lg-8">
+                {(() => {
+                  const cancelingItems = summary.items.filter((i) => i.cancelAtPeriodEnd);
+                  if (cancelingItems.length === 0) return null;
+                  const earliest = cancelingItems
+                    .map((i) => i.scheduledCancellationDate)
+                    .filter(Boolean)
+                    .sort()[0];
+                  return (
+                    <div
+                      className="rounded-3 p-3 mb-3 d-flex align-items-start gap-2"
+                      style={{ backgroundColor: "#fff7ed", border: "1px solid #fed7aa" }}
+                    >
+                      <AlertCircle size={16} style={{ color: "#c2410c", flexShrink: 0, marginTop: 1 }} />
+                      <div style={{ fontSize: "0.82rem", color: "#9a3412" }}>
+                        <strong>{cancelingItems.length} {cancelingItems.length === 1 ? "item" : "itens"}</strong> da sua assinatura{" "}
+                        {cancelingItems.length === 1 ? "será encerrado" : "serão encerrados"}
+                        {earliest ? <> em <strong>{formatDate(earliest)}</strong></> : " em breve"}.
+                        {" "}O valor cobrado será ajustado no próximo ciclo.
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <div
                     style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}
