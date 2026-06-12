@@ -40,6 +40,8 @@ type Subscription = {
   cycle: string;
   totalCents: number;
   nextDueDate: string;
+  projectedTotalCents: number | null;
+  projectedChangeDate: string | null;
 };
 
 type Invoice = {
@@ -434,6 +436,20 @@ export default function BillingPage() {
                         {" "}/ {summary.subscription?.cycle === "MONTHLY" ? "mês" : "ano"}
                       </span>
                     </div>
+                    {summary.subscription?.projectedTotalCents != null && (
+                      <div
+                        className="d-flex align-items-center gap-1 mt-1"
+                        style={{ fontSize: "0.75rem", opacity: 0.85 }}
+                      >
+                        <ArrowRight size={12} />
+                        <span>
+                          {formatMoney(summary.subscription.projectedTotalCents)}/mês após{" "}
+                          {summary.subscription.projectedChangeDate
+                            ? formatDate(summary.subscription.projectedChangeDate)
+                            : "próximo ciclo"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
