@@ -110,10 +110,10 @@ function MaintenancesListContent() {
       setExporting(true);
       const params: Record<string, any> = {};
       if (selectedItemId) params.itemId = selectedItemId;
-      if (performedAt) {
-        params.startDate = performedAt;
-        params.endDate = performedAt;
-      }
+      if (performedAtFrom) params.startDate = performedAtFrom;
+      else if (performedAt) params.startDate = performedAt;
+      if (performedAtTo) params.endDate = performedAtTo;
+      else if (performedAt) params.endDate = performedAt;
       const res = await api.get("/items/maintenances/export", { params, responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
       const link = document.createElement("a");
@@ -153,19 +153,23 @@ function MaintenancesListContent() {
 
   const items = useMemo(() => itemsPageData?.content ?? [], [itemsPageData]);
 
-  // Filters
-  const [selectedItemId, setSelectedItemId] = useState("");
-  const [performedAt, setPerformedAt] = useState("");
-  const [performedBy, setPerformedBy] = useState("");
+  // Filters — initialised from URL search params (e.g. when navigating from KPI card)
+  const [selectedItemId, setSelectedItemId] = useState(searchParams.get("itemId") ?? "");
+  const [performedAt, setPerformedAt] = useState(searchParams.get("performedAt") ?? "");
+  const [performedAtFrom, setPerformedAtFrom] = useState(searchParams.get("performedAtFrom") ?? "");
+  const [performedAtTo, setPerformedAtTo] = useState(searchParams.get("performedAtTo") ?? "");
+  const [performedBy, setPerformedBy] = useState(searchParams.get("performedBy") ?? "");
 
   function clearFilters() {
     setSelectedItemId("");
     setPerformedAt("");
+    setPerformedAtFrom("");
+    setPerformedAtTo("");
     setPerformedBy("");
     resetMaintsCursor();
   }
 
-  const hasActiveFilters = !!(selectedItemId || performedAt || performedBy);
+  const hasActiveFilters = !!(selectedItemId || performedAt || performedAtFrom || performedAtTo || performedBy);
 
   // Detail modal
   const [viewingMaintId, setViewingMaintId] = useState<string | number | null>(null);
@@ -205,13 +209,15 @@ function MaintenancesListContent() {
   }
 
   const { data: maints, isLoading: maintsLoading, error: maintsError, isFetching: maintsFetching, refetch } = useQuery({
-    queryKey: ["maintenances", { selectedItemId, performedAt, performedBy, cursor: maintsCursorStack[maintsStackIndex], size }],
+    queryKey: ["maintenances", { selectedItemId, performedAt, performedAtFrom, performedAtTo, performedBy, cursor: maintsCursorStack[maintsStackIndex], size }],
     queryFn: async () => {
       const params: Record<string, any> = { size };
       const c = maintsCursorStack[maintsStackIndex];
       if (c != null) params.cursor = c;
       if (selectedItemId) params.itemId = selectedItemId;
       if (performedAt) params.performedAt = performedAt;
+      if (performedAtFrom) params.performedAtFrom = performedAtFrom;
+      if (performedAtTo) params.performedAtTo = performedAtTo;
       if (performedBy) params.performedBy = performedBy;
       const res = await api.get("/items/maintenances", { params });
       const d = res.data;

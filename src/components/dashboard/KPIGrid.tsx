@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 interface KPIGridProps {
@@ -83,7 +85,18 @@ function KPICard({ label, value, accentColor, bgColor, icon, href }: KPICardProp
   return inner;
 }
 
+function currentMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const from = new Date(year, month, 1).toISOString().split("T")[0];
+  const to = new Date(year, month + 1, 0).toISOString().split("T")[0];
+  return { from, to };
+}
+
 export function KPIGrid({ kpis }: KPIGridProps) {
+  const { from, to } = currentMonthRange();
+
   return (
     <div className="row g-3 mb-4" data-tour="kpi-grid">
       <div className="col-6 col-xl-3">
@@ -120,7 +133,7 @@ export function KPIGrid({ kpis }: KPIGridProps) {
           value={kpis.maintenancesThisMonth}
           accentColor="#10b981"
           icon="✅"
-          href="/maintenances"
+          href={`/maintenances?performedAtFrom=${from}&performedAtTo=${to}`}
         />
       </div>
     </div>
