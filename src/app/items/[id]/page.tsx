@@ -250,10 +250,14 @@ export default function ItemDetailPage() {
                                             </div>
                                         </div>
 
-                                        <div className="col-12 col-md-8 d-flex align-items-end">
-                                            <div className="small text-muted">
-                                                Periodicidade definida conforme
-                                                norma regulatória.
+                                        <div className="col-12 col-md-4">
+                                            <div className="text-muted small">
+                                                Periodicidade
+                                            </div>
+                                            <div className="fw-medium">
+                                                {data.customPeriodQty && data.customPeriodUnit
+                                                    ? `${data.customPeriodQty} ${data.customPeriodUnit.toLowerCase()}`
+                                                    : "Conforme norma"}
                                             </div>
                                         </div>
                                     </>
