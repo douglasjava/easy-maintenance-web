@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
-import { User, Building, CreditCard, LogOut, HelpCircle } from "lucide-react";
+import { User, Building, CreditCard, LogOut, HelpCircle, BarChart2 } from "lucide-react";
 import TopBarShell from "../shared/TopBarShell";
 import TopBarBrand from "../shared/TopBarBrand";
 import TopBarUserMenu from "../shared/TopBarUserMenu";
@@ -152,6 +152,12 @@ export default function UserTopBar() {
             <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/billing")}>
               <CreditCard size={18} className="text-muted" />
               Faturamento
+            </button>
+          </li>
+          <li>
+            <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/reports")} disabled={isBlocked}>
+              <BarChart2 size={18} className="text-muted" />
+              Relatórios
             </button>
           </li>
           <li>

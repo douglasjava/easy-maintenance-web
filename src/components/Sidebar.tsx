@@ -62,6 +62,7 @@ export default function Sidebar() {
         {href: "/maintenances/new", label: "Registrar Manutenção", section: "actions"},
 
         {href: "/norms", label: "Normas e Obrigações", section: "resources"},
+        {href: "/reports", label: "📊 Relatórios", section: "resources"},
         {href: "/help", label: "❓ Ajuda / FAQ", section: "resources"},
     ];
 
