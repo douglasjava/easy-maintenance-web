@@ -47,15 +47,18 @@ function isFeatureEnabled(key: keyof PlanFeatures, value: any): boolean {
 }
 
 export default function PlanComparisonSection({ currentPlanCode, onUpgradeClick }: Props) {
-  const [plans, setPlans] = useState<PublicPlan[]>([]);
+  const [allPlans, setAllPlans] = useState<PublicPlan[]>([]);
+  const [cycle, setCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.get("/me/billing/plans")
-      .then((res) => setPlans(res.data))
+      .then((res) => setAllPlans(res.data))
       .catch(() => {/* silent — comparison is non-critical */})
       .finally(() => setLoading(false));
   }, []);
+
+  const plans = allPlans.filter((p) => p.billingCycle === cycle);
 
   if (loading) {
     return (
@@ -72,11 +75,41 @@ export default function PlanComparisonSection({ currentPlanCode, onUpgradeClick 
 
   return (
     <div className="mt-5">
-      <div className="mb-4">
-        <h4 className="fw-bold mb-1">Comparação de planos</h4>
-        <p className="text-muted small mb-0">
-          Veja o que cada plano oferece e faça upgrade a qualquer momento.
-        </p>
+      <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+          <h4 className="fw-bold mb-1">Comparação de planos</h4>
+          <p className="text-muted small mb-0">
+            Veja o que cada plano oferece e faça upgrade a qualquer momento.
+          </p>
+        </div>
+        <div className="d-inline-flex rounded-3 p-1" style={{ backgroundColor: "#f3f4f6" }}>
+          {(["MONTHLY", "YEARLY"] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCycle(c)}
+              style={{
+                border: "none",
+                borderRadius: 6,
+                padding: "5px 16px",
+                fontSize: "0.8rem",
+                fontWeight: cycle === c ? 600 : 400,
+                color: cycle === c ? "#111827" : "#6b7280",
+                backgroundColor: cycle === c ? "#ffffff" : "transparent",
+                boxShadow: cycle === c ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                transition: "all 0.15s ease",
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+              }}
+            >
+              {c === "MONTHLY" ? "Mensal" : "Anual"}
+              {c === "YEARLY" && (
+                <span className="badge bg-success ms-1" style={{ fontSize: "0.65rem" }}>
+                  -17%
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="table-responsive">
@@ -99,8 +132,15 @@ export default function PlanComparisonSection({ currentPlanCode, onUpgradeClick 
                     <div className="text-primary fw-bold">
                       {plan.priceCents === 0
                         ? "Gratuito"
+                        : plan.billingCycle === "YEARLY"
+                        ? `${formatMoney(Math.round(plan.priceCents / 12))}/mês`
                         : `${formatMoney(plan.priceCents)}/mês`}
                     </div>
+                    {plan.billingCycle === "YEARLY" && plan.priceCents > 0 && (
+                      <div className="text-muted" style={{ fontSize: "0.72rem" }}>
+                        cobrado {formatMoney(plan.priceCents)}/ano
+                      </div>
+                    )}
                     {isCurrent ? (
                       <span className="badge bg-primary rounded-pill mt-1 d-inline-block">
                         Plano atual

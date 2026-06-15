@@ -6,6 +6,7 @@ export interface Plan {
   code: string;
   name: string;
   price: number;
+  billingCycle?: "MONTHLY" | "YEARLY";
   features: string[];
   description: string;
   highlight?: boolean;
@@ -35,6 +36,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({
   loading,
 }) => {
   const isSelected = selectedPlanCode === plan.code;
+  const isYearly = plan.billingCycle === "YEARLY";
+  const monthlyEquivalent = isYearly ? plan.price / 12 : plan.price;
 
   return (
     <div
@@ -51,7 +54,12 @@ export const PlanCard: React.FC<PlanCardProps> = ({
       }}
       onClick={() => !isCurrent && !loading && onSelect(plan.code)}
     >
-      {plan.highlight && (
+      {isYearly && (
+        <div className="bg-success text-white text-center py-1 small fw-bold">
+          Economize 2 meses — 17% de desconto
+        </div>
+      )}
+      {!isYearly && plan.highlight && (
         <div className="bg-primary text-white text-center py-1 small fw-bold">
           Mais popular
         </div>
@@ -71,9 +79,14 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           </div>
           <div className="text-end">
             <div className="h4 fw-bold mb-0 text-primary">
-              {formatMoney(plan.price * 100)}
+              {formatMoney(Math.round(monthlyEquivalent * 100))}
             </div>
             <div className="text-muted small">/mês</div>
+            {isYearly && (
+              <div className="text-muted" style={{ fontSize: "0.72rem" }}>
+                cobrado {formatMoney(plan.price * 100)}/ano
+              </div>
+            )}
           </div>
         </div>
 
@@ -91,7 +104,10 @@ export const PlanCard: React.FC<PlanCardProps> = ({
         {isSelected ? (
           <div className="mt-3 p-3 border rounded-4 bg-light shadow-sm">
             <p className="small mb-2">
-              Você está mudando para <strong>{plan.name}</strong> ({formatMoney(plan.price * 100)}/mês)
+              Você está mudando para <strong>{plan.name}</strong>{" "}
+              {isYearly
+                ? `(cobrado ${formatMoney(plan.price * 100)}/ano)`
+                : `(${formatMoney(plan.price * 100)}/mês)`}
             </p>
             <p className="small text-muted mb-3">
               A mudança será aplicada {applyImmediately ? "imediatamente" : "no próximo ciclo"}.

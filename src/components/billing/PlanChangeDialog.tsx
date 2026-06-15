@@ -24,6 +24,7 @@ export default function PlanChangeDialog({
                                              idUser,
                                          }: PlanChangeDialogProps) {
     const [plans, setPlans] = useState<Plan[]>([]);
+    const [cycle, setCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
     const [applyImmediately, setApplyImmediately] = useState(true);
     const [loading, setLoading] = useState<string | null>(null);
     const [fetchingPlans, setFetchingPlans] = useState(false);
@@ -31,6 +32,7 @@ export default function PlanChangeDialog({
 
     useEffect(() => {
         if (show) {
+            setCycle(currentPlanCode?.endsWith("_ANNUAL") ? "YEARLY" : "MONTHLY");
             fetchPlans();
         }
     }, [show]);
@@ -44,6 +46,7 @@ export default function PlanChangeDialog({
                 code: p.code,
                 name: p.name,
                 price: p.priceCents / 100,
+                billingCycle: (p.billingCycle ?? "MONTHLY") as "MONTHLY" | "YEARLY",
                 description: p.description || "",
                 features: Array.isArray(p.features) ? p.features : []
             }));
@@ -197,8 +200,41 @@ export default function PlanChangeDialog({
                                         </div>
                                     </div>
 
+                                    <div className="d-flex align-items-center justify-content-between mb-3">
+                                        <span className="fw-semibold small text-muted text-uppercase">Ciclo de cobrança</span>
+                                        <div className="d-inline-flex rounded-3 p-1" style={{ backgroundColor: "#f3f4f6" }}>
+                                            {(["MONTHLY", "YEARLY"] as const).map((c) => (
+                                                <button
+                                                    key={c}
+                                                    onClick={() => { setCycle(c); setSelectedPlanCode(null); }}
+                                                    disabled={!!loading}
+                                                    style={{
+                                                        border: "none",
+                                                        borderRadius: 6,
+                                                        padding: "5px 16px",
+                                                        fontSize: "0.8rem",
+                                                        fontWeight: cycle === c ? 600 : 400,
+                                                        color: cycle === c ? "#111827" : "#6b7280",
+                                                        backgroundColor: cycle === c ? "#ffffff" : "transparent",
+                                                        boxShadow: cycle === c ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                                                        transition: "all 0.15s ease",
+                                                        whiteSpace: "nowrap",
+                                                        cursor: "pointer",
+                                                    }}
+                                                >
+                                                    {c === "MONTHLY" ? "Mensal" : "Anual"}
+                                                    {c === "YEARLY" && (
+                                                        <span className="badge bg-success ms-1" style={{ fontSize: "0.65rem" }}>
+                                                            -17%
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     <div className="d-flex flex-column gap-2">
-                                        {plans.map((plan) => (
+                                        {plans.filter(p => p.billingCycle === cycle).map((plan) => (
                                             <PlanCard
                                                 key={plan.code}
                                                 plan={plan}
@@ -212,7 +248,7 @@ export default function PlanChangeDialog({
                                                 loading={loading}
                                             />
                                         ))}
-                                        {plans.length === 0 && (
+                                        {plans.filter(p => p.billingCycle === cycle).length === 0 && (
                                             <div className="text-center py-4 text-muted">
                                                 Nenhum plano disponível para troca.
                                             </div>
