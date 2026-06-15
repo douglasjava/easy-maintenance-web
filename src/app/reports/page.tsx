@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/apiClient";
 import { formatMoney, formatDate } from "@/lib/formatters";
 import Pagination from "@/components/Pagination";
@@ -15,6 +15,9 @@ import {
   Download,
   Filter,
   X,
+  Package,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -143,27 +146,43 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <ul className="nav nav-tabs mb-4">
-        <li className="nav-item">
-          <button
-            className={`nav-link d-flex align-items-center gap-1 ${activeTab === "overview" ? "active" : ""}`}
-            onClick={() => setActiveTab("overview")}
-          >
-            <Building2 size={16} />
-            Visão Geral
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link d-flex align-items-center gap-1 ${activeTab === "maintenances" ? "active" : ""}`}
-            onClick={() => setActiveTab("maintenances")}
-          >
-            <Wrench size={16} />
-            Manutenções
-          </button>
-        </li>
-      </ul>
+      {/* Tabs — segmented control (sempre horizontal) */}
+      <div
+        className="d-inline-flex rounded-3 mb-4 p-1"
+        style={{ backgroundColor: "#f3f4f6" }}
+      >
+        {(
+          [
+            { id: "overview" as Tab, label: "Visão Geral", Icon: Building2 },
+            { id: "maintenances" as Tab, label: "Manutenções", Icon: Wrench },
+          ]
+        ).map(({ id, label, Icon }) => {
+          const isActive = activeTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className="d-flex align-items-center gap-2"
+              style={{
+                border: "none",
+                borderRadius: 8,
+                padding: "7px 20px",
+                fontWeight: isActive ? 600 : 400,
+                fontSize: "0.875rem",
+                color: isActive ? "#111827" : "#6b7280",
+                backgroundColor: isActive ? "#ffffff" : "transparent",
+                boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                transition: "all 0.15s ease",
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+              }}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
       {activeTab === "overview" && (
         <OverviewSection
@@ -217,20 +236,20 @@ function OverviewSection({
     <div>
       {/* Global KPIs */}
       <div className="row g-3 mb-4">
-        <GlobalKpiCard label="Total de Itens" value={data.global.totalItems} color="#2563eb" icon="📦" />
+        <GlobalKpiCard label="Total de Itens" value={data.global.totalItems} color="#2563eb" icon={<Package size={18} />} />
         <GlobalKpiCard
           label="Em Atraso"
           value={data.global.totalOverdue}
           color="#ef4444"
-          icon="⚠️"
+          icon={<AlertTriangle size={18} />}
           highlight={data.global.totalOverdue > 0}
         />
-        <GlobalKpiCard label="Vencem em Breve" value={data.global.totalDueSoon} color="#f59e0b" icon="🕐" />
+        <GlobalKpiCard label="Vencem em Breve" value={data.global.totalDueSoon} color="#f59e0b" icon={<Clock size={18} />} />
         <GlobalKpiCard
           label="Manutenções este Mês"
           value={data.global.totalMaintenancesThisMonth}
           color="#10b981"
-          icon="✅"
+          icon={<CheckCircle2 size={18} />}
         />
       </div>
 
@@ -275,7 +294,7 @@ function GlobalKpiCard({
   label: string;
   value: number;
   color: string;
-  icon: string;
+  icon: React.ReactNode;
   highlight?: boolean;
 }) {
   return (
@@ -300,7 +319,7 @@ function GlobalKpiCard({
             </div>
             <div
               className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-              style={{ width: 36, height: 36, backgroundColor: color + "18", fontSize: "1rem" }}
+              style={{ width: 36, height: 36, backgroundColor: color + "18", color }}
             >
               {icon}
             </div>
