@@ -3,7 +3,7 @@
 import {useState, useEffect, useCallback} from "react";
 import {api} from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import {User, Mail, Shield, Save, ShieldCheck, ShieldOff, RefreshCw, Key} from "lucide-react";
+import {User, Mail, Shield, Save, ShieldCheck, ShieldOff, RefreshCw, Key, Download, Trash2, Lock} from "lucide-react";
 import Image from "next/image";
 
 type TwoFactorStatus = { enabled: boolean; backupCodesRemaining: number };
@@ -212,6 +212,58 @@ export default function ProfilePage() {
         setSetupData(null);
         setBackupCodes([]);
         setShowSecret(false);
+    }
+
+    // ─── LGPD handlers ───────────────────────────────────────────────────────
+
+    const [lgpdLoading, setLgpdLoading] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletePassword, setDeletePassword] = useState("");
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    async function handleExportData() {
+        setLgpdLoading(true);
+        try {
+            const { data } = await api.get("/me/lgpd/data-export");
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `meus-dados-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success("Dados exportados com sucesso!");
+        } catch {
+            toast.error("Erro ao exportar dados. Tente novamente.");
+        } finally {
+            setLgpdLoading(false);
+        }
+    }
+
+    async function handleDeleteAccount() {
+        if (!deletePassword.trim()) {
+            toast.error("Informe sua senha para confirmar.");
+            return;
+        }
+        setDeleteLoading(true);
+        try {
+            await api.delete("/me/lgpd/account", { data: { confirmPassword: deletePassword } });
+            toast.success("Conta excluída. Você será desconectado.");
+            setTimeout(() => {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = "/login";
+            }, 2000);
+        } catch (err: any) {
+            const status = err?.response?.status;
+            if (status === 401 || status === 403) {
+                toast.error("Senha incorreta. Verifique e tente novamente.");
+            } else {
+                toast.error("Erro ao excluir conta. Tente novamente.");
+            }
+        } finally {
+            setDeleteLoading(false);
+        }
     }
 
     if (fetching) {
@@ -599,8 +651,111 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
+                    {/* Privacidade e Dados (LGPD) */}
+                    <div className="card border-0 shadow-sm rounded-4 mt-4 overflow-hidden">
+                        <div className="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+                            <Lock size={20} className="text-secondary"/>
+                            <h5 className="card-title mb-0 fw-bold">Privacidade e Dados</h5>
+                        </div>
+                        <div className="card-body p-4">
+                            <p className="text-muted small mb-4">
+                                Em conformidade com a <strong>LGPD (Lei 13.709/2018)</strong>, você pode exportar uma cópia dos seus dados
+                                pessoais ou solicitar a exclusão permanente da sua conta.
+                            </p>
+
+                            <div className="d-flex flex-column flex-sm-row gap-3">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-primary d-flex align-items-center gap-2 px-4"
+                                    onClick={handleExportData}
+                                    disabled={lgpdLoading}
+                                >
+                                    <Download size={16}/>
+                                    {lgpdLoading ? "Exportando..." : "Exportar meus dados"}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-danger d-flex align-items-center gap-2 px-4"
+                                    onClick={() => { setDeletePassword(""); setShowDeleteModal(true); }}
+                                >
+                                    <Trash2 size={16}/>
+                                    Excluir minha conta
+                                </button>
+                            </div>
+
+                            <p className="text-muted small mt-3 mb-0">
+                                A exclusão é <strong>irreversível</strong>. Seus dados serão anonimizados e a conta desativada.{" "}
+                                <a href="/privacidade" className="text-decoration-none">Política de Privacidade</a>
+                            </p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
+
+            {/* Modal: confirmar exclusão de conta */}
+            {showDeleteModal && (
+                <div
+                    className="modal fade show d-block"
+                    style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                    onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
+                >
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content rounded-4 border-0 shadow">
+                            <div className="modal-header border-bottom-0 pb-0">
+                                <h5 className="modal-title fw-bold text-danger d-flex align-items-center gap-2">
+                                    <Trash2 size={20}/> Excluir minha conta
+                                </h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setShowDeleteModal(false)}
+                                    disabled={deleteLoading}
+                                />
+                            </div>
+                            <div className="modal-body pt-3">
+                                <div className="alert alert-danger small mb-3" role="alert">
+                                    <strong>Atenção:</strong> Esta ação é permanente e não pode ser desfeita.
+                                    Seus dados pessoais serão anonimizados e sua conta desativada imediatamente.
+                                </div>
+                                <label className="form-label fw-medium small text-uppercase text-muted mb-2">
+                                    Confirme sua senha para continuar
+                                </label>
+                                <input
+                                    type="password"
+                                    className="form-control"
+                                    placeholder="Sua senha atual"
+                                    value={deletePassword}
+                                    onChange={(e) => setDeletePassword(e.target.value)}
+                                    autoFocus
+                                    onKeyDown={(e) => { if (e.key === "Enter") handleDeleteAccount(); }}
+                                    disabled={deleteLoading}
+                                />
+                            </div>
+                            <div className="modal-footer border-top-0 pt-0">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setShowDeleteModal(false)}
+                                    disabled={deleteLoading}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-danger d-flex align-items-center gap-2"
+                                    onClick={handleDeleteAccount}
+                                    disabled={deleteLoading || !deletePassword.trim()}
+                                >
+                                    <Trash2 size={16}/>
+                                    {deleteLoading ? "Excluindo..." : "Excluir permanentemente"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

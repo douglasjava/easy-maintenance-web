@@ -230,6 +230,12 @@ export default function Sidebar() {
                         🤖 Dica: use o <span style={{color: COLORS.primary}}>SAMU</span> para tirar dúvidas e encontrar
                         prazos.
                     </div>
+
+                    <div className="small mt-2">
+                        <Link href="/privacidade" className="text-muted text-decoration-none" style={{fontSize: "0.75rem"}}>
+                            Política de Privacidade
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
