@@ -355,9 +355,6 @@ function OrgKpiCard({ org }: { org: OrgKpi }) {
               <div className="fw-semibold text-truncate" style={{ fontSize: "0.9rem" }}>
                 {org.orgName}
               </div>
-              <div className="text-muted" style={{ fontSize: "0.72rem" }}>
-                {org.orgCode}
-              </div>
             </div>
           </div>
           <div className="row g-2">
@@ -648,7 +645,6 @@ function MaintenancesSection() {
                         <td className="ps-3 py-2 text-nowrap">{formatDate(row.performedAt)}</td>
                         <td className="py-2">
                           <div className="fw-medium text-truncate" style={{ maxWidth: 160 }}>{row.orgName}</div>
-                          <div className="text-muted" style={{ fontSize: "0.72rem" }}>{row.orgCode}</div>
                         </td>
                         <td className="py-2 text-truncate" style={{ maxWidth: 120 }}>{row.itemType || "—"}</td>
                         <td className="py-2"><TypeBadge type={row.type} /></td>
