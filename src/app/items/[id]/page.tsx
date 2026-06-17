@@ -245,8 +245,17 @@ export default function ItemDetailPage() {
                                             <div className="text-muted small">
                                                 Norma
                                             </div>
-                                            <div className="fw-medium">
+                                            <div className="fw-medium d-flex align-items-center gap-2 flex-wrap">
                                                 {data.normName ?? "-"}
+                                                {data.normPendingReview && (
+                                                    <span
+                                                        className="badge text-dark"
+                                                        style={{ backgroundColor: "#FEF3C7", border: "1px solid #F59E0B", fontSize: "0.7rem" }}
+                                                        title="Norma gerada por IA e ainda não validada por um especialista"
+                                                    >
+                                                        ⚠️ IA — não validada
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 
