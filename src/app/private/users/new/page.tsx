@@ -87,7 +87,7 @@ export default function CreateUserPage() {
     setTouched({ name: true, email: true, password: true, role: true });
 
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
-    if (!formData.name.trim() || !emailOk || formData.password.length < 8) {
+    if (!formData.name.trim() || !emailOk) {
       toast.error("Preencha todos os campos corretamente.");
       return;
     }
