@@ -153,26 +153,6 @@ export default function CreateUserPage() {
               />
             </Field>
 
-            <Field label="Senha *" error={getError("password")}>
-              <div style={{ position:"relative" }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  style={{ ...inp(!!getError("password")), paddingRight:44 }}
-                  placeholder="Mínimo 8 caracteres"
-                  value={formData.password}
-                  onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
-                  onBlur={() => touch("password")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(p => !p)}
-                  style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:C.muted, fontSize:18, padding:0, lineHeight:1 }}
-                >
-                  {showPassword ? "🙈" : "👁️"}
-                </button>
-              </div>
-            </Field>
-
             <Section title="Perfil de Acesso" />
 
             <div style={{ display:"flex", flexWrap:"wrap", gap:12, marginBottom:28 }}>
