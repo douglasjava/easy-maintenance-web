@@ -2,8 +2,25 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Logo from '@/components/Logo';
 import { api } from '@/lib/apiClient';
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Easy Maintenance",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://easymaintenance.com.br",
+  "description": "Software de gestão de manutenção preventiva para condomínios, hospitais, escolas e indústrias. Conformidade com ABNT NBR 5674, NBR 14037 e NBR 16280.",
+  "offers": {
+    "@type": "Offer",
+    "priceCurrency": "BRL",
+    "availability": "https://schema.org/InStock"
+  },
+  "inLanguage": "pt-BR"
+};
 
 export default function LandingPage() {
   const [email, setEmail] = useState('');
@@ -28,6 +45,10 @@ export default function LandingPage() {
 
   return (
     <div className="landing-page bg-light min-vh-100">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <style jsx>{`
           .section-title {
               margin-bottom: 80px;
@@ -147,10 +168,13 @@ export default function LandingPage() {
             </div>
             <div className="col-lg-6 d-none d-lg-block">
               <div className="bg-white rounded-3 shadow p-2" style={{ transform: 'perspective(1000px) rotateY(-10deg)' }}>
-                <img 
-                  src="/dashboard_preview.png" 
-                  alt="Dashboard Preview" 
+                <Image
+                  src="/dashboard_preview.png"
+                  alt="Tela do dashboard Easy Maintenance com visão geral de manutenções preventivas, prazos e conformidade"
+                  width={900}
+                  height={600}
                   className="img-fluid rounded shadow-sm"
+                  priority
                 />
               </div>
             </div>

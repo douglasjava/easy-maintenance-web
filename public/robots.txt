@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /landing
+Allow: /login
+Allow: /privacidade
+Allow: /forgot-password
+Allow: /reset-password
+Disallow: /
+Disallow: /api/
+
+Sitemap: https://easymaintenance.com.br/sitemap.xml

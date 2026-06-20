@@ -1,6 +1,12 @@
-export const metadata = {
-    title: "Política de Privacidade — Easy Maintenance",
-    description: "Como coletamos, usamos e protegemos seus dados pessoais.",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Política de Privacidade",
+    description:
+        "Política de privacidade e termos de uso do Easy Maintenance. Saiba como coletamos, usamos e protegemos seus dados pessoais conforme a LGPD.",
+    alternates: {
+        canonical: "https://easymaintenance.com.br/privacidade",
+    },
 };
 
 export default function PrivacidadePage() {
