@@ -60,10 +60,11 @@ export default function Sidebar() {
 
         {href: "/items/new", label: "Novo Item", section: "actions"},
         {href: "/maintenances/new", label: "Registrar Manutenção", section: "actions"},
+        {href: "/ai-onboarding", label: "IA Onboarding", section: "actions"},
 
         {href: "/norms", label: "Normas e Obrigações", section: "resources"},
-        {href: "/reports", label: "📊 Relatórios", section: "resources"},
-        {href: "/help", label: "❓ Ajuda / FAQ", section: "resources"},
+        {href: "/reports", label: "Relatórios", section: "resources"},
+        {href: "/help", label: "Ajuda / FAQ", section: "resources"},
     ];
 
     const adminItems: NavItem[] = [
