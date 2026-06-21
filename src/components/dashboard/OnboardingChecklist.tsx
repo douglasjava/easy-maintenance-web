@@ -51,14 +51,7 @@ const ITEMS: ChecklistItem[] = [
     description: "Documente a primeira manutenção realizada",
     href: "/maintenances",
     linkLabel: "Ir para Manutenções",
-  },
-  {
-    key: "normConfigured",
-    label: "Configure uma norma",
-    description: "Defina as normas regulatórias aplicáveis",
-    href: "/norms",
-    linkLabel: "Ir para Normas",
-  },
+  }
 ];
 
 export default function OnboardingChecklist() {
