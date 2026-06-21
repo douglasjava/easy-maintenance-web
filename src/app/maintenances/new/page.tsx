@@ -184,6 +184,10 @@ function NewMaintenanceContent() {
     if (!performedAt) { toast.error("Informe a data da manutenção."); return; }
     const today = new Date().toISOString().split("T")[0];
     if (performedAt > today) { toast.error("A data da manutenção não pode ser no futuro."); return; }
+    if (nextDueAt && nextDueAt < performedAt) {
+        toast.error("A próxima manutenção não pode ser anterior à data da manutenção.");
+        return;
+    }
 
     let costCents = 0;
     if (costInput) {
@@ -487,6 +491,7 @@ function NewMaintenanceContent() {
                           className="form-control"
                           type="date"
                           value={nextDueAt}
+                          min={performedAt}
                           onChange={(e) => setNextDueAt(e.target.value)}
                         />
                       </div>
