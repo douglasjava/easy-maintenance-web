@@ -28,6 +28,7 @@ const EMPTY_FORM = {
   email: "",
   password: "",
   role: "READER" as Role,
+  referralCode: "",
 };
 
 const LBL: React.CSSProperties = { fontSize:13, fontWeight:600, color:"#0f172a", display:"block", marginBottom:6 };
@@ -68,6 +69,8 @@ export default function CreateUserPage() {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [affiliateName, setAffiliateName] = useState<string | null>(null);
+  const [checkingAffiliate, setCheckingAffiliate] = useState(false);
 
   function touch(field: string) {
     setTouched(p => ({ ...p, [field]: true }));
@@ -80,6 +83,25 @@ export default function CreateUserPage() {
     if (field === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "E-mail inválido";
     if (field === "password" && v.length < 8) return "Mínimo 8 caracteres";
     return undefined;
+  }
+
+  async function checkAffiliate(email: string) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    setCheckingAffiliate(true);
+    setAffiliateName(null);
+    try {
+      const { data } = await api.get<{ name: string; code: string } | null>(
+        `/affiliates/suggest?email=${encodeURIComponent(email)}`
+      );
+      if (data) {
+        setFormData(p => ({ ...p, referralCode: data.code }));
+        setAffiliateName(data.name);
+      }
+    } catch {
+      // no match — ignore silently
+    } finally {
+      setCheckingAffiliate(false);
+    }
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -101,6 +123,7 @@ export default function CreateUserPage() {
         password: formData.password,
         role: formData.role,
         status: "ACTIVE",
+        referralCode: formData.referralCode.trim().toUpperCase() || undefined,
       });
       toast.success("Usuário criado com sucesso.");
       router.push("/private/users");
@@ -148,8 +171,11 @@ export default function CreateUserPage() {
                 style={inp(!!getError("email"))}
                 placeholder="joao@exemplo.com"
                 value={formData.email}
-                onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
-                onBlur={() => touch("email")}
+                onChange={e => {
+                  setFormData(p => ({ ...p, email: e.target.value }));
+                  setAffiliateName(null);
+                }}
+                onBlur={e => { touch("email"); checkAffiliate(e.target.value); }}
               />
             </Field>
 
@@ -179,6 +205,36 @@ export default function CreateUserPage() {
               })}
             </div>
           </div>
+
+            <Section title="Indicação (Opcional)" />
+
+            <Field label="Código do Afiliado">
+              <div style={{ position:"relative" }}>
+                <input
+                  style={{ ...inp(false), textTransform:"uppercase", paddingRight: checkingAffiliate ? 36 : 14 }}
+                  placeholder="Ex: ABC123"
+                  maxLength={6}
+                  value={formData.referralCode}
+                  onChange={e => {
+                    setFormData(p => ({ ...p, referralCode: e.target.value.toUpperCase() }));
+                    setAffiliateName(null);
+                  }}
+                />
+                {checkingAffiliate && (
+                  <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", fontSize:12, color:C.muted }}>
+                    ⏳
+                  </span>
+                )}
+              </div>
+              {affiliateName && (
+                <div style={{ fontSize:12, color:"#15803d", marginTop:5 }}>
+                  ✅ Afiliado encontrado: <strong>{affiliateName}</strong>
+                </div>
+              )}
+              <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>
+                Preenchido automaticamente se o e-mail constar na landing page com link de afiliado.
+              </div>
+            </Field>
 
           <div style={{ padding:"18px 28px", borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"flex-end", gap:12, backgroundColor:"#fafafa" }}>
             <a
