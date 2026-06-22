@@ -71,6 +71,7 @@ export default function Sidebar() {
         {href: "/private/users", label: "Usuários", section: "admin"},
         {href: "/private/organizations", label: "Empresas", section: "admin"},
         {href: "/private/admin/billing", label: "Faturamento", section: "admin"},
+        {href: "/private/admin/affiliates", label: "Afiliados", section: "admin"},
     ];
 
     const isPrivate = pathname?.startsWith("/private");
