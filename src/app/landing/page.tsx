@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Logo from '@/components/Logo';
 import { api } from '@/lib/apiClient';
+import Cookies from 'js-cookie';
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -26,11 +27,20 @@ export default function LandingPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      Cookies.set('em_ref', ref, { expires: 30, sameSite: 'Lax' });
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/landing/leads', { email });
+      const affiliateCode = Cookies.get('em_ref') || undefined;
+      await api.post('/landing/leads', { email, affiliateCode });
       alert(`Obrigado! Entraremos em contato através do e-mail: ${email}`);
       setEmail('');
     } catch (error) {
