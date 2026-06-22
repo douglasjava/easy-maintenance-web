@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { api } from '@/lib/apiClient';
+import toast from 'react-hot-toast';
 
 interface AffiliateResponse {
   id: number;
@@ -24,15 +25,27 @@ export default function AffiliateRegistrationPage() {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const validate = (): string => {
+    if (!form.name.trim()) return 'Informe seu nome completo.';
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      return 'Informe um e-mail válido.';
+    if (!form.whatsapp.trim()) return 'Informe seu WhatsApp.';
+    return '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
     setLoading(true);
     setError('');
     try {
       const { data } = await api.post<AffiliateResponse>('/affiliates', form);
       setResult(data);
-    } catch {
-      setError('E-mail já cadastrado ou ocorreu um erro. Verifique os dados e tente novamente.');
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })
+        ?.response?.data?.detail;
+      setError(detail || 'Ocorreu um erro ao cadastrar. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -42,9 +55,9 @@ export default function AffiliateRegistrationPage() {
     if (!result?.link) return;
     try {
       await navigator.clipboard.writeText(result.link);
-      alert('Link copiado!');
+      toast.success('Link copiado!');
     } catch {
-      alert('Não foi possível copiar. Selecione e copie manualmente.');
+      toast.error('Não foi possível copiar. Selecione e copie manualmente.');
     }
   };
 
