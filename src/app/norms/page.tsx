@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Info, BookOpen, ShieldCheck } from "lucide-react";
 import { PrivateRoute } from "@/components/PrivateRoute";
 
@@ -88,6 +89,12 @@ export default function NormsPage() {
   return (
     <PrivateRoute>
       <div className="container py-4">
+      <div className="mb-4">
+        <Link className="btn btn-outline-secondary btn-sm" href="/">
+          ← Voltar ao dashboard
+        </Link>
+      </div>
+
       <div className="text-center mb-5">
         <div className="d-inline-flex p-3 rounded-circle bg-primary-subtle text-primary mb-3">
           <BookOpen size={40} />
