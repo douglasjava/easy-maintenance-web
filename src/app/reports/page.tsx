@@ -548,6 +548,7 @@ function MaintenancesSection() {
                   title="Limpar filtros"
                 >
                   <X size={14} />
+                  Limpar
                 </button>
               )}
             </div>
