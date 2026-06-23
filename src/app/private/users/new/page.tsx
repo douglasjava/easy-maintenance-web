@@ -204,7 +204,6 @@ export default function CreateUserPage() {
                 );
               })}
             </div>
-          </div>
 
             <Section title="Indicação (Opcional)" />
 
@@ -235,6 +234,7 @@ export default function CreateUserPage() {
                 Preenchido automaticamente se o e-mail constar na landing page com link de afiliado.
               </div>
             </Field>
+          </div>
 
           <div style={{ padding:"18px 28px", borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"flex-end", gap:12, backgroundColor:"#fafafa" }}>
             <a
