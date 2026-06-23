@@ -311,23 +311,18 @@ function ItemsContent() {
                   />
                 </div>
 
-                <div className="col-12 col-md-2">
-                  <div className="d-flex gap-1">
-                    <button className="btn btn-primary btn-sm flex-fill" type="submit">
-                      Aplicar
+                {hasActiveFilters && (
+                  <div className="col-12 col-md-auto">
+                    <button
+                      className="btn btn-outline-secondary btn-sm"
+                      type="button"
+                      onClick={clearFilters}
+                      title="Limpar filtros"
+                    >
+                      ✕ Limpar
                     </button>
-                    {hasActiveFilters && (
-                      <button
-                        className="btn btn-outline-secondary btn-sm"
-                        type="button"
-                        onClick={clearFilters}
-                        title="Limpar filtros"
-                      >
-                        ✕
-                      </button>
-                    )}
                   </div>
-                </div>
+                )}
               </div>
             </form>
           </div>
