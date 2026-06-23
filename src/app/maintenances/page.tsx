@@ -114,6 +114,7 @@ function MaintenancesListContent() {
       else if (performedAt) params.startDate = performedAt;
       if (performedAtTo) params.endDate = performedAtTo;
       else if (performedAt) params.endDate = performedAt;
+      if (performedBy) params.performedBy = performedBy;
       const res = await api.get("/items/maintenances/export", { params, responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
       const link = document.createElement("a");

@@ -450,6 +450,8 @@ function MaintenancesSection() {
       const params: Record<string, any> = {};
       if (applied.performedAtFrom) params.startDate = applied.performedAtFrom;
       if (applied.performedAtTo) params.endDate = applied.performedAtTo;
+      if (applied.type) params.type = applied.type;
+      if (applied.itemType) params.itemType = applied.itemType;
       const res = await api.get("/me/reports/maintenances/export", {
         params,
         responseType: "blob",
