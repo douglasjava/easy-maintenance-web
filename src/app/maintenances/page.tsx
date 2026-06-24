@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, Suspense, useRef, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
@@ -132,27 +132,41 @@ function MaintenancesListContent() {
     }
   }
 
-  // Items combo
-  const [itemsCursorStack, setItemsCursorStack] = useState<(number | null)[]>([null]);
-  const [itemsStackIndex, setItemsStackIndex] = useState(0);
-  const itemsSize = 20;
+  // Item search (replaces paginated select)
+  const [itemSearch, setItemSearch] = useState("");
+  const [selectedItemLabel, setSelectedItemLabel] = useState("");
+  const [itemSuggestions, setItemSuggestions] = useState<Item[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const itemSearchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: itemsPageData, isLoading: itemsLoading } = useQuery({
-    queryKey: ["items-for-combo", { cursor: itemsCursorStack[itemsStackIndex], itemsSize }],
-    queryFn: async () => {
-      const params: Record<string, any> = { size: itemsSize };
-      const c = itemsCursorStack[itemsStackIndex];
-      if (c != null) params.cursor = c;
-      const res = await api.get("/items", { params });
-      if (Array.isArray(res.data)) {
-        const arr = res.data as Item[];
-        return { content: arr, nextCursor: null, prevCursor: null, hasMore: false, size: arr.length, totalPages: 1, totalElements: arr.length, number: 0 } as CursorPageResp<Item>;
+  const searchItems = useCallback(async (term: string) => {
+    if (!term.trim()) { setItemSuggestions([]); return; }
+    try {
+      const res = await api.get<Item[] | { content: Item[] }>("/items", {
+        params: { itemType: term.trim(), size: 12 },
+      });
+      const list = Array.isArray(res.data) ? res.data : (res.data as { content: Item[] }).content ?? [];
+      setItemSuggestions(list);
+    } catch { setItemSuggestions([]); }
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchItems(itemSearch), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [itemSearch, searchItems]);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (itemSearchRef.current && !itemSearchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
       }
-      return res.data as CursorPageResp<Item>;
-    },
-  });
-
-  const items = useMemo(() => itemsPageData?.content ?? [], [itemsPageData]);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   // Filters — initialised from URL search params (e.g. when navigating from KPI card)
   const [selectedItemId, setSelectedItemId] = useState(searchParams.get("itemId") ?? "");
@@ -163,6 +177,9 @@ function MaintenancesListContent() {
 
   function clearFilters() {
     setSelectedItemId("");
+    setItemSearch("");
+    setSelectedItemLabel("");
+    setItemSuggestions([]);
     setPerformedAt("");
     setPerformedAtFrom("");
     setPerformedAtTo("");
@@ -302,54 +319,70 @@ function MaintenancesListContent() {
             <form onSubmit={(e) => { e.preventDefault(); resetMaintsCursor(); }}>
               <div className="row g-2 align-items-end">
 
-                {/* Item selector — full width on mobile */}
-                <div className="col-12 col-md-4">
+                {/* Item search — replaces paginated select */}
+                <div className="col-12 col-md-4" ref={itemSearchRef} style={{ position: "relative" }}>
                   <label
                     className="form-label mb-1"
                     style={{ fontSize: "0.7rem", fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}
                   >
                     Item
                   </label>
-                  <select
-                    className="form-select form-select-sm"
-                    value={selectedItemId}
-                    onChange={(e) => { setSelectedItemId(e.target.value); resetMaintsCursor(); }}
-                    disabled={itemsLoading}
-                  >
-                    <option value="">Todos os itens</option>
-                    {items.map((it) => (
-                      <option key={String(it.id)} value={String(it.id)}>
-                        {it.itemType}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="d-flex gap-1">
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      placeholder={selectedItemLabel || "Buscar item..."}
+                      value={selectedItemLabel ? "" : itemSearch}
+                      readOnly={!!selectedItemLabel}
+                      onChange={(e) => {
+                        setItemSearch(e.target.value);
+                        setShowSuggestions(true);
+                        if (!e.target.value) { setSelectedItemId(""); setSelectedItemLabel(""); resetMaintsCursor(); }
+                      }}
+                      onFocus={() => { if (!selectedItemLabel) setShowSuggestions(true); }}
+                      style={selectedItemLabel ? { backgroundColor: "#eff6ff", cursor: "default", color: "#1d4ed8", fontWeight: 600 } : {}}
+                    />
+                    {selectedItemLabel && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-2"
+                        title="Limpar item"
+                        onClick={() => { setSelectedItemId(""); setSelectedItemLabel(""); setItemSearch(""); setItemSuggestions([]); resetMaintsCursor(); }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
 
-                  {/* Items combo pagination — only shown when needed */}
-                  {(itemsStackIndex > 0 || itemsPageData?.hasMore) && (
-                    <div className="d-flex justify-content-between align-items-center mt-1 gap-2">
-                      <button
-                        type="button"
-                        className="btn btn-link btn-sm p-0"
-                        style={{ fontSize: "0.72rem", color: "#6b7280" }}
-                        onClick={() => setItemsStackIndex((i) => Math.max(0, i - 1))}
-                        disabled={itemsStackIndex === 0}
-                      >
-                        ← Anteriores
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-link btn-sm p-0"
-                        style={{ fontSize: "0.72rem", color: "#6b7280" }}
-                        onClick={() => {
-                          const nc = itemsPageData?.nextCursor;
-                          if (!nc) return;
-                          setItemsCursorStack((prev) => [...prev.slice(0, itemsStackIndex + 1), nc]);
-                          setItemsStackIndex((i) => i + 1);
-                        }}
-                        disabled={!itemsPageData?.hasMore}
-                      >
-                        Próximos →
-                      </button>
+                  {/* Suggestions dropdown */}
+                  {showSuggestions && itemSuggestions.length > 0 && !selectedItemLabel && (
+                    <div
+                      style={{
+                        position: "absolute", zIndex: 1050, top: "100%", left: 0, right: 0,
+                        background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.12)", maxHeight: 220, overflowY: "auto",
+                      }}
+                    >
+                      {itemSuggestions.map((it) => (
+                        <button
+                          key={String(it.id)}
+                          type="button"
+                          className="d-block w-100 text-start px-3 py-2 border-0 bg-transparent"
+                          style={{ fontSize: "0.82rem", color: "#111827" }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setSelectedItemId(String(it.id));
+                            setSelectedItemLabel(it.itemType);
+                            setItemSearch("");
+                            setShowSuggestions(false);
+                            resetMaintsCursor();
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f9ff")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        >
+                          {it.itemType}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
