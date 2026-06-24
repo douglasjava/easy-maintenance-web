@@ -432,6 +432,10 @@ function MaintenancesSection() {
   }, [applied, page, fetchMaintenances]);
 
   function applyFilters() {
+    if (draft.performedAtFrom && draft.performedAtTo && draft.performedAtTo < draft.performedAtFrom) {
+      toast.error("A data de fim não pode ser anterior à data de início.");
+      return;
+    }
     setPage(0);
     setApplied({ ...draft });
   }
@@ -500,7 +504,16 @@ function MaintenancesSection() {
                 type="date"
                 className="form-control form-control-sm"
                 value={draft.performedAtTo}
-                onChange={(e) => setDraft({ ...draft, performedAtTo: e.target.value })}
+                min={draft.performedAtFrom || undefined}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (draft.performedAtFrom && val && val < draft.performedAtFrom) {
+                    toast.error("A data de fim não pode ser anterior à data de início.");
+                    setDraft({ ...draft, performedAtTo: "" });
+                  } else {
+                    setDraft({ ...draft, performedAtTo: val });
+                  }
+                }}
               />
             </div>
             <div className="col-12 col-sm-6 col-md-2">
