@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, Suspense } from "react";
+import { useState, Suspense, useRef, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -15,14 +15,6 @@ interface Item {
   itemCategory: "REGULATORY" | "OPERATIONAL";
   status: "OK" | "NEAR_DUE" | "OVERDUE";
   nextDueAt?: string;
-}
-
-interface PageResp<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  number: number;
-  size: number;
 }
 
 interface NearbySupplier {
@@ -98,25 +90,41 @@ function NewMaintenanceContent() {
 
   const { permissions } = useCurrentOrganizationAccess();
 
-  // Item selection
+  // Item selection — autocomplete
   const [itemId, setItemId] = useState(searchParams.get("itemId") || "");
-  const [itemsPage, setItemsPage] = useState(0);
-  const itemsSize = 20;
+  const [itemSearch, setItemSearch] = useState("");
+  const [selectedItemLabel, setSelectedItemLabel] = useState("");
+  const [itemSuggestions, setItemSuggestions] = useState<Item[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const itemSearchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: itemsComboData, isLoading: itemsComboLoading } = useQuery({
-    queryKey: ["items-for-combo", { itemsPage, itemsSize }],
-    queryFn: async () => {
-      const params: Record<string, any> = { page: itemsPage, size: itemsSize };
-      const res = await api.get("/items", { params });
-      if (Array.isArray(res.data)) {
-        const arr = res.data as Item[];
-        return { content: arr, totalPages: 1, totalElements: arr.length, number: 0, size: arr.length } as PageResp<Item>;
+  const searchItems = useCallback(async (term: string) => {
+    if (term.trim().length < 3) { setItemSuggestions([]); return; }
+    try {
+      const res = await api.get<Item[] | { content: Item[] }>("/items", {
+        params: { itemType: term.trim(), size: 12 },
+      });
+      const list = Array.isArray(res.data) ? res.data : (res.data as { content: Item[] }).content ?? [];
+      setItemSuggestions(list);
+    } catch { setItemSuggestions([]); }
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchItems(itemSearch), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [itemSearch, searchItems]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (itemSearchRef.current && !itemSearchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
       }
-      return res.data as PageResp<Item>;
-    },
-  });
-
-  const itemsCombo = useMemo(() => itemsComboData?.content ?? [], [itemsComboData]);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   // Maintenance form
   const [performedAt, setPerformedAt] = useState("");
@@ -135,6 +143,9 @@ function NewMaintenanceContent() {
     setCostInput("");
     setNextDueAt("");
     setItemId("");
+    setItemSearch("");
+    setSelectedItemLabel("");
+    setItemSuggestions([]);
     setStep(1);
     setMaintenanceId(null);
   }
@@ -145,6 +156,13 @@ function NewMaintenanceContent() {
     queryKey: ["item", itemId],
     queryFn: async () => (await api.get(`/items/${itemId}`)).data as Item,
   });
+
+  // Populate label when itemId comes from URL params and item loads
+  useEffect(() => {
+    if (selectedItem && itemId && !selectedItemLabel) {
+      setSelectedItemLabel(selectedItem.itemType);
+    }
+  }, [selectedItem, itemId, selectedItemLabel]);
 
   // Suppliers
   const [suppliers, setSuppliers] = useState<NearbySupplier[]>([]);
@@ -325,24 +343,67 @@ function NewMaintenanceContent() {
                     1 — Selecionar item
                   </div>
 
-                  {/* Select + supplier button */}
+                  {/* Autocomplete + supplier button */}
                   <div className="d-flex flex-column flex-sm-row gap-2 align-items-start align-items-sm-end">
-                    <div className="flex-grow-1 w-100">
+                    <div className="flex-grow-1 w-100" ref={itemSearchRef} style={{ position: "relative" }}>
                       <label style={LABEL_STYLE}>Item</label>
-                      <select
-                        className="form-select"
-                        value={itemId}
-                        onChange={(e) => setItemId(e.target.value)}
-                        disabled={itemsComboLoading}
-                      >
-                        <option value="">Selecione um item…</option>
-                        {itemsCombo.map((it) => (
-                          <option key={String(it.id)} value={String(it.id)}>
-                            {it.itemType}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="d-flex gap-1">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder={selectedItemLabel || "Digite 3 caracteres para buscar…"}
+                          value={selectedItemLabel ? "" : itemSearch}
+                          readOnly={!!selectedItemLabel}
+                          onChange={(e) => {
+                            setItemSearch(e.target.value);
+                            setShowSuggestions(true);
+                            if (!e.target.value) { setItemId(""); setSelectedItemLabel(""); }
+                          }}
+                          onFocus={() => { if (!selectedItemLabel) setShowSuggestions(true); }}
+                          style={selectedItemLabel ? { backgroundColor: "#eff6ff", cursor: "default", color: "#1d4ed8", fontWeight: 600 } : {}}
+                        />
+                        {selectedItemLabel && (
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary px-2"
+                            title="Limpar item"
+                            onClick={() => { setItemId(""); setSelectedItemLabel(""); setItemSearch(""); setItemSuggestions([]); }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
 
+                      {/* Suggestions dropdown */}
+                      {showSuggestions && itemSuggestions.length > 0 && !selectedItemLabel && (
+                        <div
+                          style={{
+                            position: "absolute", zIndex: 1050, top: "100%", left: 0, right: 0,
+                            background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8,
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.12)", maxHeight: 220, overflowY: "auto",
+                          }}
+                        >
+                          {itemSuggestions.map((it) => (
+                            <button
+                              key={String(it.id)}
+                              type="button"
+                              className="d-block w-100 text-start px-3 py-2 border-0 bg-transparent"
+                              style={{ fontSize: "0.82rem", color: "#111827" }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setItemId(String(it.id));
+                                setSelectedItemLabel(it.itemType);
+                                setItemSearch("");
+                                setShowSuggestions(false);
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f9ff")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                            >
+                              {it.itemType}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <button
