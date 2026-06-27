@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 
 interface QuickAction {
   label: string;
@@ -6,6 +9,7 @@ interface QuickAction {
   url: string;
   icon: string;
   isPrimary?: boolean;
+  requiresAi?: boolean;
 }
 
 const actions: QuickAction[] = [
@@ -27,10 +31,17 @@ const actions: QuickAction[] = [
     description: "Gerar plano automático",
     url: "/ai-onboarding",
     icon: "🤖",
+    requiresAi: true,
   },
 ];
 
 export function QuickActions() {
+  const { features } = useCurrentOrganizationAccess();
+
+  const visibleActions = actions.filter(
+    (action) => !action.requiresAi || !!features?.aiEnabled
+  );
+
   return (
     <div className="mt-4" data-tour="quick-actions">
       <div
@@ -41,7 +52,7 @@ export function QuickActions() {
       </div>
 
       <div className="row g-2">
-        {actions.map((action, idx) => (
+        {visibleActions.map((action, idx) => (
           <div key={idx} className="col-12 col-sm-4">
             <Link
               href={action.url}

@@ -27,7 +27,7 @@ export default function Sidebar() {
     const router = useRouter();
     const pathname = usePathname();
     const { isBlocked } = useAuth();
-    const { permissions } = useCurrentOrganizationAccess();
+    const { permissions, features } = useCurrentOrganizationAccess();
 
     function closeOffcanvas() {
         try {
@@ -181,6 +181,7 @@ export default function Sidebar() {
                                             .filter((i) => {
                                                 if (i.href === "/items/new") return permissions?.canCreateItem;
                                                 if (i.href === "/maintenances/new") return permissions?.canRegisterMaintenance;
+                                                if (i.href === "/ai-onboarding") return !!features?.aiEnabled;
                                                 return true;
                                             })
                                             .map((i) => (
@@ -228,11 +229,13 @@ export default function Sidebar() {
                         </span>
                     </div>
 
-                    {/* dica sutil de IA */}
-                    <div className="small mt-2" style={{color: "#6B7280"}}>
-                        🤖 Dica: use o <span style={{color: COLORS.primary}}>SAMU</span> para tirar dúvidas e encontrar
-                        prazos.
-                    </div>
+                    {/* dica sutil de IA — exibida apenas quando o plano inclui IA */}
+                    {features?.aiEnabled && (
+                        <div className="small mt-2" style={{color: "#6B7280"}}>
+                            🤖 Dica: use o <span style={{color: COLORS.primary}}>SAMU</span> para tirar dúvidas e encontrar
+                            prazos.
+                        </div>
+                    )}
 
                     <div className="small mt-2">
                         <Link href="/privacidade" className="text-muted text-decoration-none" style={{fontSize: "0.75rem"}}>
