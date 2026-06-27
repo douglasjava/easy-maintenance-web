@@ -6,6 +6,7 @@ import {useRouter, usePathname} from "next/navigation";
 import {useState, useEffect} from "react";
 import {useAuth} from "@/contexts/AuthContext";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { ENV } from "@/lib/env";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -223,8 +224,8 @@ export default function Sidebar() {
                     <div className="d-flex align-items-center justify-content-between">
                         <span className="small text-muted">Easy Maintenance</span>
                         <span className="small" style={{color: COLORS.primaryDark}}>
-              v0 • MVP
-            </span>
+                            {ENV.APP_VERSION} • {ENV.APP_ENV === "production" ? "produção" : ENV.APP_ENV}
+                        </span>
                     </div>
 
                     {/* dica sutil de IA */}

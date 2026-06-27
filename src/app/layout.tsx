@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import Shell from "@/components/Shell";
 import Providers from "@/components/Providers";
 import FcmHandler from "@/components/messaging/FcmHandler";
+import EnvironmentBanner from "@/components/layout/shared/EnvironmentBanner";
 
 export const viewport: Viewport = {
     themeColor: "#0F172A",
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body>
         <Providers>
             <FcmHandler />
+            <EnvironmentBanner />
             <Shell>{children}</Shell>
         </Providers>
         </body>
