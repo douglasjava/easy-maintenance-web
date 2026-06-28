@@ -35,12 +35,20 @@ const actions: QuickAction[] = [
   },
 ];
 
+const colClass: Record<number, string> = {
+  1: "col-12",
+  2: "col-12 col-sm-6",
+  3: "col-12 col-sm-4",
+};
+
 export function QuickActions() {
   const { features } = useCurrentOrganizationAccess();
 
   const visibleActions = actions.filter(
     (action) => !action.requiresAi || !!features?.aiEnabled
   );
+
+  const col = colClass[visibleActions.length] ?? "col-12 col-sm-4";
 
   return (
     <div className="mt-4" data-tour="quick-actions">
@@ -53,7 +61,7 @@ export function QuickActions() {
 
       <div className="row g-2">
         {visibleActions.map((action, idx) => (
-          <div key={idx} className="col-12 col-sm-4">
+          <div key={idx} className={col}>
             <Link
               href={action.url}
               className="text-decoration-none d-block h-100"
