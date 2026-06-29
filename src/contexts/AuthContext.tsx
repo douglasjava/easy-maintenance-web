@@ -53,6 +53,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             storage.removeItem(AUTH_FLAG);
             storage.removeItem("userId");
             storage.removeItem("userName");
+            storage.removeItem("userRole");
             storage.removeItem("organizationCode");
             storage.removeItem("organizationName");
         });
@@ -121,6 +122,10 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
             if (data?.name) {
                 storage.setItem("userName", String(data.name));
+            }
+
+            if (data?.role) {
+                storage.setItem("userRole", String(data.role));
             }
 
             /**
