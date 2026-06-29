@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
-import { User, Building, CreditCard, LogOut, HelpCircle, BarChart2 } from "lucide-react";
+import { User, Building, CreditCard, LogOut, HelpCircle, BarChart2, Users } from "lucide-react";
 import TopBarShell from "../shared/TopBarShell";
 import TopBarBrand from "../shared/TopBarBrand";
 import TopBarUserMenu from "../shared/TopBarUserMenu";
@@ -26,6 +26,7 @@ export default function UserTopBar() {
   const [currentOrgName, setCurrentOrgName] = useState("");
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState("Usuário");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -35,6 +36,9 @@ export default function UserTopBar() {
 
     const storedUserName = window.localStorage.getItem("userName") || window.sessionStorage.getItem("userName");
     if (storedUserName) setUserName(storedUserName);
+
+    const storedUserRole = window.localStorage.getItem("userRole") || window.sessionStorage.getItem("userRole");
+    setIsAdmin(storedUserRole === "ADMIN");
 
     async function fetchOrganizations() {
       try {
@@ -148,6 +152,14 @@ export default function UserTopBar() {
               Minhas Empresas
             </button>
           </li>
+          {isAdmin && (
+            <li>
+              <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/users")} disabled={isBlocked}>
+                <Users size={18} className="text-muted" />
+                Usuários
+              </button>
+            </li>
+          )}
           <li>
             <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/billing")}>
               <CreditCard size={18} className="text-muted" />
