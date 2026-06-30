@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAccessContext } from "@/providers/AccessContextProvider";
 import toast from "react-hot-toast";
 import { User, Building, CreditCard, LogOut, HelpCircle, BarChart2, Users } from "lucide-react";
 import TopBarShell from "../shared/TopBarShell";
@@ -22,11 +23,14 @@ type OrganizationItem = {
 export default function UserTopBar() {
   const router = useRouter();
   const { logout, isBlocked } = useAuth();
+  const { accessContext } = useAccessContext();
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [currentOrgName, setCurrentOrgName] = useState("");
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState("Usuário");
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const canManageBilling = accessContext?.accountAccess?.permissions?.canManageOwnBilling ?? true;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -160,12 +164,14 @@ export default function UserTopBar() {
               </button>
             </li>
           )}
-          <li>
-            <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/billing")}>
-              <CreditCard size={18} className="text-muted" />
-              Faturamento
-            </button>
-          </li>
+          {canManageBilling && (
+            <li>
+              <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/billing")}>
+                <CreditCard size={18} className="text-muted" />
+                Faturamento
+              </button>
+            </li>
+          )}
           <li>
             <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/reports")} disabled={isBlocked}>
               <BarChart2 size={18} className="text-muted" />
