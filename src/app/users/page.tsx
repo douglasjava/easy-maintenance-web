@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/apiClient";
-import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { useAccessContext } from "@/providers/AccessContextProvider";
 import UsageMeter from "@/components/UsageMeter";
 import { Users, Pencil, Trash2, UserPlus } from "lucide-react";
 import toast from "react-hot-toast";
@@ -43,7 +43,8 @@ export default function UsersPage() {
   const [error, setError]             = useState(false);
   const [removing, setRemoving]       = useState<number | null>(null);
   const [guardChecked, setGuardChecked] = useState(false);
-  const { features } = useCurrentOrganizationAccess();
+  const { accessContext } = useAccessContext();
+  const accountFeatures = accessContext?.accountAccess?.features;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -109,12 +110,12 @@ export default function UsersPage() {
       </div>
 
       {/* UsageMeter */}
-      {features && features.maxUsers > 0 && (
+      {accountFeatures && accountFeatures.maxUsers > 0 && (
         <div className="mb-4 p-3 bg-white rounded-4 shadow-sm border" style={{ maxWidth: 280 }}>
           <UsageMeter
             label="Membros da equipe"
             current={members.length}
-            max={features.maxUsers}
+            max={accountFeatures.maxUsers}
             upgradeHref="/billing"
           />
         </div>
