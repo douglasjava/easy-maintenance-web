@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import { formatMoney, formatDate } from "@/lib/formatters";
 import PlanChangeDialog from "@/components/billing/PlanChangeDialog";
@@ -11,6 +12,7 @@ import BillingFaq from "@/components/billing/BillingFaq";
 import PaymentMethodSelectionModal from "@/components/billing/PaymentMethodSelectionModal";
 import { usePendingPayment } from "@/hooks/usePendingPayment";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { useAccessContext } from "@/providers/AccessContextProvider";
 import ConfirmModal from "@/components/ConfirmModal";
 import { CreditCard, AlertCircle, CheckCircle, User, Building, ArrowRight, ChevronRight, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -277,7 +279,9 @@ function BillingSkeleton() {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
+  const router = useRouter();
   const { isBlocked } = useAuth();
+  const { accessContext, isLoading: isAccessLoading } = useAccessContext();
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const { organization } = useCurrentOrganizationAccess();
@@ -289,6 +293,14 @@ export default function BillingPage() {
   const [itemToCancel, setItemToCancel] = useState<number | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (isAccessLoading) return;
+    const canBilling = accessContext?.accountAccess?.permissions?.canManageOwnBilling ?? true;
+    if (!canBilling) {
+      router.replace("/");
+    }
+  }, [isAccessLoading, accessContext, router]);
 
   useEffect(() => { fetchSummary(); }, []);
 
@@ -326,7 +338,7 @@ export default function BillingPage() {
     }
   }
 
-  if (loading) return <BillingSkeleton />;
+  if (isAccessLoading || loading) return <BillingSkeleton />;
 
   const hasSubscription = !!summary?.subscription;
   const hasItems = (summary?.items?.length || 0) > 0;
