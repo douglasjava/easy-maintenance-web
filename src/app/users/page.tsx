@@ -89,6 +89,8 @@ export default function UsersPage() {
     }
   }
 
+  const atLimit = !loading && !!accountFeatures && accountFeatures.maxUsers > 0 && members.length >= accountFeatures.maxUsers;
+
   if (!guardChecked) return null;
 
   return (
@@ -99,14 +101,26 @@ export default function UsersPage() {
           <h2 className="mb-1 fw-bold">Minha Equipe</h2>
           <p className="text-muted mb-0">Gerencie os membros que acessam suas organizações</p>
         </div>
-        <Link
-          href="/users/new"
-          className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
-          style={{ width: "fit-content" }}
-        >
-          <UserPlus size={18} />
-          Convidar membro
-        </Link>
+        {atLimit ? (
+          <button
+            className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
+            disabled
+            title={`Limite de ${accountFeatures?.maxUsers} membros atingido. Faça upgrade do plano.`}
+            style={{ width: "fit-content", opacity: 0.55, cursor: "not-allowed" }}
+          >
+            <UserPlus size={18} />
+            Convidar membro
+          </button>
+        ) : (
+          <Link
+            href="/users/new"
+            className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
+            style={{ width: "fit-content" }}
+          >
+            <UserPlus size={18} />
+            Convidar membro
+          </Link>
+        )}
       </div>
 
       {/* UsageMeter */}
