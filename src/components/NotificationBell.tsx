@@ -15,6 +15,7 @@ type NotificationItem = {
   referenceLabel: string | null;
   read: boolean;
   createdAt: string;
+  orgCode: string | null;
 };
 
 type NotificationData = {

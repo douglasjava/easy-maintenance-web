@@ -311,18 +311,21 @@ function ItemsContent() {
                   />
                 </div>
 
-                {hasActiveFilters && (
-                  <div className="col-12 col-md-auto">
-                    <button
-                      className="btn btn-outline-secondary btn-sm"
-                      type="button"
-                      onClick={clearFilters}
-                      title="Limpar filtros"
-                    >
-                      ✕ Limpar
-                    </button>
-                  </div>
-                )}
+                <div className="col-12 col-md-2">
+                  <button
+                    className="btn btn-sm w-100"
+                    type="button"
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 8,
+                      color: hasActiveFilters ? "#dc2626" : "#6b7280",
+                      fontWeight: hasActiveFilters ? 600 : 400,
+                    }}
+                    onClick={clearFilters}
+                  >
+                    {hasActiveFilters ? "✕ Limpar" : "Limpar"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
