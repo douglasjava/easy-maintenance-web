@@ -40,8 +40,17 @@ export default function PlanChangeDialog({
     async function fetchPlans() {
         try {
             setFetchingPlans(true);
-            const res = await api.get("/private/admin/billing/plans");
-            // Map API Plan to the Plan interface used in the dialog
+
+            let res;
+            if (isAdmin) {
+                const adminToken = typeof window !== "undefined" ? window.localStorage.getItem("adminToken") : null;
+                const headers: Record<string, string> = {};
+                if (adminToken) headers["X-Admin-Token"] = adminToken;
+                res = await api.get("/private/admin/billing/plans", { headers });
+            } else {
+                res = await api.get("/me/billing/plans");
+            }
+
             const mappedPlans = res.data.map((p: any) => ({
                 code: p.code,
                 name: p.name,
