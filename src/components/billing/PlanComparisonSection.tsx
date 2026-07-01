@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { formatMoney } from "@/lib/formatters";
-import { CheckCircle2, XCircle, Lock } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 interface PlanFeatures {
   maxItems: number;
@@ -29,15 +29,38 @@ interface Props {
   onUpgradeClick: () => void;
 }
 
-const FEATURE_ROWS: { key: keyof PlanFeatures; label: string; format: (v: any) => string }[] = [
-  { key: "maxItems", label: "Itens cadastrados", format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
-  { key: "maxUsers", label: "Usuários por empresa", format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
-  { key: "maxOrganizations", label: "Empresas", format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
-  { key: "aiEnabled", label: "Assistente IA", format: (v) => (v ? "Incluso" : "Não incluso") },
-  { key: "reportsEnabled", label: "Exportação de relatórios", format: (v) => (v ? "Incluso" : "Não incluso") },
-  { key: "aiMonthlyCredits", label: "Créditos IA/mês", format: (v) => (v <= 0 ? "—" : String(v)) },
-  { key: "emailMonthlyLimit", label: "E-mails/mês", format: (v) => (v <= 0 ? "—" : String(v)) },
-  { key: "supportLevel", label: "Suporte", format: (v) => v || "—" },
+const SUPPORT_LABELS: Record<string, string> = {
+  COMMUNITY: "Comunidade",
+  PRIORITY_EMAIL: "E-mail prioritário",
+  DEDICATED: "Gerente dedicado",
+};
+
+type FeatureRow =
+  | { type: "key"; key: keyof PlanFeatures; label: string; format: (v: any) => string }
+  | { type: "computed"; label: string; compute: (plan: PublicPlan) => string };
+
+const FEATURE_ROWS: FeatureRow[] = [
+  { type: "key", key: "maxItems",         label: "Itens cadastrados",        format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
+  { type: "key", key: "maxUsers",         label: "Usuários por empresa",      format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
+  { type: "key", key: "maxOrganizations", label: "Empresas / unidades",       format: (v) => (v <= 0 ? "Ilimitado" : String(v)) },
+  {
+    type: "computed",
+    label: "Custo por empresa",
+    compute: (plan) => {
+      if (plan.priceCents === 0) return "Gratuito";
+      const maxOrgs = plan.features.maxOrganizations;
+      if (maxOrgs <= 0) return "—";
+      const monthlyPrice =
+        plan.billingCycle === "YEARLY"
+          ? Math.round(plan.priceCents / 12)
+          : plan.priceCents;
+      return `${formatMoney(Math.round(monthlyPrice / maxOrgs))}/empresa`;
+    },
+  },
+  { type: "key", key: "aiEnabled",        label: "Assistente IA",            format: (v) => (v ? "Incluso" : "Não incluso") },
+  { type: "key", key: "reportsEnabled",   label: "Exportação de relatórios", format: (v) => (v ? "Incluso" : "Não incluso") },
+  { type: "key", key: "emailMonthlyLimit",label: "E-mails/mês",              format: (v) => (v <= 0 ? "—" : String(v)) },
+  { type: "key", key: "supportLevel",     label: "Suporte",                  format: (v) => SUPPORT_LABELS[v] || v || "—" },
 ];
 
 function isFeatureEnabled(key: keyof PlanFeatures, value: any): boolean {
@@ -161,8 +184,27 @@ export default function PlanComparisonSection({ currentPlanCode, onUpgradeClick 
             </tr>
           </thead>
           <tbody>
-            {FEATURE_ROWS.map((row) => {
-              const currentPlan = plans[currentPlanIndex];
+            {FEATURE_ROWS.map((row, rowIdx) => {
+              if (row.type === "computed") {
+                return (
+                  <tr key={`computed-${rowIdx}`}>
+                    <td className="small fw-medium text-secondary">{row.label}</td>
+                    {plans.map((plan) => {
+                      const isCurrent = plan.code === currentPlanCode;
+                      return (
+                        <td
+                          key={plan.code}
+                          className="text-center small"
+                          style={{ background: isCurrent ? "#f0f7ff" : undefined }}
+                        >
+                          <span className="text-muted">{row.compute(plan)}</span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              }
+
               return (
                 <tr key={row.key}>
                   <td className="small fw-medium text-secondary">{row.label}</td>
@@ -170,8 +212,10 @@ export default function PlanComparisonSection({ currentPlanCode, onUpgradeClick 
                     const value = plan.features[row.key];
                     const enabled = isFeatureEnabled(row.key, value);
                     const isCurrent = plan.code === currentPlanCode;
-                    const isLocked =
-                      isCurrent && typeof value === "boolean" && !value && currentPlan !== undefined;
+                    const starterAiTooltip =
+                      row.key === "aiEnabled" && !value && plan.code.startsWith("STARTER")
+                        ? "Disponível a partir do plano Business"
+                        : undefined;
 
                     return (
                       <td
@@ -180,19 +224,12 @@ export default function PlanComparisonSection({ currentPlanCode, onUpgradeClick 
                         style={{ background: isCurrent ? "#f0f7ff" : undefined }}
                       >
                         {typeof value === "boolean" ? (
-                          <span className={`d-flex align-items-center justify-content-center gap-1 ${enabled ? "text-success" : "text-danger"}`}>
-                            {enabled ? (
-                              <CheckCircle2 size={16} />
-                            ) : isLocked ? (
-                              <>
-                                <Lock size={14} className="text-warning" />
-                                <span className="text-muted" style={{ fontSize: "0.72rem" }}>
-                                  Upgrade
-                                </span>
-                              </>
-                            ) : (
-                              <XCircle size={16} />
-                            )}
+                          <span
+                            className={`d-flex align-items-center justify-content-center gap-1 ${enabled ? "text-success" : "text-danger"}`}
+                            title={starterAiTooltip}
+                            style={starterAiTooltip ? { cursor: "help" } : undefined}
+                          >
+                            {enabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
                           </span>
                         ) : (
                           <span className={enabled ? "text-dark" : "text-muted"}>
