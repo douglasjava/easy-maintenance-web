@@ -7,6 +7,7 @@ import { Building, Plus, Search, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useAccessContext } from "@/providers/AccessContextProvider";
 import { GuardedButton } from "@/components/access/GuardedButton";
+import UsageMeter from "@/components/UsageMeter";
 
 type OrganizationItem = {
   organization: {
@@ -66,8 +67,17 @@ export default function OrganizationsPage() {
     fetchOrganizations();
   }, []);
 
-  const filteredOrgs = organizations.filter(item => 
-    item.organization.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const accountFeatures = accessContext?.accountAccess?.features;
+  const maxOrganizations = accountFeatures?.maxOrganizations ?? 0;
+  const atLimit = !loading && maxOrganizations > 0 && organizations.length >= maxOrganizations;
+
+  const canCreate = !!accessContext?.accountAccess?.permissions?.canCreateOrganization && !atLimit;
+  const blockedMessage = atLimit
+    ? `Limite de ${maxOrganizations} empresa${maxOrganizations !== 1 ? "s" : ""} atingido. Faça upgrade do plano.`
+    : accessContext?.accountAccess?.message;
+
+  const filteredOrgs = organizations.filter(item =>
+    item.organization.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.organization.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -78,15 +88,27 @@ export default function OrganizationsPage() {
           <h2 className="mb-1 fw-bold">Minhas Empresas</h2>
           <p className="text-muted mb-0">Gerencie e alterne entre as organizações que você tem acesso</p>
         </div>
-        <GuardedButton 
-          className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
-          allowed={!!accessContext?.accountAccess.permissions.canCreateOrganization}
-          blockedMessage={accessContext?.accountAccess.message}
-          onClick={() => window.location.href = "/organizations/new"}
-        >
-          <Plus size={20} />
-          Nova Empresa
-        </GuardedButton>
+        <div className="d-flex flex-column align-items-md-end gap-2">
+          {!loading && accountFeatures && maxOrganizations > 0 && (
+            <div className="p-3 bg-white rounded-4 shadow-sm border" style={{ minWidth: 200 }}>
+              <UsageMeter
+                label="Empresas cadastradas"
+                current={organizations.length}
+                max={maxOrganizations}
+                upgradeHref="/billing"
+              />
+            </div>
+          )}
+          <GuardedButton
+            className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
+            allowed={canCreate}
+            blockedMessage={blockedMessage}
+            onClick={() => window.location.href = "/organizations/new"}
+          >
+            <Plus size={20} />
+            Nova Empresa
+          </GuardedButton>
+        </div>
       </div>
 
       <div className="card border-0 shadow-sm rounded-4 mb-4">
