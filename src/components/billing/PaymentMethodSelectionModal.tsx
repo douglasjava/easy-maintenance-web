@@ -13,6 +13,7 @@ interface PaymentMethodSelectionModalProps {
   onClose: () => void;
   onSuccess?: (method: PaymentMethod) => void;
   currentMethod?: PaymentMethod | null;
+  subscriptionStatus?: string | null;
 }
 
 const METHOD_CONFIG: Record<
@@ -40,6 +41,7 @@ export default function PaymentMethodSelectionModal({
   onClose,
   onSuccess,
   currentMethod,
+  subscriptionStatus,
 }: PaymentMethodSelectionModalProps) {
   const [selected, setSelected] = useState<PaymentMethod | null>(
     currentMethod ?? null
@@ -70,19 +72,42 @@ export default function PaymentMethodSelectionModal({
     if (!selected) return;
     try {
       setLoading(true);
-      await api.patch("/me/billing/payment-method", { method: selected });
-      toast.success("Método de pagamento salvo com sucesso!");
+      if (subscriptionStatus === "ACTIVE") {
+        if (currentMethod === "CARD" && selected === "PIX") {
+          await api.post("/me/billing/transition/pix");
+          toast.success("Método alterado para PIX. Válido a partir do próximo ciclo de cobrança.");
+        } else if (currentMethod === "PIX" && selected === "CARD") {
+          const res = await api.post<{ message: string; warning?: string; effectiveCycle?: number }>("/me/billing/transition/card");
+          if (res.data.warning) {
+            toast(res.data.warning, { icon: "⚠️", duration: 8000 });
+          } else {
+            toast.success(res.data.message);
+          }
+        } else {
+          // same method or unexpected combo — should not reach here
+          toast("Você já utiliza este método de pagamento.");
+          onClose();
+          return;
+        }
+      } else {
+        // TRIAL / outros: endpoint legado ainda funciona
+        await api.patch("/me/billing/payment-method", { method: selected });
+        toast.success("Método de pagamento salvo com sucesso!");
+      }
       onSuccess?.(selected);
       onClose();
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       toast.error(
-        detail ?? "Não foi possível salvar o método de pagamento. Tente novamente."
+        detail ?? "Não foi possível alterar o método de pagamento. Tente novamente."
       );
     } finally {
       setLoading(false);
     }
   }
+
+  const isSameMethod = selected === currentMethod;
+  const confirmDisabled = !selected || loading || (subscriptionStatus === "ACTIVE" && isSameMethod);
 
   if (!show) return null;
 
@@ -168,7 +193,7 @@ export default function PaymentMethodSelectionModal({
                 type="button"
                 className="btn btn-primary rounded-pill px-4 fw-semibold flex-grow-1"
                 onClick={handleConfirm}
-                disabled={!selected || loading}
+                disabled={confirmDisabled}
               >
                 {loading ? (
                   <>
