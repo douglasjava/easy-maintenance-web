@@ -87,7 +87,7 @@ export default function PrivacidadePage() {
                 <h5 className="fw-bold">8. Contato</h5>
                 <p className="text-muted">
                     Para exercer seus direitos ou tirar dúvidas sobre privacidade, entre em contato pelo e-mail:{" "}
-                    <a href="mailto:privacidade@easymaintenance.com.br">privacidade@easymaintenance.com.br</a>
+                    <a href="mailto:comercial@easymaintenance.com.br">comercial@easymaintenance.com.br</a>
                 </p>
             </section>
 

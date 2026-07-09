@@ -256,7 +256,7 @@ function ArticleCard({ article }: { article: Article }) {
             <Mail size={14} className="text-muted" />
             <span className="text-muted" style={{ fontSize: "0.78rem" }}>
               Esta resposta não resolveu?{" "}
-              <a href="mailto:suporte@easymaintenance.com.br" className="text-decoration-none">
+              <a href="mailto:comercial@easymaintenance.com.br" className="text-decoration-none">
                 Entre em contato com o suporte
               </a>
             </span>
@@ -365,7 +365,7 @@ export default function HelpPage() {
           <p className="mb-0">Nenhum artigo encontrado para essa busca.</p>
           <p className="small">
             Tente outros termos ou{" "}
-            <a href="mailto:suporte@easymaintenance.com.br" className="text-decoration-none">
+            <a href="mailto:comercial@easymaintenance.com.br" className="text-decoration-none">
               contate o suporte
             </a>
             .
@@ -395,7 +395,7 @@ export default function HelpPage() {
           <p className="text-muted small mb-3">Nossa equipe de suporte está disponível para te ajudar.</p>
           <div className="d-flex flex-wrap justify-content-center gap-2">
             <a
-              href="mailto:suporte@easymaintenance.com.br"
+              href="mailto:comercial@easymaintenance.com.br"
               className="btn btn-primary btn-sm d-flex align-items-center gap-2"
             >
               <Mail size={15} />
