@@ -626,6 +626,7 @@ export default function BillingPage() {
         onClose={() => setIsPaymentMethodModalOpen(false)}
         onSuccess={fetchSummary}
         currentMethod={summary?.billingAccount?.paymentMethod as "CARD" | "PIX" | null ?? null}
+        subscriptionStatus={summary?.subscription?.status ?? null}
       />
 
       <ConfirmModal

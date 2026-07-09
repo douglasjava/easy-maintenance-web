@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import { useAccessContext } from "@/providers/AccessContextProvider";
-import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import UsageMeter from "@/components/UsageMeter";
 import toast from "react-hot-toast";
 
@@ -18,11 +17,11 @@ const ROLE_OPTIONS = [
 export default function NewUserPage() {
   const router = useRouter();
   const { accessContext } = useAccessContext();
-  const { features, organization } = useCurrentOrganizationAccess();
 
   const [loading, setLoading]           = useState(false);
   const [guardChecked, setGuardChecked] = useState(false);
   const [selectedOrgs, setSelectedOrgs] = useState<Set<string>>(new Set());
+  const [teamCount, setTeamCount]       = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -34,10 +33,17 @@ export default function NewUserPage() {
     setGuardChecked(true);
   }, [router]);
 
+  useEffect(() => {
+    if (!guardChecked) return;
+    api.get("/me/team/users").then(({ data }) => {
+      setTeamCount(Array.isArray(data) ? data.length : 0);
+    }).catch(() => setTeamCount(0));
+  }, [guardChecked]);
+
   const orgs = accessContext?.organizationsAccess ?? [];
-  const currentUsers = organization?.currentUsage?.currentUsers ?? 0;
-  const maxUsers = features?.maxUsers ?? 0;
-  const atLimit = maxUsers > 0 && currentUsers >= maxUsers;
+  const accountFeatures = accessContext?.accountAccess?.features;
+  const maxUsers = accountFeatures?.maxUsers ?? 0;
+  const atLimit = maxUsers > 0 && teamCount !== null && teamCount >= maxUsers;
 
   function toggleOrg(code: string) {
     setSelectedOrgs((prev) => {
@@ -99,10 +105,10 @@ export default function NewUserPage() {
           <Link href="/users" className="btn btn-outline-secondary">
             ← Voltar
           </Link>
-          {features && maxUsers > 0 && organization?.currentUsage != null && (
+          {accountFeatures && maxUsers > 0 && teamCount !== null && (
             <UsageMeter
               label="Membros da equipe"
-              current={currentUsers}
+              current={teamCount}
               max={maxUsers}
               upgradeHref="/billing"
             />

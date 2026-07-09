@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/apiClient";
-import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
+import { useAccessContext } from "@/providers/AccessContextProvider";
 import UsageMeter from "@/components/UsageMeter";
 import { Users, Pencil, Trash2, UserPlus } from "lucide-react";
 import toast from "react-hot-toast";
@@ -43,7 +43,8 @@ export default function UsersPage() {
   const [error, setError]             = useState(false);
   const [removing, setRemoving]       = useState<number | null>(null);
   const [guardChecked, setGuardChecked] = useState(false);
-  const { features } = useCurrentOrganizationAccess();
+  const { accessContext } = useAccessContext();
+  const accountFeatures = accessContext?.accountAccess?.features;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -88,6 +89,8 @@ export default function UsersPage() {
     }
   }
 
+  const atLimit = !loading && !!accountFeatures && accountFeatures.maxUsers > 0 && members.length >= accountFeatures.maxUsers;
+
   if (!guardChecked) return null;
 
   return (
@@ -98,23 +101,35 @@ export default function UsersPage() {
           <h2 className="mb-1 fw-bold">Minha Equipe</h2>
           <p className="text-muted mb-0">Gerencie os membros que acessam suas organizações</p>
         </div>
-        <Link
-          href="/users/new"
-          className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
-          style={{ width: "fit-content" }}
-        >
-          <UserPlus size={18} />
-          Convidar membro
-        </Link>
+        {atLimit ? (
+          <button
+            className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
+            disabled
+            title={`Limite de ${accountFeatures?.maxUsers} membros atingido. Faça upgrade do plano.`}
+            style={{ width: "fit-content", opacity: 0.55, cursor: "not-allowed" }}
+          >
+            <UserPlus size={18} />
+            Convidar membro
+          </button>
+        ) : (
+          <Link
+            href="/users/new"
+            className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 rounded-3 shadow-sm"
+            style={{ width: "fit-content" }}
+          >
+            <UserPlus size={18} />
+            Convidar membro
+          </Link>
+        )}
       </div>
 
       {/* UsageMeter */}
-      {features && features.maxUsers > 0 && (
+      {accountFeatures && accountFeatures.maxUsers > 0 && (
         <div className="mb-4 p-3 bg-white rounded-4 shadow-sm border" style={{ maxWidth: 280 }}>
           <UsageMeter
             label="Membros da equipe"
             current={members.length}
-            max={features.maxUsers}
+            max={accountFeatures.maxUsers}
             upgradeHref="/billing"
           />
         </div>
