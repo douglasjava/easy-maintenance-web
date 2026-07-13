@@ -3,41 +3,31 @@
 import { useState, useEffect, use } from "react";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import { Building, ArrowLeft, Calendar, CreditCard, MapPin, Hash, CheckCircle, XCircle } from "lucide-react";
+import { Building, ArrowLeft, MapPin, CheckCircle, Pencil, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+type OrganizationInfo = {
+  id: string;
+  code: string;
+  name: string;
+  city: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  state: string;
+  zipCode: string;
+  doc: string;
+};
+
 type OrganizationItem = {
-  organization: {
-    id: string;
-    code: string;
-    name: string;
-    city: string;
-    street: string;
-    number: string;
-    complement: string;
-    neighborhood: string;
-    state: string;
-    zipCode: string;
-    doc: string;
-  };
-  subscription: {
-    id: number;
-    organizationId: number;
-    organizationCode: string;
-    organizationName: string;
-    payerUserId: number;
-    payerEmail: string;
-    planCode: string;
-    planName: string;
-    valueCents: number;
-    status: string;
-    currentPeriodStart: string;
-    currentPeriodEnd: string;
-    cancelAtPeriodEnd: boolean;
-    createdAt: string;
-    updatedAt: string;
-  };
+  organization: OrganizationInfo;
+};
+
+const EMPTY_EDIT_FORM = {
+  name: "", city: "", street: "", number: "", complement: "",
+  neighborhood: "", state: "", zipCode: "", doc: "",
 };
 
 export default function OrganizationDetailPage({ params }: { params: Promise<{ code: string }> }) {
@@ -45,6 +35,10 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
   const router = useRouter();
   const [data, setData] = useState<OrganizationItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isActiveOrg, setIsActiveOrg] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
 
   useEffect(() => {
     async function fetchDetails() {
@@ -61,6 +55,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
 
         if (found) {
           setData(found);
+          const activeOrgCode = window.localStorage.getItem("organizationCode") || window.sessionStorage.getItem("organizationCode");
+          setIsActiveOrg(activeOrgCode === found.organization.code);
         } else {
           toast.error("Empresa não encontrada.");
           router.push("/organizations");
@@ -76,24 +72,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
     fetchDetails();
   }, [code, router]);
 
-  const formatCurrency = (cents: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(cents / 100);
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const handleAccess = () => {
     if (data) {
       window.localStorage.setItem("organizationCode", data.organization.code);
@@ -103,6 +81,47 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
       setTimeout(() => window.location.reload(), 100);
     }
   };
+
+  // EPIC-014/TASK-119: edição só é permitida para a organização atualmente ativa — o header
+  // X-Org-Id enviado pelo apiClient sempre reflete a organização selecionada na sessão, então
+  // editar uma organização diferente falharia na validação de tenant do backend.
+  function handleStartEdit() {
+    if (!data) return;
+    const org = data.organization;
+    setEditForm({
+      name: org.name || "",
+      city: org.city || "",
+      street: org.street || "",
+      number: org.number || "",
+      complement: org.complement || "",
+      neighborhood: org.neighborhood || "",
+      state: org.state || "",
+      zipCode: org.zipCode || "",
+      doc: org.doc || "",
+    });
+    setIsEditing(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!data || saving) return;
+    if (!editForm.name.trim()) {
+      toast.error("Por favor, preencha o nome da empresa.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const { data: updated } = await api.patch(`/organizations/${data.organization.id}`, editForm);
+      setData({ organization: { ...data.organization, ...updated } });
+      toast.success("Dados da empresa atualizados com sucesso!");
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Erro ao atualizar empresa:", err);
+      toast.error("Erro ao atualizar os dados da empresa.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -116,7 +135,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
 
   if (!data) return null;
 
-  const { organization: org, subscription: sub } = data;
+  const { organization: org } = data;
 
   return (
     <div className="container py-4">
@@ -128,7 +147,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
         <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
           <div>
             <h2 className="mb-1 fw-bold">{org.name}</h2>
-            <p className="text-muted mb-0">Detalhes completos da empresa e assinatura</p>
+            <p className="text-muted mb-0">Detalhes da empresa</p>
           </div>
           <button onClick={handleAccess} className="btn btn-primary px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2">
             Selecionar e Acessar
@@ -139,15 +158,102 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
 
       <div className="row g-4">
         {/* Dados da Organização */}
-        <div className="col-12 col-lg-7">
+        <div className="col-12">
           <div className="card border-0 shadow-sm rounded-4 h-100">
-            <div className="card-header bg-white border-0 pt-4 px-4">
+            <div className="card-header bg-white border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
               <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
                 <Building className="text-primary" size={22} />
                 Dados da Empresa
               </h5>
+              {isActiveOrg && !isEditing && (
+                <button
+                  onClick={handleStartEdit}
+                  className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2"
+                >
+                  <Pencil size={14} />
+                  Editar
+                </button>
+              )}
+              {isEditing && (
+                <div className="d-flex gap-2">
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    disabled={saving}
+                    className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2"
+                  >
+                    <X size={14} />
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={saving}
+                    className="btn btn-primary btn-sm d-flex align-items-center gap-2"
+                  >
+                    <CheckCircle size={14} />
+                    {saving ? "Salvando..." : "Salvar"}
+                  </button>
+                </div>
+              )}
             </div>
             <div className="card-body p-4">
+              {isEditing ? (
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="text-muted small d-block mb-1">Nome Fantasia</label>
+                    <input className="form-control" value={editForm.name}
+                      onChange={(e) => setEditForm(p => ({ ...p, name: e.target.value }))} required />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="text-muted small d-block mb-1">CNPJ/CPF</label>
+                    <input className="form-control" value={editForm.doc}
+                      onChange={(e) => setEditForm(p => ({ ...p, doc: e.target.value.replace(/\D/g, "") }))} />
+                  </div>
+                  <div className="col-12"><hr className="my-2 opacity-10" /></div>
+                  <div className="col-12">
+                    <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
+                      <MapPin className="text-primary" size={18} />
+                      Endereço
+                    </h6>
+                    <div className="row g-3">
+                      <div className="col-md-8">
+                        <label className="text-muted small d-block mb-1">Logradouro</label>
+                        <input className="form-control" value={editForm.street}
+                          onChange={(e) => setEditForm(p => ({ ...p, street: e.target.value }))} />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="text-muted small d-block mb-1">Número</label>
+                        <input className="form-control" value={editForm.number}
+                          onChange={(e) => setEditForm(p => ({ ...p, number: e.target.value }))} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="text-muted small d-block mb-1">Complemento</label>
+                        <input className="form-control" value={editForm.complement}
+                          onChange={(e) => setEditForm(p => ({ ...p, complement: e.target.value }))} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="text-muted small d-block mb-1">Bairro</label>
+                        <input className="form-control" value={editForm.neighborhood}
+                          onChange={(e) => setEditForm(p => ({ ...p, neighborhood: e.target.value }))} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="text-muted small d-block mb-1">Cidade</label>
+                        <input className="form-control" value={editForm.city}
+                          onChange={(e) => setEditForm(p => ({ ...p, city: e.target.value }))} />
+                      </div>
+                      <div className="col-md-2">
+                        <label className="text-muted small d-block mb-1">UF</label>
+                        <input className="form-control" maxLength={2} value={editForm.state}
+                          onChange={(e) => setEditForm(p => ({ ...p, state: e.target.value }))} />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="text-muted small d-block mb-1">CEP</label>
+                        <input className="form-control" value={editForm.zipCode}
+                          onChange={(e) => setEditForm(p => ({ ...p, zipCode: e.target.value }))} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
               <div className="row g-4">
                 <div className="col-md-6">
                   <label className="text-muted small d-block mb-1">Nome Fantasia</label>
@@ -157,7 +263,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
                   <label className="text-muted small d-block mb-1">CNPJ/CPF</label>
                   <div className="fw-medium">{org.doc || "-"}</div>
                 </div>
-                
+
                 <div className="col-12">
                   <hr className="my-2 opacity-10" />
                 </div>
@@ -199,75 +305,11 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ c
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Assinatura */}
-        <div className="col-12 col-lg-5">
-          <div className="card border-0 shadow-sm rounded-4 h-100">
-            <div className="card-header bg-white border-0 pt-4 px-4">
-              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
-                <CreditCard className="text-primary" size={22} />
-                Assinatura e Plano
-              </h5>
-            </div>
-            <div className="card-body p-4">
-              <div className="bg-light p-3 rounded-4 mb-4 d-flex align-items-center justify-content-between">
-                <div>
-                  <label className="text-muted small d-block mb-1">Plano Atual</label>
-                  <div className="h4 fw-bold mb-0 text-primary">{sub.planName}</div>
-                </div>
-                <span className={`badge ${sub.status === "ACTIVE" ? "bg-success" : "bg-danger"} rounded-pill px-3 py-2`}>
-                  {sub.status}
-                </span>
-              </div>
-
-              <div className="row g-4">
-                <div className="col-6">
-                  <label className="text-muted small d-block mb-1">Valor</label>
-                  <div className="fw-medium">{formatCurrency(sub.valueCents)}</div>
-                </div>
-
-                <div className="col-12">
-                  <hr className="my-2 opacity-10" />
-                </div>
-
-                <div className="col-12">
-                  <div className="d-flex align-items-start gap-3 mb-3">
-                    <Calendar size={20} className="text-muted mt-1" />
-                    <div>
-                      <label className="text-muted small d-block">Período Atual</label>
-                      <div className="fw-medium">
-                        {new Date(sub.currentPeriodStart).toLocaleDateString("pt-BR")} até {new Date(sub.currentPeriodEnd).toLocaleDateString("pt-BR")}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="d-flex align-items-start gap-3 mb-3">
-                    {sub.cancelAtPeriodEnd ? (
-                      <XCircle size={20} className="text-danger mt-1" />
-                    ) : (
-                      <CheckCircle size={20} className="text-success mt-1" />
-                    )}
-                    <div>
-                      <label className="text-muted small d-block">Renovação Automática</label>
-                      <div className="fw-medium">{sub.cancelAtPeriodEnd ? "Cancelamento agendado" : "Ativa"}</div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .x-small {
-          font-size: 0.75rem;
-        }
-      `}</style>
     </div>
   );
 }

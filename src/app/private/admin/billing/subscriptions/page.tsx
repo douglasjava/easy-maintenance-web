@@ -19,6 +19,7 @@ type Subscription = {
   itemId: number;
   subscriptionId: number;
   sourceType: string;
+  sourceId: string;
   planCode: string;
   payerAccountId: number;
   idUser: number;
@@ -27,8 +28,12 @@ type Subscription = {
   periodStart: string;
   periodEnd: string;
   totalCents: number;
-  organizationCode?: string;
-  organizationName?: string;
+  /** Itens cadastrados nesta organização, dentro do pool da conta (null para linhas USER). */
+  itemsUsedByOrg: number | null;
+  /** Total de itens usados somando todas as organizações da conta (pool compartilhado, TASK-111). */
+  itemsUsedTotalAccount: number;
+  /** Limite de itens do plano da conta (0 = ilimitado). */
+  maxItems: number;
 };
 
 const C = {
@@ -163,22 +168,60 @@ export default function SubscriptionsPage() {
     setIsPlanModalOpen(true);
   }
 
-  const actionBtns = (sub: Subscription) => sub.status === "ACTIVE" ? (
-    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-      <button onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
-        style={{ padding:"5px 12px", borderRadius:7, border:`1px solid ${C.blue}`, color:C.blue, fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
-        Upgrade
-      </button>
-      <button onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
-        style={{ padding:"5px 12px", borderRadius:7, border:"1px solid #64748b", color:"#64748b", fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
-        Downgrade
-      </button>
-      <button onClick={() => setItemToCancel({ id: sub.itemId, idUser: sub.idUser })}
-        style={{ padding:"5px 12px", borderRadius:7, border:`1px solid ${C.error}`, color:C.error, fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
-        Cancelar
-      </button>
-    </div>
-  ) : <span style={{ fontSize:12, color:C.muted }}>—</span>;
+  // EPIC-014/TASK-116: plano único por conta — troca de plano e cancelamento só existem no
+  // nível da conta (item USER). Organizações incluídas são somente-leitura no painel admin.
+  const actionBtns = (sub: Subscription) => {
+    if (sub.sourceType !== "USER") {
+      return (
+        <span style={{ fontSize:12, color:C.muted, fontStyle:"italic" }}>Incluída na conta</span>
+      );
+    }
+    return sub.status === "ACTIVE" ? (
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+        <button onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
+          style={{ padding:"5px 12px", borderRadius:7, border:`1px solid ${C.blue}`, color:C.blue, fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
+          Upgrade
+        </button>
+        <button onClick={() => handleOpenChangePlan(sub.itemId, sub.planCode, sub.idUser)}
+          style={{ padding:"5px 12px", borderRadius:7, border:"1px solid #64748b", color:"#64748b", fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
+          Downgrade
+        </button>
+        <button onClick={() => setItemToCancel({ id: sub.itemId, idUser: sub.idUser })}
+          style={{ padding:"5px 12px", borderRadius:7, border:`1px solid ${C.error}`, color:C.error, fontSize:12, fontWeight:600, background:"#fff", cursor:"pointer" }}>
+          Cancelar
+        </button>
+      </div>
+    ) : <span style={{ fontSize:12, color:C.muted }}>—</span>;
+  };
+
+  // Rótulo da linha "Tipo": para organizações, mostra o código da org (não dá para distinguir
+  // múltiplas organizações da mesma conta só pelo sourceType).
+  function typeLabel(sub: Subscription) {
+    const base = sourceTypeLabelMap[sub.sourceType] ?? sub.sourceType;
+    return sub.sourceType === "USER" ? base : `${base} · ${sub.sourceId}`;
+  }
+
+  // Coluna "Valor": itens ORGANIZATION não têm preço próprio (valueCents sempre 0) — mostrar o
+  // valor da assinatura ali passaria a impressão de cobrança duplicada. Mostramos uso do pool.
+  function valueCell(sub: Subscription) {
+    if (sub.sourceType !== "USER") {
+      const used = sub.itemsUsedByOrg ?? 0;
+      return (
+        <span style={{ fontSize:12, color:C.muted }}>
+          {used} {used === 1 ? "item" : "itens"} nesta org.
+        </span>
+      );
+    }
+    const poolLabel = sub.maxItems > 0
+      ? `${sub.itemsUsedTotalAccount}/${sub.maxItems} itens (conta)`
+      : `${sub.itemsUsedTotalAccount} itens (conta, ilimitado)`;
+    return (
+      <>
+        <div style={{ fontWeight:600 }}>{formatMoney(sub.totalCents)}</div>
+        <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>{poolLabel}</div>
+      </>
+    );
+  }
 
   return (
     <BillingAdminLayout>
@@ -257,9 +300,9 @@ export default function SubscriptionsPage() {
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                       style={{ transition:"background 0.15s" }}>
                       <td style={TD}><span style={{ fontWeight:600 }}>{sub.payerName}</span></td>
-                      <td style={{ ...TD, color:C.muted, fontSize:12 }}>{sourceTypeLabelMap[sub.sourceType] ?? sub.sourceType}</td>
+                      <td style={{ ...TD, color:C.muted, fontSize:12 }}>{typeLabel(sub)}</td>
                       <td style={TD}><DotBadge status={sub.status} /></td>
-                      <td style={{ ...TD, fontWeight:600 }}>{formatMoney(sub.totalCents)}</td>
+                      <td style={TD}>{valueCell(sub)}</td>
                       <td style={{ ...TD, fontSize:12, color:C.muted }}>{formatDateTime(sub.periodStart)}</td>
                       <td style={{ ...TD, fontSize:12, color:C.muted }}>{formatDateTime(sub.periodEnd)}</td>
                       <td style={{ ...TD, textAlign:"right" }}>{actionBtns(sub)}</td>
@@ -281,7 +324,10 @@ export default function SubscriptionsPage() {
                   <DotBadge status={sub.status} />
                 </div>
                 <div style={{ fontSize:12, color:C.muted, marginBottom:4 }}>
-                  {sourceTypeLabelMap[sub.sourceType] ?? sub.sourceType} · <strong style={{ color:C.navy }}>{formatMoney(sub.totalCents)}</strong>
+                  {typeLabel(sub)}
+                </div>
+                <div style={{ fontSize:12, color:C.navy, marginBottom:4 }}>
+                  {valueCell(sub)}
                 </div>
                 <div style={{ fontSize:12, color:C.muted, marginBottom:12 }}>
                   {formatDateTime(sub.periodStart)} → {formatDateTime(sub.periodEnd)}

@@ -34,6 +34,8 @@ type SubscriptionItem = {
   pendingChange: PendingChange | null;
   cancelAtPeriodEnd: boolean;
   scheduledCancellationDate: string | null;
+  /** Itens cadastrados nesta organização, dentro do pool compartilhado da conta (null para o item USER). */
+  itemsUsedByOrg: number | null;
 };
 
 type Subscription = {
@@ -44,6 +46,13 @@ type Subscription = {
   nextDueDate: string;
   projectedTotalCents: number | null;
   projectedChangeDate: string | null;
+  // EPIC-014: uso do plano único por conta (0 = ilimitado)
+  maxOrganizations: number;
+  organizationsUsed: number;
+  maxUsers: number;
+  usersUsed: number;
+  maxItems: number;
+  itemsUsedTotalAccount: number;
 };
 
 type Invoice = {
@@ -207,6 +216,82 @@ function SubscriptionItemCard({
   );
 }
 
+function formatUsage(used: number, max: number) {
+  if (max <= 0) return `${used} (ilimitado)`;
+  return `${used}/${max}`;
+}
+
+function AccountUsageStats({ subscription }: { subscription: Subscription }) {
+  const stats = [
+    { label: "Organizações", value: formatUsage(subscription.organizationsUsed, subscription.maxOrganizations) },
+    { label: "Usuários", value: formatUsage(subscription.usersUsed, subscription.maxUsers) },
+    { label: "Itens", value: formatUsage(subscription.itemsUsedTotalAccount, subscription.maxItems) },
+  ];
+
+  return (
+    <div className="d-flex flex-wrap gap-2 mt-3">
+      {stats.map((s) => (
+        <div key={s.label} className="rounded-3 px-3 py-2" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
+          <div style={{ fontSize: "0.66rem", opacity: 0.75 }}>{s.label}</div>
+          <div style={{ fontSize: "0.88rem", fontWeight: 700 }}>{s.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Lista somente-leitura das organizações incluídas no plano da conta — sem ações de plano/cancelamento. */
+function OrganizationsIncludedList({ items }: { items: SubscriptionItem[] }) {
+  if (items.length === 0) {
+    return (
+      <div
+        className="card border-0 text-center py-4"
+        style={{ borderRadius: 12, backgroundColor: "#f8f9fa", border: "1px dashed #e5e7eb" }}
+      >
+        <p className="text-muted mb-0" style={{ fontSize: "0.875rem" }}>
+          Nenhuma organização cadastrada ainda.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card border-0 shadow-sm" style={{ borderRadius: 12, overflow: "hidden" }}>
+      {items.map((org, idx) => (
+        <div
+          key={org.id}
+          className="d-flex align-items-center justify-content-between gap-3 px-4 py-3"
+          style={{ borderBottom: idx < items.length - 1 ? "1px solid #f1f5f9" : "none" }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#f0f9ff" }}
+            >
+              <Building size={16} style={{ color: "#0369a1" }} />
+            </div>
+            <span className="fw-semibold text-dark" style={{ fontSize: "0.85rem" }}>{org.name}</span>
+          </div>
+          <span
+            style={{
+              padding: "2px 10px",
+              borderRadius: 20,
+              fontSize: "0.72rem",
+              fontWeight: 600,
+              backgroundColor: "#f3f4f6",
+              color: "#6b7280",
+              border: "1px solid #e5e7eb",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {org.itemsUsedByOrg ?? 0} {(org.itemsUsedByOrg ?? 0) === 1 ? "item" : "itens"}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PaymentMethodCard({ account, onChangeMethod }: { account: BillingAccount; onChangeMethod: () => void }) {
   return (
     <div className="card border-0 shadow-sm" style={{ borderRadius: 12 }}>
@@ -341,8 +426,9 @@ export default function BillingPage() {
   if (isAccessLoading || loading) return <BillingSkeleton />;
 
   const hasSubscription = !!summary?.subscription;
-  const hasItems = (summary?.items?.length || 0) > 0;
   const hasBillingAccount = !!summary?.billingAccount;
+  const userItem = summary?.items.find((i) => i.type === "USER") ?? null;
+  const organizationItems = summary?.items.filter((i) => i.type === "ORGANIZATION") ?? [];
 
   return (
     <section style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }} className="pb-5">
@@ -416,9 +502,10 @@ export default function BillingPage() {
             {/* ── SUBSCRIPTION SUMMARY CARD ── */}
             <div className="mb-4">
               <div
-                className="rounded-3 p-4 text-white d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3"
+                className="rounded-3 p-4 text-white"
                 style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)" }}
               >
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div className="d-flex align-items-center gap-3">
                   <div
                     className="d-flex align-items-center justify-content-center flex-shrink-0"
@@ -475,41 +562,60 @@ export default function BillingPage() {
                   </div>
                 </div>
               </div>
+
+                {/* Uso do plano — organizações / usuários / itens (pool compartilhado da conta) */}
+                {summary.subscription && <AccountUsageStats subscription={summary.subscription} />}
+              </div>
             </div>
 
             {/* ── MAIN CONTENT ── */}
             <div className="row g-4">
 
-              {/* Subscription items — main column */}
+              {/* Account plan + organizations — main column */}
               <div className="col-12 col-lg-8">
-                {(() => {
-                  const cancelingItems = summary.items.filter((i) => i.cancelAtPeriodEnd);
-                  if (cancelingItems.length === 0) return null;
-                  const earliest = cancelingItems
-                    .map((i) => i.scheduledCancellationDate)
-                    .filter(Boolean)
-                    .sort()[0];
-                  return (
-                    <div
-                      className="rounded-3 p-3 mb-3 d-flex align-items-start gap-2"
-                      style={{ backgroundColor: "#fff7ed", border: "1px solid #fed7aa" }}
-                    >
-                      <AlertCircle size={16} style={{ color: "#c2410c", flexShrink: 0, marginTop: 1 }} />
-                      <div style={{ fontSize: "0.82rem", color: "#9a3412" }}>
-                        <strong>{cancelingItems.length} {cancelingItems.length === 1 ? "item" : "itens"}</strong> da sua assinatura{" "}
-                        {cancelingItems.length === 1 ? "será encerrado" : "serão encerrados"}
-                        {earliest ? <> em <strong>{formatDate(earliest)}</strong></> : " em breve"}.
-                        {" "}O valor cobrado será ajustado no próximo ciclo.
-                      </div>
+                {userItem?.cancelAtPeriodEnd && (
+                  <div
+                    className="rounded-3 p-3 mb-3 d-flex align-items-start gap-2"
+                    style={{ backgroundColor: "#fff7ed", border: "1px solid #fed7aa" }}
+                  >
+                    <AlertCircle size={16} style={{ color: "#c2410c", flexShrink: 0, marginTop: 1 }} />
+                    <div style={{ fontSize: "0.82rem", color: "#9a3412" }}>
+                      Sua assinatura será encerrada
+                      {userItem.scheduledCancellationDate ? <> em <strong>{formatDate(userItem.scheduledCancellationDate)}</strong></> : " em breve"}.
+                      {" "}O acesso permanece ativo até o fim do período vigente.
                     </div>
-                  );
-                })()}
+                  </div>
+                )}
 
-                <div className="d-flex justify-content-between align-items-center mb-3">
+                <div
+                  style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}
+                  className="mb-3"
+                >
+                  Seu Plano
+                </div>
+
+                {userItem ? (
+                  <SubscriptionItemCard
+                    item={userItem}
+                    onChangePlan={handleChangePlan}
+                    onCancel={(id) => setItemToCancel(id)}
+                  />
+                ) : (
+                  <div
+                    className="card border-0 text-center py-5 mb-4"
+                    style={{ borderRadius: 12, backgroundColor: "#f8f9fa", border: "1px dashed #e5e7eb" }}
+                  >
+                    <p className="text-muted mb-0" style={{ fontSize: "0.875rem" }}>
+                      Nenhum plano ativo encontrado para sua conta.
+                    </p>
+                  </div>
+                )}
+
+                <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
                   <div
                     style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}
                   >
-                    Itens da Assinatura
+                    Organizações incluídas
                   </div>
                   <span
                     style={{
@@ -522,29 +628,11 @@ export default function BillingPage() {
                       border: "1px solid #e5e7eb",
                     }}
                   >
-                    {summary.items.length} {summary.items.length === 1 ? "item" : "itens"}
+                    {organizationItems.length} {organizationItems.length === 1 ? "organização" : "organizações"}
                   </span>
                 </div>
 
-                {!hasItems ? (
-                  <div
-                    className="card border-0 text-center py-5"
-                    style={{ borderRadius: 12, backgroundColor: "#f8f9fa", border: "1px dashed #e5e7eb" }}
-                  >
-                    <p className="text-muted mb-0" style={{ fontSize: "0.875rem" }}>
-                      Nenhum item ativo na sua assinatura.
-                    </p>
-                  </div>
-                ) : (
-                  summary.items.map((item) => (
-                    <SubscriptionItemCard
-                      key={item.id}
-                      item={item}
-                      onChangePlan={handleChangePlan}
-                      onCancel={(id) => setItemToCancel(id)}
-                    />
-                  ))
-                )}
+                <OrganizationsIncludedList items={organizationItems} />
               </div>
 
               {/* Sidebar */}
@@ -599,9 +687,8 @@ export default function BillingPage() {
         <PlanComparisonSection
           currentPlanCode={currentPlanCode}
           onUpgradeClick={() => {
-            const firstItem = summary?.items?.[0];
-            if (firstItem) {
-              setSelectedItem({ id: firstItem.id, planCode: firstItem.plan.code });
+            if (userItem) {
+              setSelectedItem({ id: userItem.id, planCode: userItem.plan.code });
               setIsPlanModalOpen(true);
             }
           }}
@@ -631,10 +718,10 @@ export default function BillingPage() {
 
       <ConfirmModal
         show={!!itemToCancel}
-        title="Cancelar Item da Assinatura"
-        message="Tem certeza que deseja cancelar este item da assinatura? Esta ação removerá o acesso aos recursos relacionados a este item ao final do período vigente."
+        title="Cancelar Assinatura"
+        message="Tem certeza que deseja cancelar sua assinatura? Esta ação removerá o acesso a todas as organizações da sua conta ao final do período vigente."
         confirmLabel="Confirmar Cancelamento"
-        cancelLabel="Manter Item"
+        cancelLabel="Manter Assinatura"
         loading={cancelLoading}
         onConfirm={() => itemToCancel && handleCancelItem(itemToCancel)}
         onCancel={() => !cancelLoading && setItemToCancel(null)}
