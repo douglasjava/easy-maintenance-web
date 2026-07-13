@@ -127,6 +127,26 @@ function ItemsContent() {
 
   const { permissions, features, organization, message: orgMessage } = useCurrentOrganizationAccess();
 
+  // EPIC-014/TASK-117 QA: maxItems é um pool compartilhado entre todas as organizações da conta
+  // (não um teto por organização) — o botão "+ Novo Item" precisa refletir esse total, não só
+  // o uso da organização ativa. GET /me/billing/summary já expõe esses números corretamente.
+  const { data: billingSummary } = useQuery({
+    queryKey: ["billing-summary-item-limit"],
+    queryFn: async () => {
+      const { data } = await api.get("/me/billing/summary");
+      return data as { subscription?: { itemsUsedTotalAccount: number; maxItems: number } };
+    },
+    staleTime: 30_000,
+  });
+
+  const maxItems = billingSummary?.subscription?.maxItems ?? 0;
+  const itemsUsedTotalAccount = billingSummary?.subscription?.itemsUsedTotalAccount ?? 0;
+  const atItemLimit = maxItems > 0 && itemsUsedTotalAccount >= maxItems;
+  const canCreateItem = !!permissions?.canCreateItem && !atItemLimit;
+  const createItemBlockedMessage = atItemLimit
+    ? `Limite de ${maxItems} itens do plano atingido (somando todas as suas organizações). Faça upgrade do seu plano.`
+    : orgMessage;
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["items", { status, itemType, categoria, cursor: cursorStack[stackIndex], size }],
     queryFn: async () => {
@@ -218,24 +238,25 @@ function ItemsContent() {
             </div>
 
             <div className="d-flex flex-column align-items-end gap-2">
+              {maxItems > 0 && (
+                <div className="p-2 px-3 bg-white rounded-4 shadow-sm border" style={{ minWidth: 180 }}>
+                  <UsageMeter
+                    label="Itens (conta)"
+                    current={itemsUsedTotalAccount}
+                    max={maxItems}
+                    upgradeHref="/billing"
+                  />
+                </div>
+              )}
               <GuardedButton
                 className="btn btn-primary"
-                allowed={!!permissions?.canCreateItem}
-                mode="hide"
-                blockedMessage={orgMessage}
+                allowed={canCreateItem}
+                blockedMessage={createItemBlockedMessage}
                 onClick={() => (window.location.href = "/items/new?origin=items")}
                 style={{ whiteSpace: "nowrap" }}
               >
                 + Novo Item
               </GuardedButton>
-              {features && organization?.currentUsage != null && (
-                <UsageMeter
-                  label="Itens"
-                  current={organization.currentUsage.currentItems}
-                  max={features.maxItems}
-                  upgradeHref="/billing"
-                />
-              )}
             </div>
           </div>
         </div>

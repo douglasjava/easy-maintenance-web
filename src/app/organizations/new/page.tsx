@@ -8,8 +8,6 @@ import { useAccessContext } from "@/providers/AccessContextProvider";
 import { PagePermissionGuard } from "@/components/access/PagePermissionGuard";
 import {COMPANY_TYPE_MAP, CompanyType} from "@/types/ai-onboarding";
 
-type Plan = "STARTER" | "BUSINESS" | "ENTERPRISE";
-
 const COLORS = {
     primary: "#0B5ED7",
     primaryDark: "#083B7A",
@@ -29,34 +27,18 @@ const EMPTY_FORM = {
     companyType: ""
 };
 
-const EMPTY_SUBSCRIPTION = {
-    payerUserId: "",
-    payerUserName: "",
-    planCode: "STARTER" as Plan,
-    status: "ACTIVE",
-    currentPeriodStart: "",
-    currentPeriodEnd: "",
-};
-
 export default function NewOrganizationPage() {
     const { accessContext } = useAccessContext();
     const canCreate = accessContext?.accountAccess.permissions.canCreateOrganization;
 
-    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState(EMPTY_FORM);
-    const [subscriptionData, setSubscriptionData] = useState(EMPTY_SUBSCRIPTION);
-    const [createdOrgCode, setCreatedOrgCode] = useState("");
+    const [payerUserId, setPayerUserId] = useState("");
 
     useEffect(() => {
         if (typeof window !== "undefined") {
             const userId = window.localStorage.getItem("userId") || window.sessionStorage.getItem("userId") || "";
-            const userName = window.localStorage.getItem("userName") || window.sessionStorage.getItem("userName") || "Usuário Logado";
-            setSubscriptionData(prev => ({
-                ...prev,
-                payerUserId: userId,
-                payerUserName: userName
-            }));
+            setPayerUserId(userId);
         }
     }, []);
 
@@ -82,7 +64,11 @@ export default function NewOrganizationPage() {
         }
     }
 
-    async function onSubmitStep1(e: React.FormEvent<HTMLFormElement>) {
+    // EPIC-014/TASK-118: plano único por conta — a organização não escolhe um plano próprio.
+    // Um único passo: cria a empresa, vincula o usuário logado e provisiona o vínculo de
+    // faturamento da organização automaticamente (o backend herda o plano já contratado pela
+    // conta; ver OrganizationsService.addOrganizationSubscription).
+    async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         if (loading) return;
 
@@ -112,58 +98,28 @@ export default function NewOrganizationPage() {
             setLoading(true);
             await api.post("/organizations", payload);
 
-            // Vincula o usuário logado à organização criada
-            const userId = subscriptionData.payerUserId;
-            if (userId) {
-                await api.post(`/organizations/${orgCode}/users/${userId}`);
+            // Vincula o usuário logado à organização criada — o backend provisiona
+            // automaticamente o vínculo de faturamento da organização nesse momento,
+            // herdando o plano já contratado pela conta (UsersService.addOrganization).
+            if (payerUserId) {
+                await api.post(`/organizations/${orgCode}/users/${payerUserId}`);
             }
 
-            toast.success("Empresa criada com sucesso. Agora configure a assinatura.");
-            setCreatedOrgCode(orgCode);
-            setStep(2);
-        } catch (err: any) {
-            console.error("Error creating organization", err);
-            toast.error("Erro ao criar empresa. Verifique os dados e tente novamente.");
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function onSubmitStep2(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        if (loading) return;
-
-        const toTimestamp = (dateStr: string) => {
-            if (!dateStr) return undefined;
-            return Math.floor(new Date(dateStr).getTime() / 1000);
-        };
-
-        const payload = {
-            payerUserId: Number(subscriptionData.payerUserId),
-            planCode: subscriptionData.planCode,
-            status: subscriptionData.status,
-            currentPeriodStart: toTimestamp(subscriptionData.currentPeriodStart),
-            currentPeriodEnd: toTimestamp(subscriptionData.currentPeriodEnd),
-        };
-
-        try {
-            setLoading(true);
-            await api.put(`/organizations/${createdOrgCode}/subscription`, payload);
-            toast.success("Assinatura configurada com sucesso.");
+            toast.success("Empresa criada com sucesso.");
 
             // Se o usuário não tinha organização selecionada, seleciona a recém criada
             if (typeof window !== "undefined") {
                 const storage = window.localStorage.getItem("isLoggedIn") ? window.localStorage : window.sessionStorage;
                 if (!storage.getItem("organizationCode")) {
-                    storage.setItem("organizationCode", createdOrgCode);
+                    storage.setItem("organizationCode", orgCode);
                     storage.setItem("organizationName", formData.name);
                 }
                 // Full reload garante que o TopBar re-busca a lista atualizada de empresas
                 window.location.href = "/";
             }
-        } catch (err: any) {
-            console.error("Error configuring subscription", err);
-            toast.error("Erro ao configurar assinatura.");
+        } catch (err) {
+            console.error("Error creating organization", err);
+            toast.error("Erro ao criar empresa. Verifique os dados e tente novamente.");
         } finally {
             setLoading(false);
         }
@@ -189,33 +145,10 @@ export default function NewOrganizationPage() {
                     </Link>
                 </div>
 
-                {/* Progress Indicator */}
-                <div className="d-flex justify-content-center mb-4">
-                    <div className="d-flex align-items-center">
-                        <div className="rounded-circle d-flex align-items-center justify-content-center bg-success text-white" style={{ width: 32, height: 32 }}>
-                            ✓
-                        </div>
-                        <div className="mx-2 fw-medium text-muted">Faturamento</div>
-                        <div className="bg-secondary opacity-25" style={{ width: 50, height: 2 }}></div>
-
-                        <div className={`rounded-circle d-flex align-items-center justify-content-center mx-2 ${step === 1 ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ width: 32, height: 32 }}>
-                            {step > 1 ? '✓' : '2'}
-                        </div>
-                        <div className="fw-medium" style={{ color: step === 1 ? COLORS.primaryDark : '#6c757d' }}>Empresa</div>
-                        <div className="bg-secondary opacity-25 mx-2" style={{ width: 50, height: 2 }}></div>
-
-                        <div className={`rounded-circle d-flex align-items-center justify-content-center ${step === 2 ? 'bg-primary text-white' : 'bg-light text-muted border'}`} style={{ width: 32, height: 32 }}>
-                            3
-                        </div>
-                        <div className="mx-2 fw-medium" style={{ color: step === 2 ? COLORS.primaryDark : '#6c757d' }}>Assinatura</div>
-                    </div>
-                </div>
-
                 {/* CARD PRINCIPAL */}
                 <div className="card border-0 shadow-sm">
                     <div className="card-body p-4">
-                        {step === 1 ? (
-                            <form onSubmit={onSubmitStep1}>
+                        <form onSubmit={onSubmit}>
                                 {/* BLOCO: DADOS DA ORGANIZAÇÃO */}
                                 <div className="mb-4">
                                     <div className="row g-3">
@@ -331,10 +264,10 @@ export default function NewOrganizationPage() {
                                     </div>
                                 </div>
 
-                                {/* AÇÕES STEP 1 */}
+                                {/* AÇÕES */}
                                 <div className="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
                                     <button className="btn btn-primary px-5 py-2 fw-bold" disabled={loading}>
-                                        {loading ? "Criando..." : "Próximo Passo →"}
+                                        {loading ? "Criando..." : "Criar Empresa ✓"}
                                     </button>
 
                                     <button
@@ -345,54 +278,7 @@ export default function NewOrganizationPage() {
                                         Limpar
                                     </button>
                                 </div>
-                            </form>
-                        ) : (
-                            <form onSubmit={onSubmitStep2}>
-                                <div className="alert alert-info border-0 shadow-sm mb-4">
-                                    <h6 className="alert-heading fw-bold mb-1">Configuração de Assinatura</h6>
-                                    <p className="small mb-0">A empresa foi criada. Agora, defina o plano inicial.</p>
-                                </div>
-
-                                <div className="row g-3">
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Usuário Pagador</label>
-                                        <input
-                                            className="form-control bg-light"
-                                            value={subscriptionData.payerUserName}
-                                            disabled
-                                            readOnly
-                                        />
-                                    </div>
-
-                                    <div className="col-12 col-md-6">
-                                        <label className="form-label fw-bold small">Plano</label>
-                                        <select
-                                            className="form-select"
-                                            value={subscriptionData.planCode}
-                                            onChange={(e) => setSubscriptionData(p => ({ ...p, planCode: e.target.value as Plan }))}
-                                            required
-                                        >
-                                            <option value="STARTER">STARTER</option>
-                                            <option value="BUSINESS">BUSINESS</option>
-                                            <option value="ENTERPRISE">ENTERPRISE</option>
-                                        </select>
-                                    </div>
-
-                                </div>
-
-                                <div className="mt-4 d-flex justify-content-between">
-
-                                    <button
-                                        type="submit"
-                                        className="btn btn-success px-5 py-2 fw-bold"
-                                        disabled={loading}
-                                    >
-                                        {loading ? "Salvando..." : "Finalizar Cadastro ✓"}
-                                    </button>
-
-                                </div>
-                            </form>
-                        )}
+                        </form>
                     </div>
                 </div>
                 </div>
