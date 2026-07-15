@@ -34,6 +34,7 @@ export default function ItemDetailPage() {
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [exportingCalendar, setExportingCalendar] = useState(false);
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["item", id],
@@ -62,6 +63,26 @@ export default function ItemDetailPage() {
         } finally {
             setDeleting(false);
             setShowDeleteModal(false);
+        }
+    }
+
+    async function handleExportCalendar() {
+        try {
+            setExportingCalendar(true);
+            const res = await api.get(`/items/${id}/calendar.ics`, { responseType: "blob" });
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/calendar" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", `item-${id}-lembrete.ics`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(err);
+            toast.error("Erro ao gerar lembrete de calendário. Verifique se o item tem um vencimento definido.");
+        } finally {
+            setExportingCalendar(false);
         }
     }
 
@@ -197,16 +218,30 @@ export default function ItemDetailPage() {
                                     <div className="text-muted small">
                                         Próximo vencimento
                                     </div>
-                                    <div
-                                        className="fw-medium"
-                                        style={{
-                                            color:
-                                                data.status === "OVERDUE"
-                                                    ? COLORS.accent
-                                                    : COLORS.primaryDark,
-                                        }}
-                                    >
-                                        {formatDate(data.nextDueAt)}
+                                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                                        <div
+                                            className="fw-medium"
+                                            style={{
+                                                color:
+                                                    data.status === "OVERDUE"
+                                                        ? COLORS.accent
+                                                        : COLORS.primaryDark,
+                                            }}
+                                        >
+                                            {formatDate(data.nextDueAt)}
+                                        </div>
+                                        {data.nextDueAt && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-link btn-sm p-0"
+                                                style={{ fontSize: "0.78rem", textDecoration: "none" }}
+                                                disabled={exportingCalendar}
+                                                title="Baixar lembrete .ics (compatível com Google Calendar, Outlook e Apple Calendar)"
+                                                onClick={handleExportCalendar}
+                                            >
+                                                {exportingCalendar ? "Gerando..." : "+ calendário"}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
