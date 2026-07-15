@@ -124,6 +124,7 @@ function ItemsContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exportingCalendarId, setExportingCalendarId] = useState<string | null>(null);
 
   const { permissions, features, organization, message: orgMessage } = useCurrentOrganizationAccess();
 
@@ -200,6 +201,26 @@ function ItemsContent() {
       toast.error("Erro ao remover item.");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleExportCalendar(item: Item) {
+    try {
+      setExportingCalendarId(item.id);
+      const res = await api.get(`/items/${item.id}/calendar.ics`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/calendar" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `item-${item.id}-lembrete.ics`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar lembrete de calendário. Verifique se o item tem um vencimento definido.");
+    } finally {
+      setExportingCalendarId(null);
     }
   }
 
@@ -441,6 +462,25 @@ function ItemsContent() {
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <div className="d-flex align-items-center justify-content-end gap-1">
+                              {it.nextDueAt && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  style={{
+                                    padding: "3px 10px",
+                                    fontSize: "0.78rem",
+                                    border: "1px solid #e5e7eb",
+                                    color: "#6b7280",
+                                    borderRadius: 6,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  disabled={exportingCalendarId === it.id}
+                                  title="Baixar lembrete .ics (compatível com Google Calendar, Outlook e Apple Calendar)"
+                                  onClick={() => handleExportCalendar(it)}
+                                >
+                                  {exportingCalendarId === it.id ? "Gerando..." : "Calendário"}
+                                </button>
+                              )}
                               <Link
                                 className="btn btn-sm"
                                 style={{
@@ -567,6 +607,23 @@ function ItemsContent() {
                               className="d-flex gap-2 px-3 py-2"
                               style={{ borderTop: "1px solid #f1f5f9", backgroundColor: "#fafafa" }}
                             >
+                              {it.nextDueAt && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  style={{
+                                    fontSize: "0.78rem",
+                                    border: "1px solid #e5e7eb",
+                                    color: "#6b7280",
+                                    padding: "5px 8px",
+                                  }}
+                                  disabled={exportingCalendarId === it.id}
+                                  title="Baixar lembrete .ics (compatível com Google Calendar, Outlook e Apple Calendar)"
+                                  onClick={() => handleExportCalendar(it)}
+                                >
+                                  {exportingCalendarId === it.id ? "..." : "Calendário"}
+                                </button>
+                              )}
                               <Link
                                 className="btn btn-sm flex-fill"
                                 style={{
