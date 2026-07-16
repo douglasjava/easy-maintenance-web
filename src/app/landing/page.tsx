@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Logo from '@/components/Logo';
 import { api } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
+import RiskBlock from '@/components/landing/RiskBlock';
+import CardCarousel from '@/components/landing/CardCarousel';
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -27,6 +29,74 @@ const WHATSAPP_NUMBER = "5531999826634";
 const WHATSAPP_MESSAGE =
   "Olá, tudo bem? Vi a Easy Maintenance no site e quero entender como ela pode ajudar na gestão de manutenção do meu condomínio/empresa.";
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+
+const PROBLEM_ITEMS = [
+  { title: "Planilhas espalhadas", desc: "Informações fragmentadas que dificultam a visão geral." },
+  { title: "Ordens no WhatsApp", desc: "Solicitações que se perdem no histórico de conversas." },
+  { title: "Troca de síndico = perda de histórico", desc: "A memória técnica da edificação desaparece na rotatividade." },
+  { title: "Não sabe o que vence quando", desc: "Falta de previsibilidade sobre renovações e manutenções críticas." }
+];
+
+function ProblemCard({ title, desc }: (typeof PROBLEM_ITEMS)[number]) {
+  return (
+    <div className="card h-100 p-4 problem-card">
+      <h4 className="h5 fw-bold">{title}</h4>
+      <p className="text-muted mb-0">{desc}</p>
+    </div>
+  );
+}
+
+const SOLUTION_ITEMS = [
+  { title: "Central de ativos", icon: "📋", desc: "Inventário completo de equipamentos e sistemas." },
+  { title: "Agenda de vencimentos", icon: "📅", desc: "Calendário inteligente para nunca perder um prazo." },
+  { title: "Repositório de laudos", icon: "📄", desc: "Documentação técnica organizada e acessível." },
+  { title: "Trilha de auditoria", icon: "🔍", desc: "Histórico completo de quem fez o que e quando." },
+  { title: "Evidências fotográficas", icon: "📸", desc: "Comprovação visual da execução dos serviços." },
+  { title: "Gestão de fornecedores", icon: "🤝", desc: "Controle de prestadores e qualidade de entrega." }
+];
+
+function SolutionCard({ title, icon, desc }: (typeof SOLUTION_ITEMS)[number]) {
+  return (
+    <div className="card h-100 p-4 solution-card">
+      <div className="feature-icon fs-4">{icon}</div>
+      <h4 className="h5 fw-bold">{title}</h4>
+      <p className="text-muted mb-0">{desc}</p>
+    </div>
+  );
+}
+
+const DIFERENCIAIS_ITEMS = [
+  { title: "Foco em legislação brasileira", desc: "Adequado às normas técnicas nacionais (ABNT)." },
+  { title: "Modelo por organização", desc: "Estrutura hierárquica clara para multiclientes ou filiais." },
+  { title: "Histórico técnico", desc: "Acervo digital permanente da vida útil dos ativos." },
+  { title: "Evidência vinculada", desc: "Cada manutenção possui sua prova de execução direta." },
+  { title: "Visão para auditoria", desc: "Relatórios prontos para processos de certificação." }
+];
+
+function DiferencialCard({ title, desc }: (typeof DIFERENCIAIS_ITEMS)[number]) {
+  return (
+    <div className="p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25 h-100">
+      <h5 className="h6 fw-bold text-primary">{title}</h5>
+      <p className="small mb-0 opacity-75">{desc}</p>
+    </div>
+  );
+}
+
+const PERSONA_ITEMS = [
+  { title: "Administradoras", desc: "Gestão centralizada de múltiplos clientes." },
+  { title: "Síndicos", desc: "Segurança e transparência na gestão predial." },
+  { title: "Empresas", desc: "Manutenção de ativos operacionais críticos." },
+  { title: "Gestores de facilities", desc: "Otimização de custos e produtividade." }
+];
+
+function PersonaCard({ title, desc }: (typeof PERSONA_ITEMS)[number]) {
+  return (
+    <div className="card h-100 p-4 text-center border-top border-primary border-4">
+      <h5 className="fw-bold mb-2">{title}</h5>
+      <p className="small text-muted mb-0">{desc}</p>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const [email, setEmail] = useState('');
@@ -79,7 +149,10 @@ export default function LandingPage() {
 
         @media (max-width: 768px) {
             .section-padding {
-                padding: 110px 1.2rem;    /* mobile um pouco menor */
+                padding: 64px 1.2rem;    /* TASK-126: reduzido para diminuir scroll mobile */
+            }
+            .hero-section {
+                padding: 90px 1.2rem 110px 1.2rem;
             }
         }
         .card {
@@ -171,21 +244,21 @@ export default function LandingPage() {
             <div className="col-lg-6">
               <h1 className="display-4 fw-bold mb-4">Gestão de Manutenção Preventiva Inteligente</h1>
               <p className="lead mb-5 opacity-75">Elimine o caos das planilhas e mensagens de WhatsApp. Tenha total controle sobre seus ativos, vencimentos e conformidade legal em uma única plataforma.</p>
-              
+
               <form onSubmit={handleSubmit} className="row g-2">
                 <div className="col-md-7">
-                  <input 
-                    type="email" 
-                    className="form-control form-control-lg rounded-pill" 
-                    placeholder="Seu melhor e-mail" 
+                  <input
+                    type="email"
+                    className="form-control form-control-lg rounded-pill"
+                    placeholder="Seu melhor e-mail"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="col-md-5">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="btn btn-primary btn-lg w-100 rounded-pill"
                     disabled={loading}
                   >
@@ -210,28 +283,24 @@ export default function LandingPage() {
         </div>
       </header>
 
+      <RiskBlock />
+
       {/* Problemas */}
       <section id="problema" className="section-padding bg-white">
         <div className="container">
           <div className="text-center mb-5">
             <h2 className="display-6 fw-bold mt-3">Por que as empresas perdem o controle?</h2>
           </div>
-          <div className="row g-5">
-            {[
-              { title: "Planilhas espalhadas", desc: "Informações fragmentadas que dificultam a visão geral." },
-              { title: "Ordens no WhatsApp", desc: "Solicitações que se perdem no histórico de conversas." },
-              { title: "Troca de síndico = perda de histórico", desc: "A memória técnica da edificação desaparece na rotatividade." },
-              { title: "Medo de multa e processo", desc: "Insegurança jurídica por falta de comprovação de manutenção." },
-              { title: "Não sabe o que vence quando", desc: "Falta de previsibilidade sobre renovações e manutenções críticas." }
-            ].map((item, index) => (
-              <div key={index} className="col-md-4">
-                <div className="card h-100 p-4 problem-card">
-                  <h4 className="h5 fw-bold">{item.title}</h4>
-                  <p className="text-muted mb-0">{item.desc}</p>
-                </div>
-              </div>
-            ))}
+          <div className="d-none d-md-block">
+            <div className="row g-5">
+              {PROBLEM_ITEMS.map((item, index) => (
+                <div key={index} className="col-md-4"><ProblemCard {...item} /></div>
+              ))}
+            </div>
           </div>
+          <CardCarousel>
+            {PROBLEM_ITEMS.map((item, index) => <ProblemCard key={index} {...item} />)}
+          </CardCarousel>
         </div>
       </section>
 
@@ -241,24 +310,16 @@ export default function LandingPage() {
           <div className="text-center mb-5">
             <h2 className="display-6 fw-bold mt-4">Tudo o que você precisa em um só lugar</h2>
           </div>
-          <div className="row g-5">
-            {[
-              { title: "Central de ativos", icon: "📋", desc: "Inventário completo de equipamentos e sistemas." },
-              { title: "Agenda de vencimentos", icon: "📅", desc: "Calendário inteligente para nunca perder um prazo." },
-              { title: "Repositório de laudos", icon: "📄", desc: "Documentação técnica organizada e acessível." },
-              { title: "Trilha de auditoria", icon: "🔍", desc: "Histórico completo de quem fez o que e quando." },
-              { title: "Evidências fotográficas", icon: "📸", desc: "Comprovação visual da execução dos serviços." },
-              { title: "Gestão de fornecedores", icon: "🤝", desc: "Controle de prestadores e qualidade de entrega." }
-            ].map((item, index) => (
-              <div key={index} className="col-md-4">
-                <div className="card h-100 p-4 solution-card">
-                  <div className="feature-icon fs-4">{item.icon}</div>
-                  <h4 className="h5 fw-bold">{item.title}</h4>
-                  <p className="text-muted mb-0">{item.desc}</p>
-                </div>
-              </div>
-            ))}
+          <div className="d-none d-md-block">
+            <div className="row g-5">
+              {SOLUTION_ITEMS.map((item, index) => (
+                <div key={index} className="col-md-4"><SolutionCard {...item} /></div>
+              ))}
+            </div>
           </div>
+          <CardCarousel>
+            {SOLUTION_ITEMS.map((item, index) => <SolutionCard key={index} {...item} />)}
+          </CardCarousel>
         </div>
       </section>
 
@@ -273,22 +334,16 @@ export default function LandingPage() {
               <button className="btn btn-primary rounded-pill px-4">Ver todos os recursos</button>
             </div>
             <div className="col-lg-7 mb-3 mt-3">
-              <div className="row g-3">
-                {[
-                  { title: "Foco em legislação brasileira", desc: "Adequado às normas técnicas nacionais (ABNT)." },
-                  { title: "Modelo por organização", desc: "Estrutura hierárquica clara para multiclientes ou filiais." },
-                  { title: "Histórico técnico", desc: "Acervo digital permanente da vida útil dos ativos." },
-                  { title: "Evidência vinculada", desc: "Cada manutenção possui sua prova de execução direta." },
-                  { title: "Visão para auditoria", desc: "Relatórios prontos para processos de certificação." }
-                ].map((item, index) => (
-                  <div key={index} className="col-md-6">
-                    <div className="p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25">
-                      <h5 className="h6 fw-bold text-primary">{item.title}</h5>
-                      <p className="small mb-0 opacity-75">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="d-none d-md-block">
+                <div className="row g-3">
+                  {DIFERENCIAIS_ITEMS.map((item, index) => (
+                    <div key={index} className="col-md-6"><DiferencialCard {...item} /></div>
+                  ))}
+                </div>
               </div>
+              <CardCarousel>
+                {DIFERENCIAIS_ITEMS.map((item, index) => <DiferencialCard key={index} {...item} />)}
+              </CardCarousel>
             </div>
           </div>
         </div>
@@ -300,7 +355,7 @@ export default function LandingPage() {
           <div className="text-center">
             <h2 className="display-6 fw-bold">Feito para quem exige eficiência</h2>
           </div>
-          
+
           <div className="row mb-5">
             <div className="col-12">
               <h4 className="mb-4 text-center">Segmentos Principais</h4>
@@ -312,23 +367,18 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="row g-5 mb-4">
-            <div className="col-lg-12">
-              <h4 className="mb-4 text-center">Quem utiliza nossa plataforma</h4>
-            </div>
-            {[
-              { title: "Administradoras", desc: "Gestão centralizada de múltiplos clientes." },
-              { title: "Síndicos", desc: "Segurança e transparência na gestão predial." },
-              { title: "Empresas", desc: "Manutenção de ativos operacionais críticos." },
-              { title: "Gestores de facilities", desc: "Otimização de custos e produtividade." }
-            ].map((item, index) => (
-              <div key={index} className="col-md-3">
-                <div className="card h-100 p-4 text-center border-top border-primary border-4">
-                  <h5 className="fw-bold mb-2">{item.title}</h5>
-                  <p className="small text-muted mb-0">{item.desc}</p>
-                </div>
+          <div className="mb-4">
+            <h4 className="mb-4 text-center">Quem utiliza nossa plataforma</h4>
+            <div className="d-none d-md-block">
+              <div className="row g-5">
+                {PERSONA_ITEMS.map((item, index) => (
+                  <div key={index} className="col-md-3"><PersonaCard {...item} /></div>
+                ))}
               </div>
-            ))}
+            </div>
+            <CardCarousel>
+              {PERSONA_ITEMS.map((item, index) => <PersonaCard key={index} {...item} />)}
+            </CardCarousel>
           </div>
         </div>
       </section>
@@ -339,8 +389,8 @@ export default function LandingPage() {
           <h2 className="display-5 fw-bold mb-4">Pronto para profissionalizar sua manutenção?</h2>
           <p className="lead mb-5 opacity-75">Junte-se a centenas de gestores que já transformaram suas operações.</p>
           <div className="d-flex flex-column flex-md-row justify-content-center gap-3 mt-5">
-            <button 
-              className="btn btn-light btn-lg rounded-pill px-5" 
+            <button
+              className="btn btn-light btn-lg rounded-pill px-5"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               disabled={loading}
             >
