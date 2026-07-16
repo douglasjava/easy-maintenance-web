@@ -105,10 +105,14 @@ function SubscriptionItemCard({
   item,
   onChangePlan,
   onCancel,
+  onUndoCancel,
+  undoLoading,
 }: {
   item: SubscriptionItem;
   onChangePlan: (id: number) => void;
   onCancel: (id: number) => void;
+  onUndoCancel: (id: number) => void;
+  undoLoading: boolean;
 }) {
   const typeStyle = TYPE_STYLE[item.type] ?? { bg: "#f3f4f6", color: "#374151" };
 
@@ -194,22 +198,33 @@ function SubscriptionItemCard({
 
         {/* Actions */}
         <div className="d-flex justify-content-end gap-2">
-          {!item.cancelAtPeriodEnd && (
+          {item.cancelAtPeriodEnd ? (
             <button
               className="btn btn-sm"
-              style={{ border: "1px solid #fecaca", color: "#dc2626", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
-              onClick={() => onCancel(item.id)}
+              style={{ border: "1px solid #fed7aa", color: "#c2410c", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
+              onClick={() => onUndoCancel(item.id)}
+              disabled={undoLoading}
             >
-              Cancelar
+              {undoLoading ? "Desfazendo..." : "Desfazer cancelamento"}
             </button>
+          ) : (
+            <>
+              <button
+                className="btn btn-sm"
+                style={{ border: "1px solid #fecaca", color: "#dc2626", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
+                onClick={() => onCancel(item.id)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-sm d-flex align-items-center gap-1"
+                style={{ border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
+                onClick={() => onChangePlan(item.id)}
+              >
+                Alterar Plano <ChevronRight size={13} />
+              </button>
+            </>
           )}
-          <button
-            className="btn btn-sm d-flex align-items-center gap-1"
-            style={{ border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem" }}
-            onClick={() => onChangePlan(item.id)}
-          >
-            Alterar Plano <ChevronRight size={13} />
-          </button>
         </div>
       </div>
     </div>
@@ -377,6 +392,7 @@ export default function BillingPage() {
   const [selectedItem, setSelectedItem] = useState<{ id: number; planCode: string } | null>(null);
   const [itemToCancel, setItemToCancel] = useState<number | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [undoLoading, setUndoLoading] = useState(false);
   const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
 
   useEffect(() => {
@@ -420,6 +436,19 @@ export default function BillingPage() {
       toast.error("Erro ao cancelar item da assinatura.");
     } finally {
       setCancelLoading(false);
+    }
+  }
+
+  async function handleUndoCancelItem(itemId: number) {
+    try {
+      setUndoLoading(true);
+      await api.post(`/billing/subscription-items/${itemId}/undo-cancel`);
+      toast.success("Cancelamento desfeito com sucesso!");
+      fetchSummary();
+    } catch {
+      toast.error("Erro ao desfazer o cancelamento.");
+    } finally {
+      setUndoLoading(false);
     }
   }
 
@@ -599,6 +628,8 @@ export default function BillingPage() {
                     item={userItem}
                     onChangePlan={handleChangePlan}
                     onCancel={(id) => setItemToCancel(id)}
+                    onUndoCancel={handleUndoCancelItem}
+                    undoLoading={undoLoading}
                   />
                 ) : (
                   <div
