@@ -8,6 +8,7 @@ import { api } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import RiskBlock from '@/components/landing/RiskBlock';
 import CardCarousel from '@/components/landing/CardCarousel';
+import PartnerBlock from '@/components/landing/PartnerBlock';
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -229,6 +230,7 @@ export default function LandingPage() {
               <li className="nav-item"><a className="nav-link px-3" href="#solucao">Solução</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#diferenciais">Diferenciais</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#para-quem">Para quem</a></li>
+              <li className="nav-item"><a className="nav-link px-3" href="#seja-parceiro">Seja Parceiro</a></li>
               <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
                 <Link href="/login" className="btn btn-outline-primary rounded-pill px-4">Login Cliente</Link>
               </li>
@@ -382,6 +384,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <PartnerBlock />
 
       {/* CTA Final */}
       <section className="section-padding bg-primary text-white text-center pb-3">
