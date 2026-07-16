@@ -298,7 +298,7 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
-          <CardCarousel>
+          <CardCarousel ariaLabel="Por que as empresas perdem o controle — deslize para o lado">
             {PROBLEM_ITEMS.map((item, index) => <ProblemCard key={index} {...item} />)}
           </CardCarousel>
         </div>
@@ -317,7 +317,7 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
-          <CardCarousel>
+          <CardCarousel ariaLabel="Recursos da plataforma — deslize para o lado">
             {SOLUTION_ITEMS.map((item, index) => <SolutionCard key={index} {...item} />)}
           </CardCarousel>
         </div>
@@ -341,7 +341,7 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-              <CardCarousel>
+              <CardCarousel ariaLabel="Diferenciais da plataforma — deslize para o lado">
                 {DIFERENCIAIS_ITEMS.map((item, index) => <DiferencialCard key={index} {...item} />)}
               </CardCarousel>
             </div>
@@ -376,7 +376,7 @@ export default function LandingPage() {
                 ))}
               </div>
             </div>
-            <CardCarousel>
+            <CardCarousel ariaLabel="Quem utiliza a plataforma — deslize para o lado">
               {PERSONA_ITEMS.map((item, index) => <PersonaCard key={index} {...item} />)}
             </CardCarousel>
           </div>

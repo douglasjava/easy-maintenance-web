@@ -389,3 +389,10 @@ a{ color:inherit; text-decoration:none }
     }
 }
 
+/* ===== Landing: carrossel de cards mobile (TASK-126) ===== */
+.card-carousel:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 4px;
+    border-radius: 8px;
+}
+
