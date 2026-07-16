@@ -12,16 +12,8 @@ import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import { GuardedButton } from "@/components/access/GuardedButton";
 import { FeatureGuard } from "@/components/access/FeatureGuard";
 import UsageMeter from "@/components/UsageMeter";
-
-type Item = {
-  id: string;
-  itemType: string;
-  itemCategory: "REGULATORY" | "OPERATIONAL";
-  status: "OK" | "NEAR_DUE" | "OVERDUE";
-  nextDueAt: string;
-  canUpdate?: boolean;
-  reason?: string;
-};
+import { StatusBadge, CategoryBadge, STATUS_CONFIG, formatDate, type Item } from "@/components/items/shared";
+import ItemsCalendarView from "@/components/items/ItemsCalendarView";
 
 type CursorPageResp<T> = {
   content: T[];
@@ -34,67 +26,6 @@ type CursorPageResp<T> = {
   number: number;
 };
 
-const STATUS_CONFIG = {
-  OK:       { label: "Em dia",   bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
-  NEAR_DUE: { label: "Vencendo", bg: "#fffbeb", color: "#92400e", dot: "#f59e0b" },
-  OVERDUE:  { label: "Atrasado", bg: "#fef2f2", color: "#b91c1c", dot: "#ef4444" },
-} as const;
-
-const CATEGORY_CONFIG = {
-  REGULATORY:  { label: "Regulatório",  bg: "#eff6ff", color: "#1d4ed8" },
-  OPERATIONAL: { label: "Operacional",  bg: "#f0f9ff", color: "#0369a1" },
-} as const;
-
-function StatusBadge({ status }: { status: Item["status"] }) {
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.OK;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "3px 9px",
-        borderRadius: 20,
-        fontSize: "0.72rem",
-        fontWeight: 600,
-        backgroundColor: cfg.bg,
-        color: cfg.color,
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-      }}
-    >
-      <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: cfg.dot, flexShrink: 0 }} />
-      {cfg.label}
-    </span>
-  );
-}
-
-function CategoryBadge({ category }: { category: Item["itemCategory"] }) {
-  const cfg = CATEGORY_CONFIG[category] ?? { label: category, bg: "#f3f4f6", color: "#374151" };
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        padding: "2px 8px",
-        borderRadius: 20,
-        fontSize: "0.7rem",
-        fontWeight: 500,
-        backgroundColor: cfg.bg,
-        color: cfg.color,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {cfg.label}
-    </span>
-  );
-}
-
-function formatDate(dt?: string) {
-  if (!dt) return "-";
-  const d = new Date(dt + "T00:00:00");
-  return d.toLocaleDateString("pt-BR");
-}
-
 function ItemsContent() {
   const searchParams = useSearchParams();
   const origin = searchParams.get("origin");
@@ -106,6 +37,7 @@ function ItemsContent() {
   const [cursorStack, setCursorStack] = useState<(number | null)[]>([null]);
   const [stackIndex, setStackIndex] = useState(0);
   const [size, setSize] = useState(10);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
   function resetCursor() {
     setCursorStack([null]);
@@ -124,8 +56,29 @@ function ItemsContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exportingCalendarId, setExportingCalendarId] = useState<string | null>(null);
 
   const { permissions, features, organization, message: orgMessage } = useCurrentOrganizationAccess();
+
+  // EPIC-014/TASK-117 QA: maxItems é um pool compartilhado entre todas as organizações da conta
+  // (não um teto por organização) — o botão "+ Novo Item" precisa refletir esse total, não só
+  // o uso da organização ativa. GET /me/billing/summary já expõe esses números corretamente.
+  const { data: billingSummary } = useQuery({
+    queryKey: ["billing-summary-item-limit"],
+    queryFn: async () => {
+      const { data } = await api.get("/me/billing/summary");
+      return data as { subscription?: { itemsUsedTotalAccount: number; maxItems: number } };
+    },
+    staleTime: 30_000,
+  });
+
+  const maxItems = billingSummary?.subscription?.maxItems ?? 0;
+  const itemsUsedTotalAccount = billingSummary?.subscription?.itemsUsedTotalAccount ?? 0;
+  const atItemLimit = maxItems > 0 && itemsUsedTotalAccount >= maxItems;
+  const canCreateItem = !!permissions?.canCreateItem && !atItemLimit;
+  const createItemBlockedMessage = atItemLimit
+    ? `Limite de ${maxItems} itens do plano atingido (somando todas as suas organizações). Faça upgrade do seu plano.`
+    : orgMessage;
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["items", { status, itemType, categoria, cursor: cursorStack[stackIndex], size }],
@@ -183,6 +136,26 @@ function ItemsContent() {
     }
   }
 
+  async function handleExportCalendar(item: Item) {
+    try {
+      setExportingCalendarId(item.id);
+      const res = await api.get(`/items/${item.id}/calendar.ics`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/calendar" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `item-${item.id}-lembrete.ics`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar lembrete de calendário. Verifique se o item tem um vencimento definido.");
+    } finally {
+      setExportingCalendarId(null);
+    }
+  }
+
   const items = data?.content ?? [];
 
   return (
@@ -218,25 +191,55 @@ function ItemsContent() {
             </div>
 
             <div className="d-flex flex-column align-items-end gap-2">
+              {maxItems > 0 && (
+                <div className="p-2 px-3 bg-white rounded-4 shadow-sm border" style={{ minWidth: 180 }}>
+                  <UsageMeter
+                    label="Itens (conta)"
+                    current={itemsUsedTotalAccount}
+                    max={maxItems}
+                    upgradeHref="/billing"
+                  />
+                </div>
+              )}
               <GuardedButton
                 className="btn btn-primary"
-                allowed={!!permissions?.canCreateItem}
-                mode="hide"
-                blockedMessage={orgMessage}
+                allowed={canCreateItem}
+                blockedMessage={createItemBlockedMessage}
                 onClick={() => (window.location.href = "/items/new?origin=items")}
                 style={{ whiteSpace: "nowrap" }}
               >
                 + Novo Item
               </GuardedButton>
-              {features && organization?.currentUsage != null && (
-                <UsageMeter
-                  label="Itens"
-                  current={organization.currentUsage.currentItems}
-                  max={features.maxItems}
-                  upgradeHref="/billing"
-                />
-              )}
             </div>
+          </div>
+        </div>
+
+        {/* ── TOGGLE LISTA / CALENDÁRIO ── */}
+        <div className="d-flex mb-3">
+          <div
+            className="d-inline-flex p-1 bg-white rounded-3 shadow-sm border"
+            role="group"
+            aria-label="Alternar visualização"
+          >
+            {(["list", "calendar"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setViewMode(mode)}
+                style={{
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "5px 14px",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  backgroundColor: viewMode === mode ? "#2563eb" : "transparent",
+                  color: viewMode === mode ? "#fff" : "#6b7280",
+                }}
+              >
+                {mode === "list" ? "Lista" : "Calendário"}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -332,6 +335,9 @@ function ItemsContent() {
         </div>
 
         {/* ── CONTEÚDO ── */}
+        {viewMode === "calendar" ? (
+          <ItemsCalendarView status={status} categoria={categoria} itemType={itemType} />
+        ) : (
         <div className="card border-0 shadow-sm" style={{ borderRadius: 10 }}>
           <div className="card-body p-0">
 
@@ -420,6 +426,25 @@ function ItemsContent() {
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <div className="d-flex align-items-center justify-content-end gap-1">
+                              {it.nextDueAt && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  style={{
+                                    padding: "3px 10px",
+                                    fontSize: "0.78rem",
+                                    border: "1px solid #e5e7eb",
+                                    color: "#6b7280",
+                                    borderRadius: 6,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  disabled={exportingCalendarId === it.id}
+                                  title="Baixar lembrete .ics (compatível com Google Calendar, Outlook e Apple Calendar)"
+                                  onClick={() => handleExportCalendar(it)}
+                                >
+                                  {exportingCalendarId === it.id ? "Gerando..." : "Calendário"}
+                                </button>
+                              )}
                               <Link
                                 className="btn btn-sm"
                                 style={{
@@ -546,6 +571,23 @@ function ItemsContent() {
                               className="d-flex gap-2 px-3 py-2"
                               style={{ borderTop: "1px solid #f1f5f9", backgroundColor: "#fafafa" }}
                             >
+                              {it.nextDueAt && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  style={{
+                                    fontSize: "0.78rem",
+                                    border: "1px solid #e5e7eb",
+                                    color: "#6b7280",
+                                    padding: "5px 8px",
+                                  }}
+                                  disabled={exportingCalendarId === it.id}
+                                  title="Baixar lembrete .ics (compatível com Google Calendar, Outlook e Apple Calendar)"
+                                  onClick={() => handleExportCalendar(it)}
+                                >
+                                  {exportingCalendarId === it.id ? "..." : "Calendário"}
+                                </button>
+                              )}
                               <Link
                                 className="btn btn-sm flex-fill"
                                 style={{
@@ -655,6 +697,7 @@ function ItemsContent() {
             )}
           </div>
         </div>
+        )}
 
       </div>
 
