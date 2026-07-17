@@ -1,5 +1,5 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getMessaging, Messaging } from "firebase/messaging";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getMessaging, isSupported, Messaging } from "firebase/messaging";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,14 +13,27 @@ const firebaseConfig = {
 
 // Inicializa o Firebase apenas se estiver no lado do cliente
 // e se ainda não foi inicializado.
-const app = typeof window !== "undefined" 
+const app: FirebaseApp | null = typeof window !== "undefined"
     ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp())
     : null;
 
-// Exporta a instância de messaging
-// No SSR (Server Side Rendering), messaging não está disponível, por isso retornamos null ou tratamos via window
-export const messaging = (typeof window !== "undefined" && app) 
-    ? getMessaging(app) 
-    : null;
+// getMessaging() lança exceção síncrona (messaging/unsupported-browser) em
+// ambientes sem Push API / Notification / Service Worker completos — caso de
+// WebViews embutidos (Instagram, Facebook, TikTok in-app browser no iOS).
+// getMessagingIfSupported() faz essa checagem de forma assíncrona e segura,
+// para nunca derrubar a hidratação da página nesses ambientes.
+export async function getMessagingIfSupported(): Promise<Messaging | null> {
+    if (!app) return null;
+
+    try {
+        const supported = await isSupported();
+        if (!supported) return null;
+
+        return getMessaging(app);
+    } catch (error) {
+        console.warn("Firebase Messaging não suportado neste navegador:", error);
+        return null;
+    }
+}
 
 export default app;
