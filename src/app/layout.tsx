@@ -3,7 +3,6 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import type { Metadata, Viewport } from "next";
 import Shell from "@/components/Shell";
 import Providers from "@/components/Providers";
-import FcmHandler from "@/components/messaging/FcmHandler";
 import EnvironmentBanner from "@/components/layout/shared/EnvironmentBanner";
 
 export const viewport: Viewport = {
@@ -51,7 +50,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <html lang="pt-BR" suppressHydrationWarning>
         <body>
         <Providers>
-            <FcmHandler />
             <EnvironmentBanner />
             <Shell>{children}</Shell>
         </Providers>
