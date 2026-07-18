@@ -1,34 +1,13 @@
 import { useEffect, useState } from "react";
-import { getToken, onMessage } from "firebase/messaging";
-import { messaging } from "@/lib/firebase";
+import { getToken, onMessage, Messaging } from "firebase/messaging";
+import { getMessagingIfSupported } from "@/lib/firebase";
 import { api } from "@/lib/apiClient";
 import toast from "react-hot-toast";
 
 export function useFirebaseMessaging() {
     const [fcmToken, setFcmToken] = useState<string | null>(null);
 
-    const requestPermission = async () => {
-        if (typeof window === "undefined" || !("Notification" in window)) {
-            console.log("Este navegador não suporta notificações desktop");
-            return;
-        }
-
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-                console.log("Permissão para notificações concedida.");
-                await generateToken();
-            } else {
-                console.warn("Permissão para notificações negada.");
-            }
-        } catch (error) {
-            console.error("Erro ao solicitar permissão de notificação:", error);
-        }
-    };
-
-    const generateToken = async () => {
-        if (!messaging) return;
-
+    const generateToken = async (messaging: Messaging) => {
         try {
             // A VAPID Key é necessária para identificar seu servidor de envio no navegador
             // Deve ser configurada no console do Firebase (Configurações do Projeto > Cloud Messaging)
@@ -68,11 +47,39 @@ export function useFirebaseMessaging() {
         }
     };
 
+    const requestPermission = async (messaging: Messaging) => {
+        if (typeof window === "undefined" || !("Notification" in window)) {
+            console.log("Este navegador não suporta notificações desktop");
+            return;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                console.log("Permissão para notificações concedida.");
+                await generateToken(messaging);
+            } else {
+                console.warn("Permissão para notificações negada.");
+            }
+        } catch (error) {
+            console.error("Erro ao solicitar permissão de notificação:", error);
+        }
+    };
+
     useEffect(() => {
-        // Registro do Service Worker e escuta de mensagens em primeiro plano
-        if (typeof window !== "undefined" && "serviceWorker" in navigator && messaging) {
-            
-            // Registro explícito do service worker
+        if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+        let unsubscribe: (() => void) | undefined;
+        let cancelled = false;
+
+        // getMessagingIfSupported() checa de forma assíncrona (via isSupported() do
+        // próprio SDK) se o ambiente tem as APIs necessárias (Push API, Notification,
+        // Service Worker). Em WebViews embutidos que não expõem essas APIs (Instagram,
+        // Facebook, TikTok in-app browser no iOS), retorna null em vez de lançar
+        // exceção — evita derrubar a hidratação da página nesses ambientes.
+        getMessagingIfSupported().then((messaging) => {
+            if (cancelled || !messaging) return;
+
             navigator.serviceWorker
                 .register("/firebase-messaging-sw.js")
                 .then((registration) => {
@@ -82,8 +89,7 @@ export function useFirebaseMessaging() {
                     console.error("Falha ao registrar o Service Worker:", err);
                 });
 
-            // Lida com mensagens recebidas enquanto o app está aberto (foreground)
-            const unsubscribe = onMessage(messaging, (payload) => {
+            unsubscribe = onMessage(messaging, (payload) => {
                 console.log("Mensagem recebida em foreground:", payload);
                 if (payload.notification?.title) {
                     toast.success(`${payload.notification.title}: ${payload.notification.body}`, {
@@ -93,12 +99,14 @@ export function useFirebaseMessaging() {
                 }
             });
 
-            // Tenta solicitar permissão/gerar token automaticamente se possível
-            requestPermission();
+            requestPermission(messaging);
+        });
 
-            return () => unsubscribe();
-        }
+        return () => {
+            cancelled = true;
+            unsubscribe?.();
+        };
     }, []);
 
-    return { fcmToken, requestPermission };
+    return { fcmToken };
 }

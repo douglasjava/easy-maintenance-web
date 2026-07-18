@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { AccessContextProvider } from "@/providers/AccessContextProvider";
 import { ReadOnlyBanner } from "@/components/access/ReadOnlyBanner";
 import { useAuth } from "@/contexts/AuthContext";
+import FcmHandler from "@/components/messaging/FcmHandler";
 
 const ChatWidget = dynamic(() => import("@/ia/ChatWidget"), { ssr: false });
 
@@ -73,6 +74,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   return (
     <AccessContextProvider>
       <div>
+        {/* Firebase Cloud Messaging só roda em rotas autenticadas normais.
+            Rotas públicas (isAuth: /landing, /login, /checkout, etc.) e a
+            área /private (admin) nunca montam FcmHandler. */}
+        {!isPrivate && <FcmHandler />}
         {isPrivate ? <PrivateTopBar /> : <UserTopBar />}
         <Sidebar />
         <ReadOnlyBanner />
