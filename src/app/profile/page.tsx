@@ -3,9 +3,10 @@
 import {useState, useEffect, useCallback} from "react";
 import {api} from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import {User, Mail, Shield, Save, ShieldCheck, ShieldOff, RefreshCw, Key, Download, Trash2, Lock, Phone, MessageCircle} from "lucide-react";
+import {User, Mail, Shield, Save, ShieldCheck, ShieldOff, RefreshCw, Key, Download, Trash2, Lock, Phone} from "lucide-react";
 import Image from "next/image";
 import {maskBRPhoneInput, e164ToDisplayMask} from "@/lib/phoneMask";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 
 type TwoFactorStatus = { enabled: boolean; backupCodesRemaining: number };
 type SetupData = { secret: string; qrCodeDataUri: string; otpAuthUri: string };
@@ -402,27 +403,41 @@ export default function ProfilePage() {
                                     </div>
 
                                     <div className="col-12">
-                                        <div className="form-check form-switch d-flex align-items-start gap-2 p-3 bg-light rounded-3">
-                                            <input
-                                                type="checkbox"
-                                                role="switch"
-                                                className="form-check-input flex-shrink-0 mt-1"
-                                                id="whatsappOptIn"
-                                                checked={user.whatsappOptIn}
-                                                disabled={!user.phoneNumber.trim()}
-                                                onChange={(e) => setUser({...user, whatsappOptIn: e.target.checked})}
-                                            />
-                                            <label className="form-check-label" htmlFor="whatsappOptIn">
-                                                <span className="d-flex align-items-center gap-2 fw-medium">
-                                                    <MessageCircle size={16} className="text-success"/>
-                                                    Receber notificações por WhatsApp
-                                                </span>
-                                                <span className="text-muted small d-block mt-1">
-                                                    Ao ativar, você concorda em receber avisos de vencimento de itens e
-                                                    manutenções pelo número cadastrado acima, em conformidade com a LGPD.
-                                                    {!user.phoneNumber.trim() && " Cadastre um telefone para habilitar."}
-                                                </span>
-                                            </label>
+                                        {/* Divisor sutil separando do restante do formulário */}
+                                        <div className="border-top pt-4 mt-1">
+                                            <div className="d-flex flex-column flex-sm-row align-items-start justify-content-sm-between gap-3">
+                                                <div className="d-flex align-items-start gap-3">
+                                                    <WhatsAppIcon size={22} className="text-success flex-shrink-0 mt-1"/>
+                                                    <div style={{maxWidth: 420}}>
+                                                        <h6 className="fw-semibold mb-1">Notificações por WhatsApp</h6>
+                                                        <p className="text-muted small mb-2">
+                                                            Avisos de vencimento de itens e manutenções, enviados pelo
+                                                            número cadastrado acima.
+                                                        </p>
+                                                        <p className="text-muted small mb-0 d-flex align-items-start gap-1">
+                                                            <ShieldCheck size={13} className="flex-shrink-0 mt-1"/>
+                                                            <span>
+                                                                Ao ativar, você concorda com o envio dessas notificações,
+                                                                em conformidade com a LGPD.
+                                                                {!user.phoneNumber.trim() && " Cadastre um telefone para habilitar."}
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="form-check form-switch flex-shrink-0 mb-0 ms-sm-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        role="switch"
+                                                        className="form-check-input"
+                                                        id="whatsappOptIn"
+                                                        aria-label="Receber notificações por WhatsApp"
+                                                        checked={user.whatsappOptIn}
+                                                        disabled={!user.phoneNumber.trim()}
+                                                        onChange={(e) => setUser({...user, whatsappOptIn: e.target.checked})}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
