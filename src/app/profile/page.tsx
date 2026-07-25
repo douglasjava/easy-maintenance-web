@@ -3,8 +3,10 @@
 import {useState, useEffect, useCallback} from "react";
 import {api} from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import {User, Mail, Shield, Save, ShieldCheck, ShieldOff, RefreshCw, Key, Download, Trash2, Lock} from "lucide-react";
+import {User, Mail, Shield, Save, ShieldCheck, ShieldOff, RefreshCw, Key, Download, Trash2, Lock, Phone} from "lucide-react";
 import Image from "next/image";
+import {maskBRPhoneInput, e164ToDisplayMask} from "@/lib/phoneMask";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 
 type TwoFactorStatus = { enabled: boolean; backupCodesRemaining: number };
 type SetupData = { secret: string; qrCodeDataUri: string; otpAuthUri: string };
@@ -25,6 +27,8 @@ export default function ProfilePage() {
         email: "",
         role: "",
         status: "ACTIVE",
+        phoneNumber: "",
+        whatsappOptIn: false,
     });
 
     // 2FA state
@@ -61,6 +65,8 @@ export default function ProfilePage() {
                     email: data.email || "",
                     role: data.role || "",
                     status: data.status || "ACTIVE",
+                    phoneNumber: e164ToDisplayMask(data.phoneNumber),
+                    whatsappOptIn: Boolean(data.whatsappOptIn),
                 });
             } catch (err) {
                 console.error("Erro ao carregar perfil:", err);
@@ -76,13 +82,21 @@ export default function ProfilePage() {
 
     async function handleUpdate(e: React.FormEvent) {
         e.preventDefault();
+
+        if (user.whatsappOptIn && !user.phoneNumber.trim()) {
+            toast.error("Cadastre um telefone antes de ativar as notificações por WhatsApp.");
+            return;
+        }
+
         setLoading(true);
         try {
             await api.patch(`/user/${user.id}`, {
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                status: user.status
+                status: user.status,
+                phoneNumber: user.phoneNumber,
+                whatsappOptIn: user.whatsappOptIn,
             });
 
             toast.success("Perfil atualizado com sucesso!");
@@ -91,9 +105,9 @@ export default function ProfilePage() {
                 window.localStorage.setItem("userName", user.name);
                 window.sessionStorage.setItem("userName", user.name);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Erro ao atualizar perfil:", err);
-            toast.error("Erro ao atualizar perfil.");
+            toast.error(err?.response?.data?.detail || "Erro ao atualizar perfil.");
         } finally {
             setLoading(false);
         }
@@ -360,6 +374,70 @@ export default function ProfilePage() {
                                                 <option value="ACTIVE">Ativo</option>
                                                 <option value="INACTIVE">Inativo</option>
                                             </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label fw-medium text-muted small text-uppercase mb-2">Telefone</label>
+                                        <div className="input-group">
+                                            <span className="input-group-text bg-light border-end-0"><Phone size={18} className="text-muted"/></span>
+                                            <input
+                                                type="tel"
+                                                inputMode="tel"
+                                                className="form-control bg-light border-start-0 ps-0"
+                                                placeholder="(31) 97213-9145"
+                                                value={user.phoneNumber}
+                                                onChange={(e) => {
+                                                    const masked = maskBRPhoneInput(e.target.value);
+                                                    setUser({
+                                                        ...user,
+                                                        phoneNumber: masked,
+                                                        // Limpar o telefone desativa o opt-in — evita deixar o toggle
+                                                        // marcado e travado (disabled) sem forma de desmarcar na UI.
+                                                        whatsappOptIn: masked.trim() ? user.whatsappOptIn : false,
+                                                    });
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="form-text small">Usado para notificações por WhatsApp.</div>
+                                    </div>
+
+                                    <div className="col-12">
+                                        {/* Divisor sutil separando do restante do formulário */}
+                                        <div className="border-top pt-4 mt-1">
+                                            <div className="d-flex flex-column flex-sm-row align-items-start justify-content-sm-between gap-3">
+                                                <div className="d-flex align-items-start gap-3">
+                                                    <WhatsAppIcon size={22} className="text-success flex-shrink-0 mt-1"/>
+                                                    <div style={{maxWidth: 420}}>
+                                                        <h6 className="fw-semibold mb-1">Notificações por WhatsApp</h6>
+                                                        <p className="text-muted small mb-2">
+                                                            Avisos de vencimento de itens e manutenções, enviados pelo
+                                                            número cadastrado acima.
+                                                        </p>
+                                                        <p className="text-muted small mb-0 d-flex align-items-start gap-1">
+                                                            <ShieldCheck size={13} className="flex-shrink-0 mt-1"/>
+                                                            <span>
+                                                                Ao ativar, você concorda com o envio dessas notificações,
+                                                                em conformidade com a LGPD.
+                                                                {!user.phoneNumber.trim() && " Cadastre um telefone para habilitar."}
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="form-check form-switch flex-shrink-0 mb-0 ms-sm-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        role="switch"
+                                                        className="form-check-input"
+                                                        id="whatsappOptIn"
+                                                        aria-label="Receber notificações por WhatsApp"
+                                                        checked={user.whatsappOptIn}
+                                                        disabled={!user.phoneNumber.trim()}
+                                                        onChange={(e) => setUser({...user, whatsappOptIn: e.target.checked})}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
