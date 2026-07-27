@@ -11,6 +11,12 @@ import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import { GuardedButton } from "@/components/access/GuardedButton";
 import { useState } from "react";
 import ConfirmModal from "@/components/ConfirmModal";
+import {
+    Maintenance,
+    TypeBadge,
+    formatCost,
+    CancelledMaintenanceRow,
+} from "@/components/maintenances/maintenanceDisplay";
 
 const COLORS = {
     primary: "#0B5ED7",
@@ -35,6 +41,30 @@ export default function ItemDetailPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [exportingCalendar, setExportingCalendar] = useState(false);
+
+    // TASK-144: histórico de manutenções do item, com abas — achado de UX durante o QA manual da
+    // TASK-QA-MAN-011 (C1/C2): a lista de canceladas (TASK-141) só existia em /maintenances,
+    // empilhada abaixo da tabela geral; aqui é o lugar natural, já escopado a este item só.
+    const [historyTab, setHistoryTab] = useState<"active" | "cancelled">("active");
+
+    const { data: activeMaintenances, isLoading: loadingActive } = useQuery({
+        queryKey: ["item-maintenances-active", id],
+        queryFn: async () => {
+            const res = await api.get(`/items/maintenances`, { params: { itemId: id, size: 10 } });
+            const d = res.data;
+            return (Array.isArray(d) ? d : d.content) as Maintenance[];
+        },
+        enabled: !!id,
+    });
+
+    const { data: cancelledMaintenances, isLoading: loadingCancelled } = useQuery({
+        queryKey: ["item-maintenances-cancelled", id],
+        queryFn: async () => {
+            const res = await api.get(`/items/maintenances/cancelled`, { params: { itemId: id } });
+            return res.data as Maintenance[];
+        },
+        enabled: !!id && historyTab === "cancelled",
+    });
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["item", id],
@@ -333,6 +363,118 @@ export default function ItemDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* TASK-144: HISTÓRICO DE MANUTENÇÕES (ativas e canceladas) — segunda forma de acesso,
+                complementar à visão geral de /maintenances (TASK-141), escopada só a este item. */}
+            {!isLoading && !error && data && (
+                <div className="card border-0 shadow-sm mt-3">
+                    <div className="card-body">
+                        <h2 className="h6 mb-3" style={{ color: COLORS.primaryDark }}>
+                            Histórico de manutenções
+                        </h2>
+
+                        <div className="d-flex gap-2 mb-3">
+                            <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{
+                                    fontWeight: 600,
+                                    borderRadius: 20,
+                                    padding: "4px 14px",
+                                    border: historyTab === "active" ? "1px solid #2563eb" : "1px solid #e5e7eb",
+                                    backgroundColor: historyTab === "active" ? "#eff6ff" : "transparent",
+                                    color: historyTab === "active" ? "#1d4ed8" : "#6b7280",
+                                }}
+                                onClick={() => setHistoryTab("active")}
+                            >
+                                Ativas
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{
+                                    fontWeight: 600,
+                                    borderRadius: 20,
+                                    padding: "4px 14px",
+                                    border: historyTab === "cancelled" ? "1px solid #dc2626" : "1px solid #e5e7eb",
+                                    backgroundColor: historyTab === "cancelled" ? "#fef2f2" : "transparent",
+                                    color: historyTab === "cancelled" ? "#b91c1c" : "#6b7280",
+                                }}
+                                onClick={() => setHistoryTab("cancelled")}
+                            >
+                                Canceladas
+                            </button>
+                        </div>
+
+                        {historyTab === "active" && (
+                            <>
+                                {loadingActive ? (
+                                    <p className="text-muted mb-0" style={{ fontSize: "0.85rem" }}>Carregando...</p>
+                                ) : (activeMaintenances?.length ?? 0) === 0 ? (
+                                    <p className="text-muted mb-0" style={{ fontSize: "0.85rem" }}>
+                                        Nenhuma manutenção registrada para este item.
+                                    </p>
+                                ) : (
+                                    <div className="d-flex flex-column gap-2">
+                                        {activeMaintenances!.map((m) => (
+                                            <div
+                                                key={String(m.id)}
+                                                className="d-flex align-items-center justify-content-between gap-2 px-3 py-2 rounded-3"
+                                                style={{ border: "1px solid #e5e7eb" }}
+                                            >
+                                                <div className="d-flex align-items-center gap-2 min-w-0">
+                                                    <span style={{ fontSize: "0.82rem", color: "#374151", whiteSpace: "nowrap" }}>
+                                                        {formatDate(m.performedAt)}
+                                                    </span>
+                                                    <TypeBadge type={m.type} />
+                                                    {m.performedBy && (
+                                                        <span
+                                                            className="text-truncate"
+                                                            style={{ fontSize: "0.78rem", color: "#9ca3af" }}
+                                                        >
+                                                            {m.performedBy}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {m.costCents ? (
+                                                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap" }}>
+                                                        {formatCost(m.costCents)}
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <Link
+                                    href={`/maintenances?itemId=${id}`}
+                                    className="d-inline-block mt-3"
+                                    style={{ fontSize: "0.8rem" }}
+                                >
+                                    Ver todas em Manutenções →
+                                </Link>
+                            </>
+                        )}
+
+                        {historyTab === "cancelled" && (
+                            <>
+                                {loadingCancelled ? (
+                                    <p className="text-muted mb-0" style={{ fontSize: "0.85rem" }}>Carregando...</p>
+                                ) : (cancelledMaintenances?.length ?? 0) === 0 ? (
+                                    <p className="text-muted mb-0" style={{ fontSize: "0.85rem" }}>
+                                        Nenhuma manutenção cancelada para este item.
+                                    </p>
+                                ) : (
+                                    <div className="d-flex flex-column gap-2">
+                                        {cancelledMaintenances!.map((m) => (
+                                            <CancelledMaintenanceRow key={String(m.id)} m={m} />
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* MODAL DE CONFIRMAÇÃO */}
             {showDeleteModal && (
