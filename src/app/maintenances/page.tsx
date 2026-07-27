@@ -1,33 +1,34 @@
 "use client";
 
 import { useState, useMemo, Suspense, useRef, useEffect, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useCurrentOrganizationAccess } from "@/hooks/useAccessControl";
 import { GuardedButton } from "@/components/access/GuardedButton";
+import CancelMaintenanceModal from "@/components/maintenances/CancelMaintenanceModal";
+import {
+  Maintenance,
+  TypeBadge,
+  formatDate,
+  formatDateTime,
+  formatCost,
+} from "@/components/maintenances/maintenanceDisplay";
 
 interface Item {
   id: string | number;
   itemType: string;
 }
 
-interface Maintenance {
-  id: string | number;
-  itemId: string | number;
-  itemType?: string;
-  performedAt: string;
-  performedBy?: string;
-  type: string;
-  costCents: number;
-}
-
 interface Attachment {
   id: number;
   fileName: string;
   attachmentType: string;
+  uploadedByUserId?: number | null;
+  uploadedAt?: string | null;
+  uploadedByName?: string | null;
 }
 
 interface MaintenanceDetail extends Maintenance {
@@ -45,14 +46,6 @@ interface CursorPageResp<T> {
   number: number;
 }
 
-const TYPE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  PREVENTIVE:   { label: "Preventiva",   bg: "#eff6ff", color: "#1d4ed8" },
-  CORRECTIVE:   { label: "Corretiva",    bg: "#fef2f2", color: "#b91c1c" },
-  INSPECTION:   { label: "Inspeção",     bg: "#f0fdf4", color: "#15803d" },
-  CALIBRATION:  { label: "Calibração",   bg: "#fdf4ff", color: "#7e22ce" },
-  EMERGENCY:    { label: "Emergência",   bg: "#fff7ed", color: "#c2410c" },
-};
-
 const ATTACHMENT_TYPES: Record<string, string> = {
   PHOTO:       "Foto",
   REPORT:      "Relatório",
@@ -62,41 +55,6 @@ const ATTACHMENT_TYPES: Record<string, string> = {
   OTHER:       "Outro",
 };
 
-function TypeBadge({ type }: { type: string }) {
-  const cfg = TYPE_CONFIG[type] ?? { label: type, bg: "#f3f4f6", color: "#374151" };
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        padding: "2px 9px",
-        borderRadius: 20,
-        fontSize: "0.72rem",
-        fontWeight: 600,
-        backgroundColor: cfg.bg,
-        color: cfg.color,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {cfg.label}
-    </span>
-  );
-}
-
-function formatDate(dt?: string) {
-  if (!dt) return "-";
-  try {
-    const d = new Date(dt + "T00:00:00");
-    return d.toLocaleDateString("pt-BR");
-  } catch {
-    return dt;
-  }
-}
-
-function formatCost(cents?: number) {
-  if (!cents) return "-";
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
 function MaintenancesListContent() {
   const searchParams = useSearchParams();
   const origin = searchParams.get("origin");
@@ -104,6 +62,20 @@ function MaintenancesListContent() {
 
   const { permissions, features, message: orgMessage } = useCurrentOrganizationAccess();
   const [exporting, setExporting] = useState(false);
+  const queryClient = useQueryClient();
+
+  // TASK-140: mesmo padrão de guard por papel já usado em /users (TASK-100/101/102) — cancelamento
+  // é restrito a ADMIN/SYNDIC no backend (MaintenanceService.requireCancelPermission), então checa
+  // o papel bruto salvo no login, não o sistema de permissions do accessContext (que ainda não tem
+  // uma flag dedicada pra essa ação).
+  const [userRole, setUserRole] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setUserRole(window.localStorage.getItem("userRole") || window.sessionStorage.getItem("userRole"));
+  }, []);
+  const canCancelMaintenance = userRole === "ADMIN" || userRole === "SYNDIC";
+
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   async function handleExportCsv() {
     try {
@@ -170,6 +142,7 @@ function MaintenancesListContent() {
 
   // Filters — initialised from URL search params (e.g. when navigating from KPI card)
   const [selectedItemId, setSelectedItemId] = useState(searchParams.get("itemId") ?? "");
+
   const [performedAt, setPerformedAt] = useState(searchParams.get("performedAt") ?? "");
   const [performedAtFrom, setPerformedAtFrom] = useState(searchParams.get("performedAtFrom") ?? "");
   const [performedAtTo, setPerformedAtTo] = useState(searchParams.get("performedAtTo") ?? "");
@@ -200,6 +173,65 @@ function MaintenancesListContent() {
     },
     enabled: !!viewingMaintId,
   });
+
+  // TASK-140: pós-cancelamento — some da lista de válidas, reflete o recálculo de nextDueAt/status
+  // do item (TASK-138) sem precisar recarregar a página. queryClient.invalidateQueries refaz o
+  // fetch de qualquer uma dessas queries que estiver montada; as que não estiverem mais na tela
+  // ficam só marcadas como stale, e buscam de novo na próxima vez que forem usadas.
+  function handleMaintenanceCancelled() {
+    setShowCancelModal(false);
+    const cancelledItemId = maintDetail?.itemId;
+    setViewingMaintId(null);
+    queryClient.invalidateQueries({ queryKey: ["maintenances"] });
+    queryClient.invalidateQueries({ queryKey: ["items"] });
+    if (cancelledItemId != null) {
+      queryClient.invalidateQueries({ queryKey: ["item", String(cancelledItemId)] });
+      // TASK-144: mantém o histórico da página de detalhe do item em sincronia — a lista de
+      // canceladas saiu de /maintenances (esta página) e agora só existe lá.
+      queryClient.invalidateQueries({ queryKey: ["item-maintenances-active", String(cancelledItemId)] });
+      queryClient.invalidateQueries({ queryKey: ["item-maintenances-cancelled", String(cancelledItemId)] });
+    }
+  }
+
+  // TASK-143: anexar depois de registrada — mesmo fluxo de upload direto pro S3 (upload-url +
+  // confirm) já usado em maintenances/new/page.tsx, só que pra uma manutenção já existente e um
+  // arquivo por vez, disparado a partir do modal de detalhe.
+  const [addingAttachment, setAddingAttachment] = useState(false);
+  const [newAttachmentFile, setNewAttachmentFile] = useState<File | null>(null);
+  const [newAttachmentType, setNewAttachmentType] = useState("REPORT");
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+  // Evita carregar o formulário de anexo aberto/preenchido ao trocar de manutenção ou fechar o modal.
+  useEffect(() => {
+    setAddingAttachment(false);
+    setNewAttachmentFile(null);
+    setNewAttachmentType("REPORT");
+  }, [viewingMaintId]);
+
+  async function handleUploadAttachmentToExisting() {
+    if (!viewingMaintId || !newAttachmentFile) return;
+    setUploadingAttachment(true);
+    try {
+      const contentType = newAttachmentFile.type || "application/octet-stream";
+      const { data } = await api.post<{ uploadUrl: string; s3Key: string }>(
+        `maintenances/${viewingMaintId}/attachments/upload-url`,
+        { fileName: newAttachmentFile.name, contentType, attachmentType: newAttachmentType, sizeBytes: newAttachmentFile.size }
+      );
+      const s3Response = await fetch(data.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: newAttachmentFile });
+      if (!s3Response.ok) throw new Error(`Upload S3 falhou: ${s3Response.status}`);
+      await api.post(`maintenances/${viewingMaintId}/attachments/confirm`, {
+        s3Key: data.s3Key, fileName: newAttachmentFile.name, contentType, sizeBytes: newAttachmentFile.size, attachmentType: newAttachmentType
+      });
+      toast.success("Anexo adicionado com sucesso!");
+      setNewAttachmentFile(null);
+      setAddingAttachment(false);
+      queryClient.invalidateQueries({ queryKey: ["maintenance-detail", viewingMaintId] });
+    } catch {
+      toast.error("Erro ao enviar o anexo. Tente novamente.");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  }
 
   async function handleDownload(attachmentId: number, fileName: string) {
     try {
@@ -808,11 +840,57 @@ function MaintenancesListContent() {
 
                     {/* Attachments */}
                     <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "1.25rem" }}>
-                      <div
-                        style={{ fontSize: "0.7rem", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}
-                      >
-                        Anexos
+                      <div className="d-flex align-items-center justify-content-between mb-3">
+                        <div
+                          style={{ fontSize: "0.7rem", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}
+                        >
+                          Anexos
+                        </div>
+                        {/* TASK-143: mesmo nível de permissão do backend (upload não é restrito a
+                            ADMIN/SYNDIC como o cancelamento — só exige poder registrar manutenção) */}
+                        {!maintDetail.cancelled && (
+                          <GuardedButton
+                            type="button"
+                            allowed={!!permissions?.canRegisterMaintenance}
+                            mode="hide"
+                            className="btn btn-sm"
+                            style={{ fontSize: "0.75rem", border: "1px solid #bfdbfe", color: "#1d4ed8", padding: "2px 10px" }}
+                            onClick={() => setAddingAttachment((v) => !v)}
+                          >
+                            {addingAttachment ? "Cancelar" : "+ Adicionar anexo"}
+                          </GuardedButton>
+                        )}
                       </div>
+
+                      {addingAttachment && (
+                        <div className="rounded-3 p-3 mb-3" style={{ border: "1px dashed #bfdbfe", backgroundColor: "#f8fafc" }}>
+                          <input
+                            type="file"
+                            className="form-control form-control-sm mb-2"
+                            style={{ fontSize: "0.82rem" }}
+                            onChange={(e) => setNewAttachmentFile(e.target.files?.[0] ?? null)}
+                            disabled={uploadingAttachment}
+                          />
+                          <select
+                            className="form-select form-select-sm mb-2"
+                            value={newAttachmentType}
+                            onChange={(e) => setNewAttachmentType(e.target.value)}
+                            disabled={uploadingAttachment}
+                          >
+                            {Object.entries(ATTACHMENT_TYPES).map(([val, label]) => (
+                              <option key={val} value={val}>{label}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary w-100"
+                            disabled={!newAttachmentFile || uploadingAttachment}
+                            onClick={handleUploadAttachmentToExisting}
+                          >
+                            {uploadingAttachment ? "Enviando…" : "Enviar anexo"}
+                          </button>
+                        </div>
+                      )}
 
                       {maintDetail.attachments && maintDetail.attachments.length > 0 ? (
                         <div className="d-flex flex-column gap-2">
@@ -839,6 +917,13 @@ function MaintenancesListContent() {
                                 <div style={{ fontSize: "0.72rem", color: "#6b7280" }}>
                                   {ATTACHMENT_TYPES[att.attachmentType] ?? att.attachmentType}
                                 </div>
+                                {/* TASK-142/143: rastreabilidade — anexado depois da manutenção é
+                                    esperado, não um alerta; só precisa ficar visível quem/quando. */}
+                                {(att.uploadedByName || att.uploadedAt) && (
+                                  <div style={{ fontSize: "0.7rem", color: "#9ca3af", marginTop: 2 }}>
+                                    Anexado por {att.uploadedByName || "—"} em {formatDateTime(att.uploadedAt)}
+                                  </div>
+                                )}
                               </div>
                               <button
                                 className="btn btn-sm flex-shrink-0"
@@ -889,6 +974,18 @@ function MaintenancesListContent() {
                     Ver item →
                   </Link>
                 )}
+                {maintDetail && !maintDetail.cancelled && (
+                  <GuardedButton
+                    type="button"
+                    allowed={canCancelMaintenance}
+                    mode="hide"
+                    className="btn btn-sm"
+                    style={{ border: "1px solid #fecaca", color: "#b91c1c", fontSize: "0.8rem", padding: "4px 12px" }}
+                    onClick={() => setShowCancelModal(true)}
+                  >
+                    Cancelar manutenção
+                  </GuardedButton>
+                )}
                 <button
                   type="button"
                   className="btn btn-sm"
@@ -903,6 +1000,13 @@ function MaintenancesListContent() {
           </div>
         </div>
       )}
+
+      <CancelMaintenanceModal
+        show={showCancelModal}
+        maintenanceId={viewingMaintId}
+        onClose={() => setShowCancelModal(false)}
+        onCancelled={handleMaintenanceCancelled}
+      />
     </section>
   );
 }
