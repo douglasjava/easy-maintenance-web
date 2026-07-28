@@ -64,7 +64,11 @@ export default function Sidebar() {
         {href: "/ai-onboarding", label: "IA Onboarding", section: "actions"},
 
         {href: "/norms", label: "Normas e Obrigações", section: "resources"},
-        {href: "/reports", label: "Relatórios", section: "resources"},
+        // TASK-150 (EPIC-017): oculta o menu inteiro (não só bloqueia o botão dentro da tela)
+        // quando o plano da organização ativa não inclui relatórios — coerência pedida por
+        // Douglas no QA manual (C3): não dar margem ao usuário de entrar numa área que ele não
+        // pode usar.
+        ...(features?.reportsEnabled ? [{href: "/reports", label: "Relatórios", section: "resources" as const}] : []),
         {href: "/help", label: "Ajuda / FAQ", section: "resources"},
     ];
 

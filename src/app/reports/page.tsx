@@ -18,7 +18,9 @@ import {
   Package,
   Clock,
   CheckCircle2,
+  FileCheck2,
 } from "lucide-react";
+import PrestacaoContasSection from "@/components/reports/PrestacaoContasSection";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,7 +73,7 @@ type MaintenanceFilters = {
   itemType: string;
 };
 
-type Tab = "overview" | "maintenances";
+type Tab = "overview" | "maintenances" | "prestacao";
 
 // ── Maintenance type config ───────────────────────────────────────────────────
 
@@ -155,6 +157,7 @@ export default function ReportsPage() {
           [
             { id: "overview" as Tab, label: "Visão Geral", Icon: Building2 },
             { id: "maintenances" as Tab, label: "Manutenções", Icon: Wrench },
+            { id: "prestacao" as Tab, label: "Prestação de Contas", Icon: FileCheck2 },
           ]
         ).map(({ id, label, Icon }) => {
           const isActive = activeTab === id;
@@ -193,6 +196,7 @@ export default function ReportsPage() {
         />
       )}
       {activeTab === "maintenances" && <MaintenancesSection />}
+      {activeTab === "prestacao" && <PrestacaoContasSection />}
     </div>
   );
 }
@@ -460,12 +464,14 @@ function MaintenancesSection() {
         params,
         responseType: "blob",
       });
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
+      const url = window.URL.createObjectURL(
+        new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      );
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute(
         "download",
-        `relatorios_manutencoes_${new Date().toISOString().split("T")[0]}.csv`
+        `relatorios_manutencoes_${new Date().toISOString().split("T")[0]}.xlsx`
       );
       document.body.appendChild(link);
       link.click();
@@ -583,10 +589,10 @@ function MaintenancesSection() {
             className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 ms-auto"
             onClick={handleExport}
             disabled={exporting || fetching}
-            title="Exportar CSV (máx. 5.000 registros)"
+            title="Exportar Excel (máx. 5.000 registros)"
           >
             <Download size={14} />
-            {exporting ? "Exportando…" : "Exportar CSV"}
+            {exporting ? "Exportando…" : "Exportar Excel"}
           </button>
         </div>
 
