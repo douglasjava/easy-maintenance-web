@@ -35,11 +35,17 @@ api.interceptors.request.use((config) => {
         }
     }
 
-    const orgId = orgFromLogin || ENV.ORG_ID;
-    if (orgId) {
-        config.headers["X-Org-Id"] = orgId;
-    } else {
-        delete config.headers["X-Org-Id"];
+    // TASK-149 (EPIC-017): se a chamada já vier com X-Org-Id explícito (ex.: seletor de
+    // organização da Prestação de Contas, que gera o relatório de uma org diferente da ativa sem
+    // trocar o contexto global), respeita esse valor em vez de sobrescrever — só usa a organização
+    // ativa globalmente quando o chamador não especificou nada.
+    if (!config.headers["X-Org-Id"]) {
+        const orgId = orgFromLogin || ENV.ORG_ID;
+        if (orgId) {
+            config.headers["X-Org-Id"] = orgId;
+        } else {
+            delete config.headers["X-Org-Id"];
+        }
     }
 
     // Admin token: enviado apenas para rotas da área privativa (/private/).

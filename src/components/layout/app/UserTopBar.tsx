@@ -23,7 +23,7 @@ type OrganizationItem = {
 export default function UserTopBar() {
   const router = useRouter();
   const { logout, isBlocked } = useAuth();
-  const { accessContext } = useAccessContext();
+  const { accessContext, currentOrganizationCode } = useAccessContext();
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [currentOrgName, setCurrentOrgName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,6 +31,11 @@ export default function UserTopBar() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const canManageBilling = accessContext?.accountAccess?.permissions?.canManageOwnBilling ?? true;
+  // TASK-150 (EPIC-017): mesmo critério do Sidebar — oculta o item do menu quando o plano da
+  // organização ativa não inclui relatórios, em vez de só bloquear a ação dentro da tela.
+  const reportsEnabled = accessContext?.organizationsAccess?.find(
+    (o) => o.organizationCode === currentOrganizationCode
+  )?.features?.reportsEnabled ?? false;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -172,12 +177,14 @@ export default function UserTopBar() {
               </button>
             </li>
           )}
-          <li>
-            <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/reports")} disabled={isBlocked}>
-              <BarChart2 size={18} className="text-muted" />
-              Relatórios
-            </button>
-          </li>
+          {reportsEnabled && (
+            <li>
+              <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/reports")} disabled={isBlocked}>
+                <BarChart2 size={18} className="text-muted" />
+                Relatórios
+              </button>
+            </li>
+          )}
           <li>
             <button className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => router.push("/help")} disabled={isBlocked}>
               <HelpCircle size={18} className="text-muted" />
