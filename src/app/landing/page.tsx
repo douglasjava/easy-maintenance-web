@@ -425,6 +425,7 @@ export default function LandingPage() {
               <h6 className="fw-bold">Acesso</h6>
               <ul className="list-unstyled">
                 <li><Link href="/login" className="text-muted text-decoration-none">Login Cliente</Link></li>
+                <li><Link href="/privacidade" className="text-muted text-decoration-none">Política de Privacidade</Link></li>
                 <li><a href="#" className="text-muted text-decoration-none">Termos de Uso</a></li>
               </ul>
             </div>
