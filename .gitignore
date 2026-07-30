@@ -38,6 +38,7 @@ yarn-error.log*
 
 # local git worktrees (superpowers subagent-driven-development)
 .worktrees/
+.superpowers/sdd/
 
 # typescript
 *.tsbuildinfo
