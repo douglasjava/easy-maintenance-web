@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { getStoredUtm } from "@/lib/utm";
 import { trackLead, trackContact } from "@/lib/tracking";
 
 const WHATSAPP_NUMBER = "5531999826634";
 
-function buildWhatsAppLink(): string {
-    const utm = getStoredUtm();
-    const campaignContext = utm?.utm_campaign
-        ? ` Vim através da campanha "${utm.utm_campaign}".`
+function buildWhatsAppLink(campaign?: string): string {
+    const campaignContext = campaign
+        ? ` Vim através da campanha "${campaign}".`
         : "";
     const message =
         `Olá, tudo bem? Acabei de solicitar uma demonstração no site da Easy Maintenance e ` +
@@ -19,8 +18,15 @@ function buildWhatsAppLink(): string {
 }
 
 export default function ObrigadoContent() {
+    // Starts as the base link (no cookie access) so server and hydration render match;
+    // the UTM-enriched link is applied client-side right after mount. Reading the cookie
+    // directly during render caused a permanent hydration mismatch on this static page —
+    // React does not patch it up, so the campaign context never appeared.
+    const [whatsappLink, setWhatsappLink] = useState(() => buildWhatsAppLink());
+
     useEffect(() => {
         trackLead();
+        setWhatsappLink(buildWhatsAppLink(getStoredUtm()?.utm_campaign));
     }, []);
 
     return (
@@ -34,7 +40,7 @@ export default function ObrigadoContent() {
                 Se preferir não esperar, fale agora mesmo com um consultor:
             </p>
             <a
-                href={buildWhatsAppLink()}
+                href={whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-success btn-lg rounded-pill px-4 d-inline-flex align-items-center gap-2"
