@@ -6,6 +6,9 @@ import Image from 'next/image';
 import Logo from '@/components/Logo';
 import { api } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
+import { useRouter } from 'next/navigation';
+import { getStoredUtm } from '@/lib/utm';
+import { trackContact } from '@/lib/tracking';
 import RiskBlock from '@/components/landing/RiskBlock';
 import CardCarousel from '@/components/landing/CardCarousel';
 import PartnerBlock from '@/components/landing/PartnerBlock';
@@ -100,8 +103,11 @@ function PersonaCard({ title, desc }: (typeof PERSONA_ITEMS)[number]) {
 }
 
 export default function LandingPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -113,12 +119,27 @@ export default function LandingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consentChecked) {
+      setConsentError('É necessário concordar com a Política de Privacidade para continuar.');
+      return;
+    }
+    setConsentError(null);
     setLoading(true);
     try {
       const affiliateCode = Cookies.get('em_ref') || undefined;
-      await api.post('/landing/leads', { email, affiliateCode });
-      alert(`Obrigado! Entraremos em contato através do e-mail: ${email}`);
-      setEmail('');
+      const utm = getStoredUtm();
+      await api.post('/landing/leads', {
+        email,
+        affiliateCode,
+        consentAccepted: true,
+        source: utm?.utm_source,
+        medium: utm?.utm_medium,
+        campaign: utm?.utm_campaign,
+        utmJson: utm ? JSON.stringify(utm) : undefined,
+        referrer: document.referrer || undefined,
+        landingPath: window.location.pathname,
+      });
+      router.push('/obrigado');
     } catch (error) {
       console.error('Erro ao enviar lead:', error);
       alert('Ocorreu um erro ao enviar seu e-mail. Por favor, tente novamente mais tarde.');
@@ -267,6 +288,30 @@ export default function LandingPage() {
                     {loading ? 'Enviando...' : 'Solicitar Demonstração'}
                   </button>
                 </div>
+                <div className="col-12">
+                  <div className="form-check">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id="consentCheckbox"
+                      checked={consentChecked}
+                      onChange={(e) => {
+                        setConsentChecked(e.target.checked);
+                        if (e.target.checked) setConsentError(null);
+                      }}
+                    />
+                    <label className="form-check-label small" htmlFor="consentCheckbox">
+                      Li e concordo com a{' '}
+                      <Link href="/privacidade" target="_blank" className="text-decoration-underline text-white">
+                        Política de Privacidade
+                      </Link>
+                      .
+                    </label>
+                  </div>
+                  {consentError && (
+                    <p className="text-danger small mb-0 mt-1">{consentError}</p>
+                  )}
+                </div>
               </form>
             </div>
             <div className="col-lg-6 d-none d-lg-block">
@@ -400,7 +445,15 @@ export default function LandingPage() {
             >
               Solicitar Demonstração
             </button>
-            <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="btn btn-outline-light btn-lg rounded-pill px-5">Falar com Consultor</a>
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-outline-light btn-lg rounded-pill px-5"
+              onClick={() => trackContact()}
+            >
+              Falar com Consultor
+            </a>
           </div>
         </div>
       </section>
