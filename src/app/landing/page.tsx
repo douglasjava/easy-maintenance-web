@@ -71,9 +71,9 @@ function SolutionCard({ title, icon, desc }: (typeof SOLUTION_ITEMS)[number]) {
 
 const DIFERENCIAIS_ITEMS = [
   { title: "Foco em legislação brasileira", desc: "Adequado às normas técnicas nacionais (ABNT)." },
-  { title: "Modelo por organização", desc: "Estrutura hierárquica clara para multiclientes ou filiais." },
-  { title: "Histórico técnico", desc: "Acervo digital permanente da vida útil dos ativos." },
-  { title: "Evidência vinculada", desc: "Cada manutenção possui sua prova de execução direta." },
+  { title: "Nada de planilha por prédio", desc: "Uma estrutura só, com hierarquia clara entre organizações e filiais — não uma pasta por cliente." },
+  { title: "Histórico que não se perde", desc: "Diferente da planilha que some a cada troca de síndico, o histórico técnico fica registrado para sempre." },
+  { title: "Evidência que não se perde no zap", desc: "Cada manutenção já nasce com a foto de execução vinculada — não perdida em uma conversa de WhatsApp." },
   { title: "Visão para auditoria", desc: "Relatórios prontos para processos de certificação." }
 ];
 
@@ -108,6 +108,7 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
+  const [showStickyCta, setShowStickyCta] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -115,6 +116,12 @@ export default function LandingPage() {
     if (ref) {
       Cookies.set('em_ref', ref, { expires: 30, sameSite: 'Lax' });
     }
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => setShowStickyCta(window.scrollY > 600);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -222,6 +229,26 @@ export default function LandingPage() {
           z-index: 1000;
           font-size: 30px;
         }
+        .sticky-cta-bar {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 998;
+          padding: 0.75rem 1rem;
+          background: white;
+          box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
+        }
+        @media (min-width: 768px) {
+          .sticky-cta-bar {
+            display: none;
+          }
+        }
+        @media (max-width: 767px) {
+          .whatsapp-float-shifted {
+            bottom: 90px !important;
+          }
+        }
       `}</style>
 
       {/* WhatsApp flutuante */}
@@ -229,13 +256,26 @@ export default function LandingPage() {
         href={WHATSAPP_LINK}
         target="_blank"
         rel="noopener noreferrer"
-        className="whatsapp-float"
+        className={`whatsapp-float ${showStickyCta ? 'whatsapp-float-shifted' : ''}`}
         aria-label="Falar no WhatsApp"
       >
         <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
         </svg>
       </a>
+
+      {/* CTA fixo no rodapé (somente mobile, aparece após rolar) */}
+      {showStickyCta && (
+        <div className="sticky-cta-bar">
+          <button
+            type="button"
+            className="btn btn-primary btn-lg w-100 rounded-pill"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            Solicitar Demonstração
+          </button>
+        </div>
+      )}
 
       {/* Navbar */}
       <nav className="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
@@ -254,10 +294,10 @@ export default function LandingPage() {
           </button>
           <div className="collapse navbar-collapse" id="navbarNav">
             <ul className="navbar-nav ms-auto align-items-lg-center">
+              <li className="nav-item"><a className="nav-link px-3" href="#para-quem">Para quem</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#problema">Problema</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#solucao">Solução</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#diferenciais">Diferenciais</a></li>
-              <li className="nav-item"><a className="nav-link px-3" href="#para-quem">Para quem</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#seja-parceiro">Seja Parceiro</a></li>
               <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
                 <Link href="/login" className="btn btn-outline-primary rounded-pill px-4">Login Cliente</Link>
@@ -272,6 +312,12 @@ export default function LandingPage() {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
+              <p
+                className="small text-uppercase fw-bold mb-3"
+                style={{ letterSpacing: "0.08em", color: "#93c5fd" }}
+              >
+                Para condomínios, hospitais, escolas e indústrias
+              </p>
               <h1 className="display-4 fw-bold mb-4">Gestão de Manutenção Preventiva Inteligente</h1>
               <p className="lead mb-5 opacity-75">Elimine o caos das planilhas e mensagens de WhatsApp. Tenha total controle sobre seus ativos, vencimentos e conformidade legal em uma única plataforma.</p>
 
@@ -318,6 +364,9 @@ export default function LandingPage() {
                   {consentError && (
                     <p className="text-danger small mb-0 mt-1">{consentError}</p>
                   )}
+                  <p className="small opacity-75 mb-0 mt-2">
+                    🔒 Conforme a LGPD · Alinhado às normas ABNT (NBR 5674, 14037, 16280)
+                  </p>
                 </div>
               </form>
             </div>
@@ -338,6 +387,40 @@ export default function LandingPage() {
       </header>
 
       <RiskBlock />
+
+      {/* Para quem é */}
+      <section id="para-quem" className="section-padding bg-white">
+        <div className="container">
+          <div className="text-center">
+            <h2 className="display-6 fw-bold">Feito para quem exige eficiência</h2>
+          </div>
+
+          <div className="row mb-5">
+            <div className="col-12">
+              <h3 className="h4 mb-4 text-center">Segmentos Principais</h3>
+              <div className="d-flex flex-wrap justify-content-center gap-3">
+                {["Condomínios", "Hospitais", "Escolas", "Indústrias", "Escritórios"].map((seg, i) => (
+                  <div key={i} className="px-4 py-2 bg-light rounded-pill border fw-bold">{seg}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <h3 className="h4 mb-4 text-center">Quem utiliza nossa plataforma</h3>
+            <div className="d-none d-md-block">
+              <div className="row g-5">
+                {PERSONA_ITEMS.map((item, index) => (
+                  <div key={index} className="col-md-3"><PersonaCard {...item} /></div>
+                ))}
+              </div>
+            </div>
+            <CardCarousel ariaLabel="Quem utiliza a plataforma — deslize para o lado">
+              {PERSONA_ITEMS.map((item, index) => <PersonaCard key={index} {...item} />)}
+            </CardCarousel>
+          </div>
+        </div>
+      </section>
 
       {/* Problemas */}
       <section id="problema" className="section-padding bg-white">
@@ -403,47 +486,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Para quem é */}
-      <section id="para-quem" className="section-padding bg-white">
-        <div className="container">
-          <div className="text-center">
-            <h2 className="display-6 fw-bold">Feito para quem exige eficiência</h2>
-          </div>
-
-          <div className="row mb-5">
-            <div className="col-12">
-              <h3 className="h4 mb-4 text-center">Segmentos Principais</h3>
-              <div className="d-flex flex-wrap justify-content-center gap-3">
-                {["Condomínios", "Hospitais", "Escolas", "Indústrias", "Escritórios"].map((seg, i) => (
-                  <div key={i} className="px-4 py-2 bg-light rounded-pill border fw-bold">{seg}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <h3 className="h4 mb-4 text-center">Quem utiliza nossa plataforma</h3>
-            <div className="d-none d-md-block">
-              <div className="row g-5">
-                {PERSONA_ITEMS.map((item, index) => (
-                  <div key={index} className="col-md-3"><PersonaCard {...item} /></div>
-                ))}
-              </div>
-            </div>
-            <CardCarousel ariaLabel="Quem utiliza a plataforma — deslize para o lado">
-              {PERSONA_ITEMS.map((item, index) => <PersonaCard key={index} {...item} />)}
-            </CardCarousel>
-          </div>
-        </div>
-      </section>
-
       <PartnerBlock />
 
       {/* CTA Final */}
       <section className="section-padding bg-primary text-white text-center pb-3">
         <div className="container">
           <h2 className="display-5 fw-bold mb-4">Pronto para profissionalizar sua manutenção?</h2>
-          <p className="lead mb-5">Junte-se a centenas de gestores que já transformaram suas operações.</p>
+          <p className="lead mb-5">Substitua planilhas soltas e mensagens perdidas no WhatsApp por um sistema único de manutenção preventiva.</p>
           <div className="d-flex flex-column flex-md-row justify-content-center gap-3 mt-5">
             <button
               className="btn btn-light btn-lg rounded-pill px-5"
