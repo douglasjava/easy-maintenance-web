@@ -312,12 +312,17 @@ export default function LandingPage() {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
-              <p
-                className="small text-uppercase fw-bold mb-3"
-                style={{ letterSpacing: "0.08em", color: "#93c5fd" }}
-              >
-                Para condomínios, hospitais, escolas e indústrias
-              </p>
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                {["Condomínios", "Hospitais", "Escolas", "Indústrias"].map((seg) => (
+                  <span
+                    key={seg}
+                    className="small fw-bold px-3 py-1 rounded-pill"
+                    style={{ backgroundColor: "rgba(147, 197, 253, 0.15)", color: "#93c5fd", border: "1px solid rgba(147, 197, 253, 0.4)" }}
+                  >
+                    {seg}
+                  </span>
+                ))}
+              </div>
               <h1 className="display-4 fw-bold mb-4">Gestão de Manutenção Preventiva Inteligente</h1>
               <p className="lead mb-5 opacity-75">Elimine o caos das planilhas e mensagens de WhatsApp. Tenha total controle sobre seus ativos, vencimentos e conformidade legal em uma única plataforma.</p>
 
