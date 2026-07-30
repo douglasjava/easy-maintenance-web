@@ -4,6 +4,7 @@ import { captureUtm, getStoredUtm } from "./utm";
 jest.mock("js-cookie");
 
 const mockedCookies = Cookies as jest.Mocked<typeof Cookies>;
+const mockedGet = mockedCookies.get as unknown as jest.Mock<string | undefined, [string]>;
 
 describe("captureUtm", () => {
     afterEach(() => jest.clearAllMocks());
@@ -53,20 +54,40 @@ describe("getStoredUtm", () => {
     afterEach(() => jest.clearAllMocks());
 
     it("returns the parsed utm object when the cookie exists", () => {
-        mockedCookies.get.mockReturnValue(JSON.stringify({ utm_source: "google" }));
+        mockedGet.mockReturnValue(JSON.stringify({ utm_source: "google" }));
 
         expect(getStoredUtm()).toEqual({ utm_source: "google" });
     });
 
     it("returns undefined when the cookie does not exist", () => {
-        mockedCookies.get.mockReturnValue(undefined);
+        mockedGet.mockReturnValue(undefined);
 
         expect(getStoredUtm()).toBeUndefined();
     });
 
     it("returns undefined when the cookie value is malformed JSON", () => {
-        mockedCookies.get.mockReturnValue("not-json");
+        mockedGet.mockReturnValue("not-json");
 
         expect(getStoredUtm()).toBeUndefined();
+    });
+
+    it("merges newly-found utm params on top of previously stored values", () => {
+        mockedGet.mockReturnValue(JSON.stringify({
+            utm_source: "google",
+            utm_medium: "cpc",
+            utm_campaign: "lancamento",
+        }));
+
+        captureUtm("?utm_source=meta");
+
+        expect(mockedCookies.set).toHaveBeenCalledWith(
+            "em_utm",
+            JSON.stringify({
+                utm_source: "meta",
+                utm_medium: "cpc",
+                utm_campaign: "lancamento",
+            }),
+            { expires: 30, sameSite: "Lax" }
+        );
     });
 });

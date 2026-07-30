@@ -21,9 +21,14 @@ export function captureUtm(search: string): void {
         if (value) found[key] = value;
     }
 
+    // If no new UTM params found, don't write the cookie
     if (Object.keys(found).length === 0) return;
 
-    Cookies.set(UTM_COOKIE_NAME, JSON.stringify(found), {
+    // Merge new params on top of previously stored values (preserves first-touch)
+    const stored = getStoredUtm() || {};
+    const merged = { ...stored, ...found };
+
+    Cookies.set(UTM_COOKIE_NAME, JSON.stringify(merged), {
         expires: UTM_COOKIE_EXPIRES_DAYS,
         sameSite: "Lax",
     });
