@@ -44,7 +44,7 @@ const PROBLEM_ITEMS = [
 function ProblemCard({ title, desc }: (typeof PROBLEM_ITEMS)[number]) {
   return (
     <div className="card h-100 p-4 problem-card">
-      <h4 className="h5 fw-bold">{title}</h4>
+      <h3 className="h5 fw-bold">{title}</h3>
       <p className="text-muted mb-0">{desc}</p>
     </div>
   );
@@ -63,7 +63,7 @@ function SolutionCard({ title, icon, desc }: (typeof SOLUTION_ITEMS)[number]) {
   return (
     <div className="card h-100 p-4 solution-card">
       <div className="feature-icon fs-4">{icon}</div>
-      <h4 className="h5 fw-bold">{title}</h4>
+      <h3 className="h5 fw-bold">{title}</h3>
       <p className="text-muted mb-0">{desc}</p>
     </div>
   );
@@ -80,7 +80,7 @@ const DIFERENCIAIS_ITEMS = [
 function DiferencialCard({ title, desc }: (typeof DIFERENCIAIS_ITEMS)[number]) {
   return (
     <div className="p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25 h-100">
-      <h5 className="h6 fw-bold text-primary">{title}</h5>
+      <h3 className="h6 fw-bold" style={{ color: "#6ea8fe" }}>{title}</h3>
       <p className="small mb-0 opacity-75">{desc}</p>
     </div>
   );
@@ -96,7 +96,7 @@ const PERSONA_ITEMS = [
 function PersonaCard({ title, desc }: (typeof PERSONA_ITEMS)[number]) {
   return (
     <div className="card h-100 p-4 text-center border-top border-primary border-4">
-      <h5 className="fw-bold mb-2">{title}</h5>
+      <h4 className="h5 fw-bold mb-2">{title}</h4>
       <p className="small text-muted mb-0">{desc}</p>
     </div>
   );
@@ -162,7 +162,8 @@ export default function LandingPage() {
           }
         .hero-section {
           padding: 140px 2rem 180px 2rem;   /* mais espaço embaixo para separar da próxima seção */
-          background: linear-gradient(135deg, #0b1220 0%, #1e293b 100%);
+          background-color: #0b1220;
+          background-image: linear-gradient(135deg, #0b1220 0%, #1e293b 100%);
           color: white;
         }
         .section-padding {
@@ -242,7 +243,13 @@ export default function LandingPage() {
           <Link href="/landing" className="navbar-brand">
             <Logo />
           </Link>
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <button
+            className="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarNav"
+            aria-label="Abrir menu de navegação"
+          >
             <span className="navbar-toggler-icon"></span>
           </button>
           <div className="collapse navbar-collapse" id="navbarNav">
@@ -375,7 +382,7 @@ export default function LandingPage() {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-5 mb-5 mb-lg-0">
-              <span className="text-primary fw-bold text-uppercase">Diferenciais</span>
+              <span className="fw-bold text-uppercase" style={{ color: "#6ea8fe" }}>Diferenciais</span>
               <h2 className="display-6 fw-bold mb-4">Por que o Easy Maintenance é diferente?</h2>
               <p className="opacity-75 mb-4">Nossa plataforma foi construída ouvindo as dores reais do mercado brasileiro.</p>
               <button className="btn btn-primary rounded-pill px-4">Ver todos os recursos</button>
@@ -405,7 +412,7 @@ export default function LandingPage() {
 
           <div className="row mb-5">
             <div className="col-12">
-              <h4 className="mb-4 text-center">Segmentos Principais</h4>
+              <h3 className="h4 mb-4 text-center">Segmentos Principais</h3>
               <div className="d-flex flex-wrap justify-content-center gap-3">
                 {["Condomínios", "Hospitais", "Escolas", "Indústrias", "Escritórios"].map((seg, i) => (
                   <div key={i} className="px-4 py-2 bg-light rounded-pill border fw-bold">{seg}</div>
@@ -415,7 +422,7 @@ export default function LandingPage() {
           </div>
 
           <div className="mb-4">
-            <h4 className="mb-4 text-center">Quem utiliza nossa plataforma</h4>
+            <h3 className="h4 mb-4 text-center">Quem utiliza nossa plataforma</h3>
             <div className="d-none d-md-block">
               <div className="row g-5">
                 {PERSONA_ITEMS.map((item, index) => (
@@ -436,7 +443,7 @@ export default function LandingPage() {
       <section className="section-padding bg-primary text-white text-center pb-3">
         <div className="container">
           <h2 className="display-5 fw-bold mb-4">Pronto para profissionalizar sua manutenção?</h2>
-          <p className="lead mb-5 opacity-75">Junte-se a centenas de gestores que já transformaram suas operações.</p>
+          <p className="lead mb-5">Junte-se a centenas de gestores que já transformaram suas operações.</p>
           <div className="d-flex flex-column flex-md-row justify-content-center gap-3 mt-5">
             <button
               className="btn btn-light btn-lg rounded-pill px-5"
@@ -449,7 +456,7 @@ export default function LandingPage() {
               href={WHATSAPP_LINK}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-outline-light btn-lg rounded-pill px-5"
+              className="btn btn-outline-light btn-lg rounded-pill px-5 fw-bold"
               onClick={() => trackContact()}
             >
               Falar com Consultor
@@ -467,7 +474,7 @@ export default function LandingPage() {
               <p className="mt-3 text-muted">A solução definitiva para gestão de ativos e manutenção preventiva no Brasil.</p>
             </div>
             <div className="col-md-4 col-lg-2 mb-4 mb-lg-0">
-              <h6 className="fw-bold">Navegação</h6>
+              <h3 className="h6 fw-bold">Navegação</h3>
               <ul className="list-unstyled">
                 <li><a href="#problema" className="text-muted text-decoration-none">Problema</a></li>
                 <li><a href="#solucao" className="text-muted text-decoration-none">Solução</a></li>
@@ -475,7 +482,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <div className="col-md-4 col-lg-2 mb-4 mb-lg-0">
-              <h6 className="fw-bold">Acesso</h6>
+              <h3 className="h6 fw-bold">Acesso</h3>
               <ul className="list-unstyled">
                 <li><Link href="/login" className="text-muted text-decoration-none">Login Cliente</Link></li>
                 <li><Link href="/privacidade" className="text-muted text-decoration-none">Política de Privacidade</Link></li>
@@ -483,7 +490,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <div className="col-md-4 col-lg-4">
-              <h6 className="fw-bold">Contato</h6>
+              <h3 className="h6 fw-bold">Contato</h3>
               <p className="text-muted mb-1">comercial@easymaintenance.com.br</p>
               <a
                 href={WHATSAPP_LINK}

@@ -97,9 +97,9 @@ function RiskCard({ icon, title, desc, source }: RiskItem) {
       >
         <RiskIcon type={icon} />
       </div>
-      <h4 className="h5 fw-bold">{title}</h4>
+      <h3 className="h5 fw-bold">{title}</h3>
       <p className="text-muted mb-3">{desc}</p>
-      <p className="mb-0" style={{ fontSize: "0.72rem", color: "#9ca3af" }}>
+      <p className="mb-0" style={{ fontSize: "0.72rem", color: "#4b5563" }}>
         Fonte: {source}
       </p>
     </div>
@@ -113,7 +113,7 @@ export default function RiskBlock() {
         <div className="text-center mb-5">
           <span
             className="fw-bold text-uppercase"
-            style={{ color: "#ef4444", letterSpacing: "0.08em", fontSize: "0.85rem" }}
+            style={{ color: "#b91c1c", letterSpacing: "0.08em", fontSize: "0.85rem" }}
           >
             O risco real
           </span>
