@@ -317,10 +317,10 @@ export default function LandingPage() {
             <div className="col-lg-6 d-none d-lg-block">
               <div className="bg-white rounded-3 shadow p-2" style={{ transform: 'perspective(1000px) rotateY(-10deg)' }}>
                 <Image
-                  src="/dashboard_preview.png"
+                  src="/dashboard_preview.webp"
                   alt="Tela do dashboard Easy Maintenance com visão geral de manutenções preventivas, prazos e conformidade"
-                  width={900}
-                  height={600}
+                  width={1000}
+                  height={667}
                   className="img-fluid rounded shadow-sm"
                   priority
                 />
