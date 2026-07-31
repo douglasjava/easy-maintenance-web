@@ -4,4 +4,5 @@ export const ENV = {
     ORG_ID: process.env.NEXT_PUBLIC_ORG_ID || "",
     APP_ENV: process.env.NEXT_PUBLIC_APP_ENV || "development",
     APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0",
+    META_PIXEL_ID: process.env.NEXT_PUBLIC_META_PIXEL_ID || "",
 };
