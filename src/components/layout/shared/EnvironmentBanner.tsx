@@ -10,7 +10,7 @@ export default function EnvironmentBanner() {
     return (
         <div
             className="text-center py-1 small fw-semibold"
-            style={{ backgroundColor: "#F59E0B", color: "#78350F" }}
+            style={{ backgroundColor: "#F59E0B", color: "#451a03" }}
         >
             ⚠ {label}
         </div>
