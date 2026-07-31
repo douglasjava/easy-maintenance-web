@@ -13,6 +13,7 @@ interface AffiliateResponse {
   code: string;
   link: string;
   commissionRate: number;
+
 }
 
 const TERMS = [

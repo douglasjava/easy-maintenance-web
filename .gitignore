@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local git worktrees (superpowers subagent-driven-development)
+.worktrees/
+.superpowers/sdd/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

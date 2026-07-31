@@ -6,6 +6,9 @@ import Image from 'next/image';
 import Logo from '@/components/Logo';
 import { api } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
+import { useRouter } from 'next/navigation';
+import { getStoredUtm } from '@/lib/utm';
+import { trackContact } from '@/lib/tracking';
 import RiskBlock from '@/components/landing/RiskBlock';
 import CardCarousel from '@/components/landing/CardCarousel';
 import PartnerBlock from '@/components/landing/PartnerBlock';
@@ -41,7 +44,7 @@ const PROBLEM_ITEMS = [
 function ProblemCard({ title, desc }: (typeof PROBLEM_ITEMS)[number]) {
   return (
     <div className="card h-100 p-4 problem-card">
-      <h4 className="h5 fw-bold">{title}</h4>
+      <h3 className="h5 fw-bold">{title}</h3>
       <p className="text-muted mb-0">{desc}</p>
     </div>
   );
@@ -60,7 +63,7 @@ function SolutionCard({ title, icon, desc }: (typeof SOLUTION_ITEMS)[number]) {
   return (
     <div className="card h-100 p-4 solution-card">
       <div className="feature-icon fs-4">{icon}</div>
-      <h4 className="h5 fw-bold">{title}</h4>
+      <h3 className="h5 fw-bold">{title}</h3>
       <p className="text-muted mb-0">{desc}</p>
     </div>
   );
@@ -68,16 +71,16 @@ function SolutionCard({ title, icon, desc }: (typeof SOLUTION_ITEMS)[number]) {
 
 const DIFERENCIAIS_ITEMS = [
   { title: "Foco em legislação brasileira", desc: "Adequado às normas técnicas nacionais (ABNT)." },
-  { title: "Modelo por organização", desc: "Estrutura hierárquica clara para multiclientes ou filiais." },
-  { title: "Histórico técnico", desc: "Acervo digital permanente da vida útil dos ativos." },
-  { title: "Evidência vinculada", desc: "Cada manutenção possui sua prova de execução direta." },
+  { title: "Nada de planilha por prédio", desc: "Uma estrutura só, com hierarquia clara entre organizações e filiais — não uma pasta por cliente." },
+  { title: "Histórico que não se perde", desc: "Diferente da planilha que some a cada troca de síndico, o histórico técnico fica registrado para sempre." },
+  { title: "Evidência que não se perde no zap", desc: "Cada manutenção já nasce com a foto de execução vinculada — não perdida em uma conversa de WhatsApp." },
   { title: "Visão para auditoria", desc: "Relatórios prontos para processos de certificação." }
 ];
 
 function DiferencialCard({ title, desc }: (typeof DIFERENCIAIS_ITEMS)[number]) {
   return (
     <div className="p-3 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25 h-100">
-      <h5 className="h6 fw-bold text-primary">{title}</h5>
+      <h3 className="h6 fw-bold" style={{ color: "#6ea8fe" }}>{title}</h3>
       <p className="small mb-0 opacity-75">{desc}</p>
     </div>
   );
@@ -93,15 +96,19 @@ const PERSONA_ITEMS = [
 function PersonaCard({ title, desc }: (typeof PERSONA_ITEMS)[number]) {
   return (
     <div className="card h-100 p-4 text-center border-top border-primary border-4">
-      <h5 className="fw-bold mb-2">{title}</h5>
+      <h4 className="h5 fw-bold mb-2">{title}</h4>
       <p className="small text-muted mb-0">{desc}</p>
     </div>
   );
 }
 
 export default function LandingPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
+  const [showStickyCta, setShowStickyCta] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -111,14 +118,35 @@ export default function LandingPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => setShowStickyCta(window.scrollY > 600);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consentChecked) {
+      setConsentError('É necessário concordar com a Política de Privacidade para continuar.');
+      return;
+    }
+    setConsentError(null);
     setLoading(true);
     try {
       const affiliateCode = Cookies.get('em_ref') || undefined;
-      await api.post('/landing/leads', { email, affiliateCode });
-      alert(`Obrigado! Entraremos em contato através do e-mail: ${email}`);
-      setEmail('');
+      const utm = getStoredUtm();
+      await api.post('/landing/leads', {
+        email,
+        affiliateCode,
+        consentAccepted: true,
+        source: utm?.utm_source,
+        medium: utm?.utm_medium,
+        campaign: utm?.utm_campaign,
+        utmJson: utm ? JSON.stringify(utm) : undefined,
+        referrer: document.referrer || undefined,
+        landingPath: window.location.pathname,
+      });
+      router.push('/obrigado');
     } catch (error) {
       console.error('Erro ao enviar lead:', error);
       alert('Ocorreu um erro ao enviar seu e-mail. Por favor, tente novamente mais tarde.');
@@ -141,7 +169,8 @@ export default function LandingPage() {
           }
         .hero-section {
           padding: 140px 2rem 180px 2rem;   /* mais espaço embaixo para separar da próxima seção */
-          background: linear-gradient(135deg, #0b1220 0%, #1e293b 100%);
+          background-color: #0b1220;
+          background-image: linear-gradient(135deg, #0b1220 0%, #1e293b 100%);
           color: white;
         }
         .section-padding {
@@ -200,6 +229,26 @@ export default function LandingPage() {
           z-index: 1000;
           font-size: 30px;
         }
+        .sticky-cta-bar {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 998;
+          padding: 0.75rem 1rem;
+          background: white;
+          box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
+        }
+        @media (min-width: 768px) {
+          .sticky-cta-bar {
+            display: none;
+          }
+        }
+        @media (max-width: 767px) {
+          .whatsapp-float-shifted {
+            bottom: 90px !important;
+          }
+        }
       `}</style>
 
       {/* WhatsApp flutuante */}
@@ -207,7 +256,7 @@ export default function LandingPage() {
         href={WHATSAPP_LINK}
         target="_blank"
         rel="noopener noreferrer"
-        className="whatsapp-float"
+        className={`whatsapp-float ${showStickyCta ? 'whatsapp-float-shifted' : ''}`}
         aria-label="Falar no WhatsApp"
       >
         <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true">
@@ -215,21 +264,40 @@ export default function LandingPage() {
         </svg>
       </a>
 
+      {/* CTA fixo no rodapé (somente mobile, aparece após rolar) */}
+      {showStickyCta && (
+        <div className="sticky-cta-bar">
+          <button
+            type="button"
+            className="btn btn-primary btn-lg w-100 rounded-pill"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            Solicitar Demonstração
+          </button>
+        </div>
+      )}
+
       {/* Navbar */}
       <nav className="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
         <div className="container">
           <Link href="/landing" className="navbar-brand">
             <Logo />
           </Link>
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <button
+            className="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarNav"
+            aria-label="Abrir menu de navegação"
+          >
             <span className="navbar-toggler-icon"></span>
           </button>
           <div className="collapse navbar-collapse" id="navbarNav">
             <ul className="navbar-nav ms-auto align-items-lg-center">
+              <li className="nav-item"><a className="nav-link px-3" href="#para-quem">Para quem</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#problema">Problema</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#solucao">Solução</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#diferenciais">Diferenciais</a></li>
-              <li className="nav-item"><a className="nav-link px-3" href="#para-quem">Para quem</a></li>
               <li className="nav-item"><a className="nav-link px-3" href="#seja-parceiro">Seja Parceiro</a></li>
               <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
                 <Link href="/login" className="btn btn-outline-primary rounded-pill px-4">Login Cliente</Link>
@@ -244,6 +312,17 @@ export default function LandingPage() {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                {["Condomínios", "Hospitais", "Escolas", "Indústrias"].map((seg) => (
+                  <span
+                    key={seg}
+                    className="small fw-bold px-3 py-1 rounded-pill"
+                    style={{ backgroundColor: "rgba(147, 197, 253, 0.15)", color: "#93c5fd", border: "1px solid rgba(147, 197, 253, 0.4)" }}
+                  >
+                    {seg}
+                  </span>
+                ))}
+              </div>
               <h1 className="display-4 fw-bold mb-4">Gestão de Manutenção Preventiva Inteligente</h1>
               <p className="lead mb-5 opacity-75">Elimine o caos das planilhas e mensagens de WhatsApp. Tenha total controle sobre seus ativos, vencimentos e conformidade legal em uma única plataforma.</p>
 
@@ -267,15 +346,42 @@ export default function LandingPage() {
                     {loading ? 'Enviando...' : 'Solicitar Demonstração'}
                   </button>
                 </div>
+                <div className="col-12">
+                  <div className="form-check">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id="consentCheckbox"
+                      checked={consentChecked}
+                      onChange={(e) => {
+                        setConsentChecked(e.target.checked);
+                        if (e.target.checked) setConsentError(null);
+                      }}
+                    />
+                    <label className="form-check-label small" htmlFor="consentCheckbox">
+                      Li e concordo com a{' '}
+                      <Link href="/privacidade" target="_blank" className="text-decoration-underline text-white">
+                        Política de Privacidade
+                      </Link>
+                      .
+                    </label>
+                  </div>
+                  {consentError && (
+                    <p className="text-danger small mb-0 mt-1">{consentError}</p>
+                  )}
+                  <p className="small opacity-75 mb-0 mt-2">
+                    🔒 Conforme a LGPD · Alinhado às normas ABNT (NBR 5674, 14037, 16280)
+                  </p>
+                </div>
               </form>
             </div>
             <div className="col-lg-6 d-none d-lg-block">
               <div className="bg-white rounded-3 shadow p-2" style={{ transform: 'perspective(1000px) rotateY(-10deg)' }}>
                 <Image
-                  src="/dashboard_preview.png"
+                  src="/dashboard_preview.webp"
                   alt="Tela do dashboard Easy Maintenance com visão geral de manutenções preventivas, prazos e conformidade"
-                  width={900}
-                  height={600}
+                  width={1000}
+                  height={667}
                   className="img-fluid rounded shadow-sm"
                   priority
                 />
@@ -286,6 +392,40 @@ export default function LandingPage() {
       </header>
 
       <RiskBlock />
+
+      {/* Para quem é */}
+      <section id="para-quem" className="section-padding bg-white">
+        <div className="container">
+          <div className="text-center">
+            <h2 className="display-6 fw-bold">Feito para quem exige eficiência</h2>
+          </div>
+
+          <div className="row mb-5">
+            <div className="col-12">
+              <h3 className="h4 mb-4 text-center">Segmentos Principais</h3>
+              <div className="d-flex flex-wrap justify-content-center gap-3">
+                {["Condomínios", "Hospitais", "Escolas", "Indústrias", "Escritórios"].map((seg, i) => (
+                  <div key={i} className="px-4 py-2 bg-light rounded-pill border fw-bold">{seg}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <h3 className="h4 mb-4 text-center">Quem utiliza nossa plataforma</h3>
+            <div className="d-none d-md-block">
+              <div className="row g-5">
+                {PERSONA_ITEMS.map((item, index) => (
+                  <div key={index} className="col-md-3"><PersonaCard {...item} /></div>
+                ))}
+              </div>
+            </div>
+            <CardCarousel ariaLabel="Quem utiliza a plataforma — deslize para o lado">
+              {PERSONA_ITEMS.map((item, index) => <PersonaCard key={index} {...item} />)}
+            </CardCarousel>
+          </div>
+        </div>
+      </section>
 
       {/* Problemas */}
       <section id="problema" className="section-padding bg-white">
@@ -330,7 +470,7 @@ export default function LandingPage() {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-5 mb-5 mb-lg-0">
-              <span className="text-primary fw-bold text-uppercase">Diferenciais</span>
+              <span className="fw-bold text-uppercase" style={{ color: "#6ea8fe" }}>Diferenciais</span>
               <h2 className="display-6 fw-bold mb-4">Por que o Easy Maintenance é diferente?</h2>
               <p className="opacity-75 mb-4">Nossa plataforma foi construída ouvindo as dores reais do mercado brasileiro.</p>
               <button className="btn btn-primary rounded-pill px-4">Ver todos os recursos</button>
@@ -351,47 +491,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Para quem é */}
-      <section id="para-quem" className="section-padding bg-white">
-        <div className="container">
-          <div className="text-center">
-            <h2 className="display-6 fw-bold">Feito para quem exige eficiência</h2>
-          </div>
-
-          <div className="row mb-5">
-            <div className="col-12">
-              <h4 className="mb-4 text-center">Segmentos Principais</h4>
-              <div className="d-flex flex-wrap justify-content-center gap-3">
-                {["Condomínios", "Hospitais", "Escolas", "Indústrias", "Escritórios"].map((seg, i) => (
-                  <div key={i} className="px-4 py-2 bg-light rounded-pill border fw-bold">{seg}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <h4 className="mb-4 text-center">Quem utiliza nossa plataforma</h4>
-            <div className="d-none d-md-block">
-              <div className="row g-5">
-                {PERSONA_ITEMS.map((item, index) => (
-                  <div key={index} className="col-md-3"><PersonaCard {...item} /></div>
-                ))}
-              </div>
-            </div>
-            <CardCarousel ariaLabel="Quem utiliza a plataforma — deslize para o lado">
-              {PERSONA_ITEMS.map((item, index) => <PersonaCard key={index} {...item} />)}
-            </CardCarousel>
-          </div>
-        </div>
-      </section>
-
       <PartnerBlock />
 
       {/* CTA Final */}
       <section className="section-padding bg-primary text-white text-center pb-3">
         <div className="container">
           <h2 className="display-5 fw-bold mb-4">Pronto para profissionalizar sua manutenção?</h2>
-          <p className="lead mb-5 opacity-75">Junte-se a centenas de gestores que já transformaram suas operações.</p>
+          <p className="lead mb-5">Substitua planilhas soltas e mensagens perdidas no WhatsApp por um sistema único de manutenção preventiva.</p>
           <div className="d-flex flex-column flex-md-row justify-content-center gap-3 mt-5">
             <button
               className="btn btn-light btn-lg rounded-pill px-5"
@@ -400,7 +506,15 @@ export default function LandingPage() {
             >
               Solicitar Demonstração
             </button>
-            <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="btn btn-outline-light btn-lg rounded-pill px-5">Falar com Consultor</a>
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-outline-light btn-lg rounded-pill px-5 fw-bold"
+              onClick={() => trackContact()}
+            >
+              Falar com Consultor
+            </a>
           </div>
         </div>
       </section>
@@ -414,7 +528,7 @@ export default function LandingPage() {
               <p className="mt-3 text-muted">A solução definitiva para gestão de ativos e manutenção preventiva no Brasil.</p>
             </div>
             <div className="col-md-4 col-lg-2 mb-4 mb-lg-0">
-              <h6 className="fw-bold">Navegação</h6>
+              <h3 className="h6 fw-bold">Navegação</h3>
               <ul className="list-unstyled">
                 <li><a href="#problema" className="text-muted text-decoration-none">Problema</a></li>
                 <li><a href="#solucao" className="text-muted text-decoration-none">Solução</a></li>
@@ -422,14 +536,15 @@ export default function LandingPage() {
               </ul>
             </div>
             <div className="col-md-4 col-lg-2 mb-4 mb-lg-0">
-              <h6 className="fw-bold">Acesso</h6>
+              <h3 className="h6 fw-bold">Acesso</h3>
               <ul className="list-unstyled">
                 <li><Link href="/login" className="text-muted text-decoration-none">Login Cliente</Link></li>
+                <li><Link href="/privacidade" className="text-muted text-decoration-none">Política de Privacidade</Link></li>
                 <li><a href="#" className="text-muted text-decoration-none">Termos de Uso</a></li>
               </ul>
             </div>
             <div className="col-md-4 col-lg-4">
-              <h6 className="fw-bold">Contato</h6>
+              <h3 className="h6 fw-bold">Contato</h3>
               <p className="text-muted mb-1">comercial@easymaintenance.com.br</p>
               <a
                 href={WHATSAPP_LINK}

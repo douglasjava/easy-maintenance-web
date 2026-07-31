@@ -27,7 +27,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                  pathname?.includes("/landing") ||
                  pathname?.startsWith("/checkout") ||
                  pathname?.startsWith("/onboarding") ||
-                 pathname?.startsWith("/indicador");
+                 pathname?.startsWith("/indicador") ||
+                 pathname?.endsWith("/privacidade") ||
+                 pathname?.endsWith("/obrigado");
   const isPrivate = pathname?.startsWith("/private");
 
   useEffect(() => {
