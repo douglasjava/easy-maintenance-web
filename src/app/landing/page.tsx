@@ -540,7 +540,7 @@ export default function LandingPage() {
               <ul className="list-unstyled">
                 <li><Link href="/login" className="text-muted text-decoration-none">Login Cliente</Link></li>
                 <li><Link href="/privacidade" className="text-muted text-decoration-none">Política de Privacidade</Link></li>
-                <li><a href="#" className="text-muted text-decoration-none">Termos de Uso</a></li>
+                <li><Link href="/termos" className="text-muted text-decoration-none">Termos de Uso</Link></li>
               </ul>
             </div>
             <div className="col-md-4 col-lg-4">
